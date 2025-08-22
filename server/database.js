@@ -95,6 +95,47 @@ const initDatabase = () => {
         )
       `);
 
+      // Users table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Subscriptions table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS subscriptions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          plan_type TEXT NOT NULL,
+          stripe_customer_id TEXT,
+          stripe_subscription_id TEXT,
+          status TEXT NOT NULL,
+          current_period_start DATETIME,
+          current_period_end DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      `);
+
+      // API usage tracking table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS api_usage (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER,
+          endpoint TEXT NOT NULL,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          ip_address TEXT,
+          user_agent TEXT,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      `);
+
       db.run('PRAGMA journal_mode=WAL', (err) => {
         if (err) reject(err);
         else resolve();
