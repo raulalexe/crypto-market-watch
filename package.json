@@ -23,7 +23,10 @@
     "node-fetch": "^3.3.2",
     "stripe": "^14.0.0",
     "jsonwebtoken": "^9.0.2",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "ethers": "^6.8.0",
+    "web3": "^4.2.0",
+    "coinbase-commerce": "^1.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.1",

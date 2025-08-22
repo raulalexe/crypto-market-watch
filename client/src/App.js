@@ -5,12 +5,15 @@ import Dashboard from './components/Dashboard';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LoadingSpinner from './components/LoadingSpinner';
+import AuthModal from './components/AuthModal';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
@@ -40,6 +43,13 @@ function App() {
   };
 
   useEffect(() => {
+    // Check for existing auth token
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setIsAuthenticated(true);
+    }
+    
     fetchDashboardData();
     
     // Refresh data every 5 minutes
@@ -47,6 +57,17 @@ function App() {
     
     return () => clearInterval(interval);
   }, []);
+
+  const handleAuthSuccess = () => {
+    setIsAuthenticated(true);
+    fetchDashboardData();
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    delete axios.defaults.headers.common['Authorization'];
+    setIsAuthenticated(false);
+  };
 
   if (loading && !dashboardData) {
     return (
@@ -63,7 +84,10 @@ function App() {
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           onRefreshClick={fetchDashboardData}
           onCollectDataClick={triggerDataCollection}
+          onAuthClick={() => setAuthModalOpen(true)}
+          onLogoutClick={handleLogout}
           loading={loading}
+          isAuthenticated={isAuthenticated}
         />
         
         <div className="flex">
@@ -89,6 +113,12 @@ function App() {
           </main>
         </div>
       </div>
+      
+      <AuthModal 
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </Router>
   );
 }

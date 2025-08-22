@@ -301,6 +301,138 @@ const getBacktestResults = (limit = 50) => {
   });
 };
 
+// User management functions
+const insertUser = (email, passwordHash) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO users (email, password_hash) VALUES (?, ?)',
+      [email, passwordHash],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getUserById = (id) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM users WHERE id = ?',
+      [id],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
+const getUserByEmail = (email) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM users WHERE email = ?',
+      [email],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
+const updateUser = (id, updates) => {
+  return new Promise((resolve, reject) => {
+    const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
+    const values = Object.values(updates);
+    values.push(id);
+    
+    db.run(
+      `UPDATE users SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      values,
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
+// Subscription management functions
+const insertSubscription = (subscriptionData) => {
+  return new Promise((resolve, reject) => {
+    const fields = Object.keys(subscriptionData).join(', ');
+    const placeholders = Object.keys(subscriptionData).map(() => '?').join(', ');
+    const values = Object.values(subscriptionData);
+    
+    db.run(
+      `INSERT INTO subscriptions (${fields}) VALUES (${placeholders})`,
+      values,
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getActiveSubscription = (userId) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM subscriptions WHERE user_id = ? AND status = "active" ORDER BY created_at DESC LIMIT 1',
+      [userId],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
+const updateSubscription = (subscriptionId, updates) => {
+  return new Promise((resolve, reject) => {
+    const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
+    const values = Object.values(updates);
+    values.push(subscriptionId);
+    
+    db.run(
+      `UPDATE subscriptions SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      values,
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
+// API usage tracking
+const trackApiUsage = (userId, endpoint, ipAddress, userAgent) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO api_usage (user_id, endpoint, ip_address, user_agent) VALUES (?, ?, ?, ?)',
+      [userId, endpoint, ipAddress, userAgent],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getApiUsage = (userId, days = 30) => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM api_usage WHERE user_id = ? AND timestamp >= datetime("now", "-" || ? || " days") ORDER BY timestamp DESC',
+      [userId, days],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+};
+
 module.exports = {
   db,
   initDatabase,
@@ -315,5 +447,17 @@ module.exports = {
   insertTrendingNarrative,
   getTrendingNarratives,
   insertBacktestResult,
-  getBacktestResults
+  getBacktestResults,
+  // User management
+  insertUser,
+  getUserById,
+  getUserByEmail,
+  updateUser,
+  // Subscription management
+  insertSubscription,
+  getActiveSubscription,
+  updateSubscription,
+  // API usage tracking
+  trackApiUsage,
+  getApiUsage
 };

@@ -6,6 +6,7 @@ import CryptoPricesCard from './CryptoPricesCard';
 import FearGreedCard from './FearGreedCard';
 import NarrativesCard from './NarrativesCard';
 import BacktestCard from './BacktestCard';
+import SubscriptionCard from './SubscriptionCard';
 import LoadingSpinner from './LoadingSpinner';
 
 const Dashboard = ({ data, loading, error, onRefresh }) => {
@@ -37,7 +38,7 @@ const Dashboard = ({ data, loading, error, onRefresh }) => {
     );
   }
 
-  const { marketData, analysis, cryptoPrices, fearGreed, narratives, backtestMetrics, timestamp } = data;
+  const { marketData, analysis, cryptoPrices, fearGreed, narratives, backtestMetrics, subscriptionStatus, timestamp } = data;
 
   return (
     <div className="space-y-6">
@@ -136,6 +137,12 @@ const Dashboard = ({ data, loading, error, onRefresh }) => {
       {backtestMetrics && (
         <BacktestCard backtestMetrics={backtestMetrics} />
       )}
+
+      {/* Subscription Plans */}
+      <SubscriptionCard 
+        subscriptionStatus={subscriptionStatus}
+        onSubscriptionUpdate={onRefresh}
+      />
 
       {/* Data Collection Status */}
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">

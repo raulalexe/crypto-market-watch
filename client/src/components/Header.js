@@ -1,7 +1,7 @@
 import React from 'react';
 import { Menu, RefreshCw, Database, TrendingUp } from 'lucide-react';
 
-const Header = ({ onMenuClick, onRefreshClick, onCollectDataClick, loading }) => {
+const Header = ({ onMenuClick, onRefreshClick, onCollectDataClick, onAuthClick, onLogoutClick, loading, isAuthenticated }) => {
   return (
     <header className="bg-slate-800 border-b border-slate-700">
       <div className="flex items-center justify-between px-4 py-3">
@@ -20,22 +20,42 @@ const Header = ({ onMenuClick, onRefreshClick, onCollectDataClick, loading }) =>
         </div>
         
         <div className="flex items-center space-x-2">
-          <button
-            onClick={onCollectDataClick}
-            disabled={loading}
-            className="flex items-center space-x-2 px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Database className="w-4 h-4" />
-            <span className="hidden sm:inline">Collect Data</span>
-          </button>
+          {isAuthenticated && (
+            <>
+              <button
+                onClick={onCollectDataClick}
+                disabled={loading}
+                className="flex items-center space-x-2 px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Database className="w-4 h-4" />
+                <span className="hidden sm:inline">Collect Data</span>
+              </button>
+              
+              <button
+                onClick={onRefreshClick}
+                disabled={loading}
+                className="p-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-5 h-5 text-slate-300 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          )}
           
-          <button
-            onClick={onRefreshClick}
-            disabled={loading}
-            className="p-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`w-5 h-5 text-slate-300 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          {isAuthenticated ? (
+            <button
+              onClick={onLogoutClick}
+              className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+            >
+              Logout
+            </button>
+          ) : (
+            <button
+              onClick={onAuthClick}
+              className="px-4 py-2 bg-crypto-green text-black rounded-lg hover:bg-green-400 transition-colors"
+            >
+              Sign In
+            </button>
+          )}
         </div>
       </div>
     </header>
