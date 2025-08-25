@@ -6,6 +6,10 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LoadingSpinner from './components/LoadingSpinner';
 import AuthModal from './components/AuthModal';
+import Settings from './components/Settings';
+import About from './components/About';
+import ErrorLogs from './components/ErrorLogs';
+import DataExport from './components/DataExport';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -83,7 +87,6 @@ function App() {
         <Header 
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           onRefreshClick={fetchDashboardData}
-          onCollectDataClick={triggerDataCollection}
           onAuthClick={() => setAuthModalOpen(true)}
           onLogoutClick={handleLogout}
           loading={loading}
@@ -106,8 +109,25 @@ function App() {
                     loading={loading}
                     error={error}
                     onRefresh={fetchDashboardData}
+                    onCollectData={triggerDataCollection}
                   />
                 } 
+              />
+              <Route 
+                path="/settings" 
+                element={<Settings />} 
+              />
+              <Route 
+                path="/export" 
+                element={<DataExport />} 
+              />
+              <Route 
+                path="/errors" 
+                element={<ErrorLogs />} 
+              />
+              <Route 
+                path="/about" 
+                element={<About />} 
               />
             </Routes>
           </main>

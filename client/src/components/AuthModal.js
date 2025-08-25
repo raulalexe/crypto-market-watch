@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Lock, Mail } from 'lucide-react';
+import { X, Lock, Mail } from 'lucide-react';
 import axios from 'axios';
 
 const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
@@ -15,10 +15,21 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
     setError('');
 
     try {
-      // For demo purposes, we'll create a simple JWT token
-      // In production, you'd use proper authentication
-      const token = btoa(JSON.stringify({ userId: 1, email, plan: 'free' }));
+      let response;
+      
+      if (isLogin) {
+        // Login
+        response = await axios.post('/api/auth/login', { email, password });
+      } else {
+        // Register
+        response = await axios.post('/api/auth/register', { email, password });
+      }
+      
+      const { token, user } = response.data;
+      
+      // Store the real JWT token
       localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(user));
       
       // Set default auth header for all future requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;

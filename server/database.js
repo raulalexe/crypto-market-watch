@@ -95,12 +95,74 @@ const initDatabase = () => {
         )
       `);
 
+      // Error logs table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS error_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          type TEXT NOT NULL,
+          source TEXT,
+          message TEXT NOT NULL,
+          details TEXT
+        )
+      `);
+
+      // Bitcoin Dominance table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS bitcoin_dominance (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          value REAL,
+          source TEXT
+        )
+      `);
+
+      // Stablecoin metrics table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS stablecoin_metrics (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          metric_type TEXT NOT NULL,
+          value REAL,
+          metadata TEXT,
+          source TEXT
+        )
+      `);
+
+      // Exchange flows table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS exchange_flows (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          flow_type TEXT NOT NULL,
+          value REAL,
+          asset TEXT,
+          exchange TEXT,
+          source TEXT
+        )
+      `);
+
+      // Alerts table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS alerts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          type TEXT NOT NULL,
+          message TEXT NOT NULL,
+          severity TEXT NOT NULL,
+          metric TEXT,
+          value REAL,
+          acknowledged BOOLEAN DEFAULT FALSE
+        )
+      `);
+
       // Users table
       db.run(`
         CREATE TABLE IF NOT EXISTS users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           email TEXT UNIQUE NOT NULL,
           password_hash TEXT NOT NULL,
+          is_admin BOOLEAN DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -159,16 +221,22 @@ const insertMarketData = (dataType, symbol, value, metadata = {}, source = '') =
   });
 };
 
-const getMarketData = (dataType, limit = 100) => {
+const getMarketData = (dataType, limit = 100, symbol = null) => {
   return new Promise((resolve, reject) => {
-    db.all(
-      'SELECT * FROM market_data WHERE data_type = ? ORDER BY timestamp DESC LIMIT ?',
-      [dataType, limit],
-      (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      }
-    );
+    let query, params;
+    
+    if (symbol) {
+      query = 'SELECT * FROM market_data WHERE data_type = ? AND symbol = ? ORDER BY timestamp DESC LIMIT ?';
+      params = [dataType, symbol, limit];
+    } else {
+      query = 'SELECT * FROM market_data WHERE data_type = ? ORDER BY timestamp DESC LIMIT ?';
+      params = [dataType, limit];
+    }
+    
+    db.all(query, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
   });
 };
 
@@ -301,12 +369,39 @@ const getBacktestResults = (limit = 50) => {
   });
 };
 
-// User management functions
-const insertUser = (email, passwordHash) => {
+// Error logging functions
+const insertErrorLog = (errorData) => {
   return new Promise((resolve, reject) => {
     db.run(
-      'INSERT INTO users (email, password_hash) VALUES (?, ?)',
-      [email, passwordHash],
+      'INSERT INTO error_logs (type, source, message, details, timestamp) VALUES (?, ?, ?, ?, ?)',
+      [errorData.type, errorData.source, errorData.message, errorData.details, errorData.timestamp],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getErrorLogs = (limit = 50) => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM error_logs ORDER BY timestamp DESC LIMIT ?',
+      [limit],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+};
+
+// User management functions
+const insertUser = (email, passwordHash, isAdmin = false) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO users (email, password_hash, is_admin) VALUES (?, ?, ?)',
+      [email, passwordHash, isAdmin ? 1 : 0],
       function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
@@ -353,6 +448,19 @@ const updateUser = (id, updates) => {
       function(err) {
         if (err) reject(err);
         else resolve(this.changes);
+      }
+    );
+  });
+};
+
+const isUserAdmin = (userId) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT is_admin FROM users WHERE id = ?',
+      [userId],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row ? row.is_admin === 1 : false);
       }
     );
   });
@@ -433,6 +541,139 @@ const getApiUsage = (userId, days = 30) => {
   });
 };
 
+// Bitcoin Dominance functions
+const insertBitcoinDominance = (value, source = 'CoinGecko') => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO bitcoin_dominance (value, source) VALUES (?, ?)',
+      [value, source],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getLatestBitcoinDominance = () => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM bitcoin_dominance ORDER BY timestamp DESC LIMIT 1',
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
+const getBitcoinDominanceHistory = (days = 30) => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM bitcoin_dominance WHERE timestamp >= datetime("now", "-" || ? || " days") ORDER BY timestamp DESC',
+      [days],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+};
+
+// Stablecoin metrics functions
+const insertStablecoinMetric = (metricType, value, metadata = null, source = 'CoinGecko') => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO stablecoin_metrics (metric_type, value, metadata, source) VALUES (?, ?, ?, ?)',
+      [metricType, value, metadata ? JSON.stringify(metadata) : null, source],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getLatestStablecoinMetrics = () => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM stablecoin_metrics WHERE timestamp >= datetime("now", "-1 day") ORDER BY timestamp DESC',
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+};
+
+// Exchange flows functions
+const insertExchangeFlow = (flowType, value, asset, exchange = null, source = 'Glassnode') => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO exchange_flows (flow_type, value, asset, exchange, source) VALUES (?, ?, ?, ?, ?)',
+      [flowType, value, asset, exchange, source],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getLatestExchangeFlows = (asset = null) => {
+  return new Promise((resolve, reject) => {
+    const query = asset 
+      ? 'SELECT * FROM exchange_flows WHERE asset = ? AND timestamp >= datetime("now", "-1 day") ORDER BY timestamp DESC'
+      : 'SELECT * FROM exchange_flows WHERE timestamp >= datetime("now", "-1 day") ORDER BY timestamp DESC';
+    const params = asset ? [asset] : [];
+    
+    db.all(query, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+};
+
+// Alert functions
+const insertAlert = (alert) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO alerts (type, message, severity, metric, value) VALUES (?, ?, ?, ?, ?)',
+      [alert.type, alert.message, alert.severity, alert.metric, alert.value],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getAlerts = (limit = 10) => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM alerts ORDER BY timestamp DESC LIMIT ?',
+      [limit],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+};
+
+const acknowledgeAlert = (alertId) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE alerts SET acknowledged = TRUE WHERE id = ?',
+      [alertId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
 module.exports = {
   db,
   initDatabase,
@@ -448,16 +689,34 @@ module.exports = {
   getTrendingNarratives,
   insertBacktestResult,
   getBacktestResults,
+  // Error logging
+  insertErrorLog,
+  getErrorLogs,
   // User management
   insertUser,
   getUserById,
   getUserByEmail,
   updateUser,
+  isUserAdmin,
   // Subscription management
   insertSubscription,
   getActiveSubscription,
   updateSubscription,
   // API usage tracking
   trackApiUsage,
-  getApiUsage
+  getApiUsage,
+  // Bitcoin Dominance
+  insertBitcoinDominance,
+  getLatestBitcoinDominance,
+  getBitcoinDominanceHistory,
+  // Stablecoin metrics
+  insertStablecoinMetric,
+  getLatestStablecoinMetrics,
+  // Exchange flows
+  insertExchangeFlow,
+  getLatestExchangeFlows,
+  // Alerts
+  insertAlert,
+  getAlerts,
+  acknowledgeAlert
 };

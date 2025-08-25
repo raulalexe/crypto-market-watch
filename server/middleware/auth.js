@@ -56,7 +56,7 @@ const requireSubscription = (minPlan = 'free') => {
       const { getActiveSubscription } = require('../database');
       const subscription = await getActiveSubscription(req.user.id);
       
-      const planHierarchy = { free: 0, pro: 1, premium: 2 };
+      const planHierarchy = { free: 0, pro: 1, premium: 2, api: 3 };
       const userPlan = subscription ? subscription.plan_type : 'free';
       
       if (planHierarchy[userPlan] < planHierarchy[minPlan]) {
@@ -98,7 +98,8 @@ const rateLimit = (endpoint) => {
       const rateLimits = {
         free: { requests: 100, window: 'day' },
         pro: { requests: 1000, window: 'day' },
-        premium: { requests: 10000, window: 'day' }
+        premium: { requests: 10000, window: 'day' },
+        api: { requests: 100000, window: 'day' }
       };
       
       const limit = rateLimits[plan];
@@ -124,9 +125,31 @@ const rateLimit = (endpoint) => {
   };
 };
 
+// Admin middleware
+const requireAdmin = async (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  try {
+    const { isUserAdmin } = require('../database');
+    const isAdmin = await isUserAdmin(req.user.id);
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 module.exports = {
   authenticateToken,
   optionalAuth,
   requireSubscription,
+  requireAdmin,
   rateLimit
 };

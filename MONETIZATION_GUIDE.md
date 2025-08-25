@@ -6,8 +6,7 @@
 
 1. **Subscription System**
    - Stripe integration for credit card payments
-   - Coinbase Commerce for crypto payments
-   - Direct ETH payments
+   - NOWPayments for crypto payments and subscriptions
    - Subscription management (create, cancel, status)
 
 2. **API Access (Pro Tier)**
@@ -23,8 +22,8 @@
 
 4. **Payment Methods**
    - 💳 **Stripe**: Credit/debit cards
-   - ₿ **Coinbase**: Bitcoin, Ethereum, other cryptos
-   - Ξ **Direct ETH**: Send Ethereum directly
+   - ₿ **NOWPayments**: 200+ cryptocurrencies worldwide
+   - 🔄 **Crypto Subscriptions**: Automatic recurring payments
 
 ## 🚀 **Quick Start**
 
@@ -36,9 +35,7 @@ cp .env.example .env
 # Add your payment keys:
 STRIPE_SECRET_KEY=sk_test_your_key
 STRIPE_PUBLISHABLE_KEY=pk_test_your_key
-COINBASE_COMMERCE_API_KEY=your_coinbase_key
-ETH_PRIVATE_KEY=your_eth_private_key
-ETH_WALLET_ADDRESS=your_eth_wallet
+NOWPAYMENTS_API_KEY=your_nowpayments_key
 JWT_SECRET=your_jwt_secret
 ```
 
@@ -124,15 +121,13 @@ const response = await fetch('/api/v1/market-data', {
 3. Set up webhook endpoint: `/api/webhooks/stripe`
 4. Create products and prices in Stripe dashboard
 
-### **Coinbase Commerce Setup**
-1. Create Coinbase Commerce account
-2. Get API key
-3. Set up webhook endpoint: `/api/webhooks/coinbase`
+### **NOWPayments Setup**
+1. Create NOWPayments account at https://nowpayments.io/
+2. Get API key from dashboard
+3. Set up webhook endpoint: `/api/webhooks/nowpayments`
+4. Configure supported cryptocurrencies
 
-### **Direct ETH Setup**
-1. Create Ethereum wallet
-2. Add private key to environment
-3. Set wallet address for receiving payments
+
 
 ## 🔧 **Testing the System**
 
@@ -179,8 +174,7 @@ curl -X GET http://localhost:3001/api/v1/market-data \
 
 ### **Before Launch**
 - [ ] Set up Stripe webhooks
-- [ ] Configure Coinbase Commerce
-- [ ] Set up Ethereum wallet
+- [ ] Configure NOWPayments
 - [ ] Test all payment flows
 - [ ] Set up monitoring/analytics
 - [ ] Configure email notifications
@@ -213,13 +207,15 @@ https://yourdomain.com/api/webhooks/stripe
 - customer.subscription.deleted
 ```
 
-### **Coinbase Webhook**
+### **NOWPayments Webhook**
 ```bash
-# In Coinbase Commerce dashboard, add webhook endpoint:
-https://yourdomain.com/api/webhooks/coinbase
+# In NOWPayments dashboard, add webhook endpoint:
+https://yourdomain.com/api/webhooks/nowpayments
 
 # Events to listen for:
-- charge:confirmed
+- payment_status: confirmed
+- payment_status: finished
+- payment_status: renewal_confirmed
 ```
 
 ## 📈 **Analytics & Monitoring**
@@ -262,9 +258,7 @@ vercel
 NODE_ENV=production
 STRIPE_SECRET_KEY=sk_live_your_key
 STRIPE_PUBLISHABLE_KEY=pk_live_your_key
-COINBASE_COMMERCE_API_KEY=your_live_key
-ETH_PRIVATE_KEY=your_eth_private_key
-ETH_WALLET_ADDRESS=your_eth_wallet
+NOWPAYMENTS_API_KEY=your_live_key
 JWT_SECRET=your_secure_jwt_secret
 ```
 

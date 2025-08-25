@@ -1,11 +1,15 @@
 import React from 'react';
-import { X, BarChart3, History, Settings, Info } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { X, BarChart3, History, Settings, Info, AlertTriangle, Download } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose }) => {
+  const location = useLocation();
   const menuItems = [
     { icon: BarChart3, label: 'Dashboard', href: '/' },
     { icon: History, label: 'Historical Data', href: '/history' },
+    { icon: Download, label: 'Data Export', href: '/export' },
     { icon: Settings, label: 'Settings', href: '/settings' },
+    { icon: AlertTriangle, label: 'Error Logs', href: '/errors' },
     { icon: Info, label: 'About', href: '/about' },
   ];
 
@@ -21,7 +25,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 h-full w-64 bg-slate-800 border-r border-slate-700 z-50 transform transition-transform duration-300 ease-in-out
+        fixed top-0 left-0 h-full w-64 bg-slate-800 border-r border-slate-700 z-50 transform transition-transform duration-300 ease-in-out flex flex-col
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:z-auto
       `}>
@@ -35,30 +39,35 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
         
-        <nav className="p-4">
+        <nav className="p-4 pb-20">
           <ul className="space-y-2">
             {menuItems.map((item) => (
               <li key={item.label}>
-                <a
-                  href={item.href}
-                  className="flex items-center space-x-3 p-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                <Link
+                  to={item.href}
+                  onClick={onClose}
+                  className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                    location.pathname === item.href
+                      ? 'bg-crypto-blue text-white'
+                      : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                  }`}
                 >
                   <item.icon className="w-5 h-5" />
                   <span>{item.label}</span>
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
         </nav>
         
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="bg-slate-700 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-white mb-2">Data Collection</h3>
-            <p className="text-xs text-slate-300">
-              Runs every 3 hours automatically
-            </p>
-          </div>
+      <div className="mt-auto pt-4">
+        <div className="bg-slate-700 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-white mb-2">Data Collection</h3>
+          <p className="text-xs text-slate-300">
+            Smart scheduling based on market hours
+          </p>
         </div>
+      </div>
       </div>
     </>
   );

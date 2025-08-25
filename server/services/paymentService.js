@@ -1,6 +1,7 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { Client, resources } = require('coinbase-commerce-node');
-const { ethers } = require('ethers');
+// NOWPayments API client using axios
+const axios = require('axios');
+
 require('dotenv').config();
 
 const {
@@ -8,15 +9,16 @@ const {
   insertSubscription,
   updateSubscription,
   getUserById,
-  getUserByEmail
+  getUserByEmail,
+  getActiveSubscription
 } = require('../database');
 
 class PaymentService {
   constructor() {
     this.stripe = stripe;
-    this.coinbaseClient = new Client({ apiKey: process.env.COINBASE_COMMERCE_API_KEY });
-    this.ethProvider = new ethers.JsonRpcProvider(process.env.ETH_RPC_URL || 'https://mainnet.infura.io/v3/your-project-id');
-    this.ethWallet = new ethers.Wallet(process.env.ETH_PRIVATE_KEY, this.ethProvider);
+    this.nowPaymentsApiKey = process.env.NOWPAYMENTS_API_KEY;
+    this.nowPaymentsBaseUrl = 'https://api.nowpayments.io/v1';
+    // Remove ETH provider and wallet initialization
     
     this.subscriptionPlans = {
       pro: {
@@ -25,7 +27,8 @@ class PaymentService {
         price: 29,
         priceId: 'price_pro_monthly', // Stripe Price ID
         cryptoPrice: 0.001, // ETH
-        features: ['all_data', 'ai_analysis', 'alerts', 'api_access']
+        features: ['all_data', 'ai_analysis', 'alerts', 'api_access', 'data_export'],
+        duration: 30 // days
       },
       premium: {
         id: 'premium_monthly',
@@ -33,7 +36,17 @@ class PaymentService {
         price: 99,
         priceId: 'price_premium_monthly',
         cryptoPrice: 0.003, // ETH
-        features: ['all_features', 'custom_models', 'priority_support', 'white_label']
+        features: ['all_features', 'custom_models', 'priority_support', 'white_label', 'error_logs'],
+        duration: 30 // days
+      },
+      api: {
+        id: 'api_monthly',
+        name: 'API Plan',
+        price: 299,
+        priceId: 'price_api_monthly',
+        cryptoPrice: 0.01, // ETH
+        features: ['all_premium_features', 'high_volume_api', 'webhooks', 'dedicated_support', 'sla'],
+        duration: 30 // days
       }
     };
   }
@@ -137,125 +150,143 @@ class PaymentService {
     await updateSubscription(subscription.id, { status: 'cancelled' });
   }
 
-  // ===== COINBASE COMMERCE (CRYPTO) =====
+  // ===== NOWPAYMENTS (CRYPTO) =====
 
-  async createCoinbaseCharge(userId, planId) {
+  async createNowPaymentsCharge(userId, planId, isSubscription = false) {
     try {
       const plan = this.subscriptionPlans[planId];
       if (!plan) {
         throw new Error('Invalid plan');
       }
 
-      const charge = await this.coinbaseClient.charges.create({
-        name: plan.name,
-        description: `Monthly subscription for ${plan.name}`,
-        local_price: {
-          amount: plan.price.toString(),
-          currency: 'USD'
-        },
-        pricing_type: 'fixed_price',
+      // Create payment request
+      const paymentData = {
+        price_amount: plan.price,
+        price_currency: 'usd',
+        pay_currency: 'btc', // Default, user can change
+        order_id: `sub_${Date.now()}_${userId}_${planId}`,
+        order_description: `${plan.name} ${isSubscription ? 'Subscription' : 'Payment'}`,
+        ipn_callback_url: `${process.env.BASE_URL}/api/webhooks/nowpayments`,
+        case: isSubscription ? 'subscription' : 'payment',
+        is_subscription: isSubscription,
+        subscription_period: plan.duration, // days
         metadata: {
           user_id: userId,
-          plan_id: planId
+          plan_id: planId,
+          is_subscription: isSubscription
+        }
+      };
+
+      const response = await axios.post(`${this.nowPaymentsBaseUrl}/payment`, paymentData, {
+        headers: {
+          'x-api-key': this.nowPaymentsApiKey,
+          'Content-Type': 'application/json'
         }
       });
+      const payment = response.data;
 
       return {
-        chargeId: charge.id,
-        hostedUrl: charge.hosted_url,
-        expiresAt: charge.expires_at
+        paymentId: payment.payment_id,
+        payAddress: payment.pay_address,
+        payAmount: payment.pay_amount,
+        payCurrency: payment.pay_currency,
+        hostedUrl: payment.invoice_url,
+        expiresAt: payment.expires_at,
+        isSubscription: isSubscription
       };
     } catch (error) {
-      console.error('Coinbase charge creation error:', error);
+      console.error('NOWPayments charge creation error:', error);
       throw error;
     }
   }
 
-  async handleCoinbaseWebhook(event) {
-    try {
-      if (event.type === 'charge:confirmed') {
-        const charge = event.data;
-        const userId = charge.metadata.user_id;
-        const planId = charge.metadata.plan_id;
-        
-        await this.activateSubscription(userId, planId, 'coinbase', charge.id);
-      }
-    } catch (error) {
-      console.error('Coinbase webhook error:', error);
-      throw error;
-    }
-  }
-
-  // ===== DIRECT ETH PAYMENTS =====
-
-  async createEthPayment(userId, planId) {
+  async createNowPaymentsSubscription(userId, planId) {
     try {
       const plan = this.subscriptionPlans[planId];
       if (!plan) {
         throw new Error('Invalid plan');
       }
 
-      // Create a unique payment ID
-      const paymentId = `eth_${Date.now()}_${userId}`;
-      
-      // Get current gas price
-      const gasPrice = await this.ethProvider.getFeeData();
-      
-      // Create payment transaction
-      const tx = {
-        to: process.env.ETH_WALLET_ADDRESS,
-        value: ethers.parseEther(plan.cryptoPrice.toString()),
-        gasLimit: 21000,
-        gasPrice: gasPrice.gasPrice
+      // Create subscription
+      const subscriptionData = {
+        price_amount: plan.price,
+        price_currency: 'usd',
+        pay_currency: 'btc', // Default, user can change
+        order_id: `sub_${Date.now()}_${userId}_${planId}`,
+        order_description: `${plan.name} Subscription`,
+        ipn_callback_url: `${process.env.BASE_URL}/api/webhooks/nowpayments`,
+        case: 'subscription',
+        is_subscription: true,
+        subscription_period: plan.duration, // days
+        metadata: {
+          user_id: userId,
+          plan_id: planId,
+          subscription_type: 'recurring'
+        }
       };
+
+      const response = await axios.post(`${this.nowPaymentsBaseUrl}/payment`, subscriptionData, {
+        headers: {
+          'x-api-key': this.nowPaymentsApiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+      const subscription = response.data;
 
       return {
-        paymentId,
-        toAddress: process.env.ETH_WALLET_ADDRESS,
-        amount: plan.cryptoPrice,
-        gasPrice: ethers.formatUnits(gasPrice.gasPrice, 'gwei'),
-        estimatedGas: '21000'
+        subscriptionId: subscription.payment_id,
+        payAddress: subscription.pay_address,
+        payAmount: subscription.pay_amount,
+        payCurrency: subscription.pay_currency,
+        hostedUrl: subscription.invoice_url,
+        expiresAt: subscription.expires_at,
+        isSubscription: true
       };
     } catch (error) {
-      console.error('ETH payment creation error:', error);
+      console.error('NOWPayments subscription creation error:', error);
       throw error;
     }
   }
 
-  async verifyEthPayment(paymentId, txHash) {
+  async handleNowPaymentsWebhook(event) {
     try {
-      const tx = await this.ethProvider.getTransaction(txHash);
-      if (!tx) {
-        throw new Error('Transaction not found');
+      console.log('NOWPayments webhook received:', event);
+
+      // Handle payment confirmation
+      if (event.payment_status === 'confirmed' || event.payment_status === 'finished') {
+        const paymentId = event.payment_id;
+        const metadata = event.metadata || {};
+        const userId = metadata.user_id;
+        const planId = metadata.plan_id;
+        const isSubscription = metadata.is_subscription || metadata.subscription_type === 'recurring';
+
+        if (userId && planId) {
+          if (isSubscription) {
+            await this.activateSubscription(userId, planId, 'nowpayments_subscription', paymentId);
+          } else {
+            await this.activateSubscription(userId, planId, 'nowpayments', paymentId);
+          }
+        }
       }
 
-      // Verify transaction details
-      const expectedAmount = this.getExpectedAmount(paymentId);
-      const receivedAmount = ethers.formatEther(tx.value);
-      
-      if (Math.abs(parseFloat(receivedAmount) - expectedAmount) > 0.0001) {
-        throw new Error('Amount mismatch');
-      }
+      // Handle subscription renewal
+      if (event.payment_status === 'renewal_confirmed') {
+        const paymentId = event.payment_id;
+        const metadata = event.metadata || {};
+        const userId = metadata.user_id;
+        const planId = metadata.plan_id;
 
-      if (tx.to.toLowerCase() !== process.env.ETH_WALLET_ADDRESS.toLowerCase()) {
-        throw new Error('Wrong recipient address');
+        if (userId && planId) {
+          await this.renewSubscription(userId, planId, paymentId);
+        }
       }
-
-      // Get payment details from database
-      const payment = await getPaymentById(paymentId);
-      if (!payment) {
-        throw new Error('Payment not found');
-      }
-
-      // Activate subscription
-      await this.activateSubscription(payment.user_id, payment.plan_id, 'ethereum', txHash);
-      
-      return { success: true, txHash };
     } catch (error) {
-      console.error('ETH payment verification error:', error);
+      console.error('NOWPayments webhook error:', error);
       throw error;
     }
   }
+
+
 
   // ===== SUBSCRIPTION MANAGEMENT =====
 
@@ -263,7 +294,7 @@ class PaymentService {
     try {
       const plan = this.subscriptionPlans[planId];
       const now = new Date();
-      const endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      const endDate = new Date(now.getTime() + plan.duration * 24 * 60 * 60 * 1000);
 
       await insertSubscription({
         user_id: userId,
@@ -278,6 +309,28 @@ class PaymentService {
       console.log(`Subscription activated for user ${userId}, plan ${planId}`);
     } catch (error) {
       console.error('Subscription activation error:', error);
+      throw error;
+    }
+  }
+
+  async renewSubscription(userId, planId, paymentId) {
+    try {
+      const plan = this.subscriptionPlans[planId];
+      const now = new Date();
+      const endDate = new Date(now.getTime() + plan.duration * 24 * 60 * 60 * 1000);
+
+      // Update existing subscription
+      await updateSubscription(userId, {
+        current_period_start: now,
+        current_period_end: endDate,
+        payment_method: 'nowpayments_subscription',
+        payment_id: paymentId,
+        updated_at: now
+      });
+
+      console.log(`Subscription renewed for user ${userId}, plan ${planId}`);
+    } catch (error) {
+      console.error('Subscription renewal error:', error);
       throw error;
     }
   }
@@ -330,14 +383,6 @@ class PaymentService {
 
   // ===== UTILITY METHODS =====
 
-  getExpectedAmount(paymentId) {
-    // Extract plan from payment ID and return expected amount
-    const parts = paymentId.split('_');
-    const planId = parts[2]; // Assuming format: eth_timestamp_planId
-    const plan = this.subscriptionPlans[planId];
-    return plan ? plan.cryptoPrice : 0;
-  }
-
   async getPaymentMethods() {
     return {
       stripe: {
@@ -345,16 +390,12 @@ class PaymentService {
         icon: '💳',
         description: 'Pay with Visa, Mastercard, or other cards'
       },
-      coinbase: {
-        name: 'Crypto (Coinbase)',
+      nowpayments: {
+        name: 'Crypto',
         icon: '₿',
-        description: 'Pay with Bitcoin, Ethereum, or other cryptocurrencies'
-      },
-      ethereum: {
-        name: 'Direct ETH',
-        icon: 'Ξ',
-        description: 'Send Ethereum directly to our wallet'
+        description: 'Pay with 200+ cryptocurrencies worldwide'
       }
+      // Remove ethereum payment method
     };
   }
 

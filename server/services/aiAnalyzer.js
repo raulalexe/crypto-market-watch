@@ -65,6 +65,13 @@ class AIAnalyzer {
     - Oil Price: ${marketData.oil || 'N/A'}
     - Crypto Prices: ${JSON.stringify(marketData.crypto_prices || {})}
 
+    Advanced Metrics:
+    - Bitcoin Dominance: ${marketData.bitcoin_dominance || 'N/A'}%
+    - Stablecoin Market Cap: ${marketData.stablecoin_metrics ? `$${(marketData.stablecoin_metrics.total_market_cap / 1e9).toFixed(2)}B` : 'N/A'}
+    - SSR (Stablecoin Supply Ratio): ${marketData.stablecoin_metrics ? marketData.stablecoin_metrics.ssr.toFixed(2) : 'N/A'}
+    - BTC Exchange Flows: ${marketData.exchange_flows && marketData.exchange_flows.btc ? `Net: $${(marketData.exchange_flows.btc.net_flow / 1e6).toFixed(2)}M` : 'N/A'}
+    - ETH Exchange Flows: ${marketData.exchange_flows && marketData.exchange_flows.eth ? `Net: $${(marketData.exchange_flows.eth.net_flow / 1e6).toFixed(2)}M` : 'N/A'}
+
     Please provide:
     1. Market Direction: (BULLISH/BEARISH/NEUTRAL)
     2. Confidence Level: (0-100)
@@ -80,6 +87,10 @@ class AIAnalyzer {
     - Market correlations
     - Liquidity conditions
     - Regulatory environment
+    - Bitcoin dominance trends (higher = BTC outperforming altcoins)
+    - SSR interpretation (lower = more buying power available)
+    - Exchange flows (negative net flow = bullish, positive = bearish)
+    - Stablecoin market cap growth (expanding = sidelined capital)
     `;
   }
 
@@ -152,6 +163,58 @@ class AIAnalyzer {
           factors.push('Bitcoin below key support');
           direction = 'BEARISH';
           confidence += 10;
+        }
+      }
+
+      // Analyze Bitcoin Dominance
+      if (marketData.bitcoin_dominance) {
+        if (marketData.bitcoin_dominance > 55) {
+          factors.push('High Bitcoin dominance - BTC outperforming altcoins');
+          confidence += 5;
+        } else if (marketData.bitcoin_dominance < 40) {
+          factors.push('Low Bitcoin dominance - altcoin season potential');
+          confidence += 5;
+        }
+      }
+
+      // Analyze SSR (Stablecoin Supply Ratio)
+      if (marketData.stablecoin_metrics && marketData.stablecoin_metrics.ssr) {
+        const ssr = marketData.stablecoin_metrics.ssr;
+        if (ssr < 2) {
+          factors.push('Very low SSR - extremely bullish buying power available');
+          if (direction === 'NEUTRAL') direction = 'BULLISH';
+          confidence += 20;
+        } else if (ssr < 4) {
+          factors.push('Low SSR - good buying power available');
+          if (direction === 'NEUTRAL') direction = 'BULLISH';
+          confidence += 10;
+        } else if (ssr > 8) {
+          factors.push('Very high SSR - very low buying power');
+          direction = 'BEARISH';
+          confidence += 15;
+        } else if (ssr > 6) {
+          factors.push('High SSR - low buying power');
+          direction = 'BEARISH';
+          confidence += 10;
+        }
+      }
+
+      // Analyze Exchange Flows
+      if (marketData.exchange_flows) {
+        if (marketData.exchange_flows.btc && marketData.exchange_flows.btc.net_flow < 0) {
+          factors.push('BTC negative net flow - money leaving exchanges (bullish)');
+          if (direction === 'NEUTRAL') direction = 'BULLISH';
+          confidence += 10;
+        } else if (marketData.exchange_flows.btc && marketData.exchange_flows.btc.net_flow > 0) {
+          factors.push('BTC positive net flow - money entering exchanges (bearish)');
+          direction = 'BEARISH';
+          confidence += 10;
+        }
+
+        if (marketData.exchange_flows.eth && marketData.exchange_flows.eth.net_flow < 0) {
+          factors.push('ETH negative net flow - money leaving exchanges (bullish)');
+          if (direction === 'NEUTRAL') direction = 'BULLISH';
+          confidence += 5;
         }
       }
 
@@ -323,6 +386,7 @@ class AIAnalyzer {
       const avgCorrelation = results.reduce((sum, r) => sum + r.correlation_score, 0) / totalPredictions;
 
       // Group by crypto symbol
+      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
       const bySymbol = {};
       cryptoSymbols.forEach(symbol => {
         const symbolResults = results.filter(r => r.crypto_symbol === symbol);

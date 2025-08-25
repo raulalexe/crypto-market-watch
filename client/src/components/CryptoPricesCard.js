@@ -1,5 +1,5 @@
 import React from 'react';
-import { Coins, TrendingUp, TrendingDown } from 'lucide-react';
+import { Coins, TrendingUp, TrendingDown, Clock } from 'lucide-react';
 
 const CryptoPricesCard = ({ cryptoPrices }) => {
   const formatPrice = (price) => {
@@ -14,8 +14,7 @@ const CryptoPricesCard = ({ cryptoPrices }) => {
 
   const formatChange = (change) => {
     if (!change) return '0.00%';
-    const changePercent = (change / (cryptoPrices.price - change)) * 100;
-    return `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
+    return `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
   };
 
   const getChangeColor = (change) => {
@@ -37,11 +36,39 @@ const CryptoPricesCard = ({ cryptoPrices }) => {
     ...data
   }));
 
+  // Get the latest timestamp from any crypto data
+  const getLatestTimestamp = () => {
+    const timestamps = cryptoList
+      .map(crypto => crypto.timestamp)
+      .filter(timestamp => timestamp)
+      .sort()
+      .reverse();
+    return timestamps[0];
+  };
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-      <div className="flex items-center space-x-3 mb-6">
-        <Coins className="w-6 h-6 text-crypto-blue" />
-        <h3 className="text-lg font-semibold text-white">Cryptocurrency Prices</h3>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <Coins className="w-6 h-6 text-crypto-blue" />
+          <h3 className="text-lg font-semibold text-white">Cryptocurrency Prices</h3>
+        </div>
+        <div className="flex items-center space-x-2 text-slate-400 text-sm">
+          <Clock className="w-4 h-4" />
+          <span>Last updated: {formatTimestamp(getLatestTimestamp())}</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

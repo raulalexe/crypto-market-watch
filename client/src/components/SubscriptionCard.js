@@ -6,8 +6,6 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
   const [plans, setPlans] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState({});
   const [loading, setLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -41,17 +39,12 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
           });
           break;
           
-        case 'coinbase':
-          result = await axios.post('/api/subscribe/crypto', { planId });
+        case 'nowpayments':
+          // Use crypto subscription by default
+          result = await axios.post('/api/subscribe/crypto-subscription', { planId });
           if (result.data.hostedUrl) {
             window.open(result.data.hostedUrl, '_blank');
           }
-          break;
-          
-        case 'ethereum':
-          result = await axios.post('/api/subscribe/eth', { planId });
-          // Show payment details to user
-          alert(`Send ${result.data.amount} ETH to: ${result.data.toAddress}`);
           break;
           
         default:
@@ -69,7 +62,7 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm('Are you sure you want to cancel your subscription?')) {
+    if (!window.confirm('Are you sure you want to cancel your subscription?')) {
       return;
     }
 
@@ -100,7 +93,8 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
         'Advanced AI analysis with confidence scores',
         'Unlimited data collection',
         'Email alerts for extreme market conditions',
-        'API access (1,000 calls/day)'
+        'API access (1,000 calls/day)',
+        'Data export (CSV/JSON)'
       ],
       premium: [
         'All Pro features',
@@ -109,7 +103,20 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
         'Priority support',
         'White-label options',
         'API access (10,000 calls/day)',
-        'Custom integrations'
+        'Advanced data export',
+        'Custom integrations',
+        'Error logs access'
+      ],
+      api: [
+        'All Premium features',
+        '100,000 API calls per day',
+        'Real-time data streaming',
+        'Webhook support',
+        'Dedicated support',
+        'Custom data endpoints',
+        'Bulk data export',
+        'Advanced analytics',
+        'SLA guarantee'
       ]
     };
     return features[planId] || [];
@@ -119,10 +126,8 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
     switch (method) {
       case 'stripe':
         return <CreditCard className="w-5 h-5" />;
-      case 'coinbase':
+      case 'nowpayments':
         return <Bitcoin className="w-5 h-5" />;
-      case 'ethereum':
-        return <Zap className="w-5 h-5" />;
       default:
         return <CreditCard className="w-5 h-5" />;
     }
@@ -183,7 +188,7 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
                 <span className="text-sm text-slate-400">/month</span>
               </div>
               <div className="text-sm text-slate-400">
-                or {plan.cryptoPrice} ETH
+                or {plan.cryptoPrice} ETH/month
               </div>
             </div>
 

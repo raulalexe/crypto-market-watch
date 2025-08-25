@@ -10,14 +10,21 @@
 ### 2. Set Up API Keys
 Edit `.env` file with your API keys:
 ```env
+# Essential for basic functionality
 ALPHA_VANTAGE_API_KEY=your_key_here
-COINAPI_API_KEY=your_key_here
-FRED_API_KEY=your_key_here
+JWT_SECRET=your_generated_secret_here
+
+# Optional (for enhanced features)
 VENICE_AI_API_KEY=your_key_here
+
+# For crypto payments (when ready to monetize)
+NOWPAYMENTS_API_KEY=your_key_here
 ```
 
 **Free API Keys Available:**
 - **Alpha Vantage**: https://www.alphavantage.co/support/#api-key (Free tier: 5 calls/minute)
+- **CoinGecko**: https://api.coingecko.com/ (Free, no API key required, 10,000 calls/month)
+- **NOWPayments**: https://nowpayments.io/ (Free tier: 100 payments/month, 0.5% fee)
 - **Alternative.me**: No key needed for Fear & Greed Index
 - **Venice AI**: Optional - app works without it using fallback analysis
 
@@ -46,7 +53,10 @@ npm start
 - **Backtest Results**: Historical prediction accuracy
 
 ### Data Collection
-- **Automatic**: Every 3 hours via cron jobs
+- **Automatic**: Smart scheduling based on market hours
+  - Weekdays 9 AM - 5 PM UTC: Every hour
+  - Weekdays off-hours: Every 3 hours
+  - Weekends: Every 4 hours via cron jobs
 - **Manual**: Click "Collect Data" button
 - **API**: POST to `/api/collect-data`
 
@@ -94,7 +104,7 @@ curl http://localhost:3001/api/health
 
 ## 🎯 Key Features Implemented
 
-✅ **Data Pipeline**: Collects macro and crypto data every 3 hours  
+✅ **Data Pipeline**: Collects macro and crypto data every hour  
 ✅ **AI Integration**: Venice AI + fallback analysis  
 ✅ **Backtesting**: Historical prediction accuracy tracking  
 ✅ **Fear & Greed Index**: Market sentiment monitoring  

@@ -4,7 +4,7 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
 
 ## 🚀 Features
 
-### Data Collection (Every 3 Hours)
+### Smart Data Collection
 - **Macro Indicators**: DXY Index, US Treasury Yields (2Y & 10Y)
 - **Equity Markets**: S&P 500, NASDAQ indices
 - **Volatility**: VIX (Volatility Index)
@@ -49,7 +49,9 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
 - **React Router** for navigation
 
 ### APIs & Services
-- **Alpha Vantage** for market data
+- **Alpha Vantage** for market data (DXY, yields, equity indices, VIX, oil)
+- **CoinGecko** for cryptocurrency prices (free, no API key required, 10,000 calls/month)
+- **NOWPayments** for crypto payments and subscriptions (200+ cryptocurrencies)
 - **Venice AI** for market analysis
 - **Alternative.me** for Fear & Greed Index
 
@@ -83,7 +85,6 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
    Edit `.env` with your API keys:
    ```env
    ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
-   COINAPI_API_KEY=your_coinapi_key
    FRED_API_KEY=your_fred_api_key
    VENICE_AI_API_KEY=your_venice_ai_key
    ```
@@ -169,8 +170,8 @@ npm run setup-cron
 ### Data Collection Schedule
 Modify `scripts/setupCron.js` to change collection frequency:
 ```javascript
-// Every 3 hours
-'0 */3 * * *'
+// Every hour
+'0 * * * *'
 
 // Every hour
 '0 * * * *'
@@ -197,7 +198,7 @@ Modify `scripts/setupCron.js` to change collection frequency:
 - **Backtest Results**: Historical prediction performance
 
 ### Data Collection
-- **Automatic**: Runs every 3 hours via cron
+- **Automatic**: Runs every hour via cron
 - **Manual**: Click "Collect Data" button
 - **API Trigger**: POST to `/api/collect-data`
 

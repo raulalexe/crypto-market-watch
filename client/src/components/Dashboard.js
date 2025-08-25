@@ -7,9 +7,11 @@ import FearGreedCard from './FearGreedCard';
 import NarrativesCard from './NarrativesCard';
 import BacktestCard from './BacktestCard';
 import SubscriptionCard from './SubscriptionCard';
+import DataCollectionCard from './DataCollectionCard';
+import AdvancedMetricsCard from './AdvancedMetricsCard';
 import LoadingSpinner from './LoadingSpinner';
 
-const Dashboard = ({ data, loading, error, onRefresh }) => {
+const Dashboard = ({ data, loading, error, onRefresh, onCollectData }) => {
   if (loading && !data) {
     return <LoadingSpinner />;
   }
@@ -58,6 +60,13 @@ const Dashboard = ({ data, loading, error, onRefresh }) => {
           </div>
         )}
       </div>
+
+      {/* Data Collection Card */}
+      <DataCollectionCard 
+        onCollectData={onCollectData}
+        loading={loading}
+        lastCollectionTime={timestamp}
+      />
 
       {/* AI Analysis Section */}
       {analysis && (
@@ -127,6 +136,9 @@ const Dashboard = ({ data, loading, error, onRefresh }) => {
       {cryptoPrices && (
         <CryptoPricesCard cryptoPrices={cryptoPrices} />
       )}
+
+      {/* Advanced Metrics */}
+      <AdvancedMetricsCard />
 
       {/* Trending Narratives */}
       {narratives && narratives.length > 0 && (
