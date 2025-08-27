@@ -1,73 +1,152 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, BarChart3, History, Settings, Info, AlertTriangle, Download } from 'lucide-react';
+import { 
+  BarChart3, 
+  History, 
+  Download, 
+  CreditCard,
+  TrendingUp,
+  AlertTriangle,
+  X,
+  Settings
+} from 'lucide-react';
 
-const Sidebar = ({ isOpen, onClose }) => {
+const Sidebar = ({ userData, isOpen, onClose }) => {
   const location = useLocation();
-  const menuItems = [
-    { icon: BarChart3, label: 'Dashboard', href: '/' },
-    { icon: History, label: 'Historical Data', href: '/history' },
-    { icon: Download, label: 'Data Export', href: '/export' },
-    { icon: Settings, label: 'Settings', href: '/settings' },
-    { icon: AlertTriangle, label: 'Error Logs', href: '/errors' },
-    { icon: Info, label: 'About', href: '/about' },
+
+  const navItems = [
+    {
+      path: '/',
+      name: 'Market Dashboard',
+      icon: BarChart3
+    },
+    {
+      path: '/history',
+      name: 'Historical Data',
+      icon: History
+    },
+    {
+      path: '/data-export',
+      name: 'Data Export',
+      icon: Download
+    },
+    {
+      path: '/subscription',
+      name: 'Subscription Plans',
+      icon: CreditCard
+    },
+    {
+      path: '/alerts',
+      name: 'Market Alerts',
+      icon: AlertTriangle,
+      requiresPremium: true
+    }
   ];
+
+  // Add admin-specific menu items
+  const adminItems = [
+    {
+      path: '/admin',
+      name: 'Admin Dashboard',
+      icon: Settings,
+      adminOnly: true
+    },
+    {
+      path: '/errors',
+      name: 'Error Logs',
+      icon: AlertTriangle,
+      adminOnly: true
+    }
+  ];
+
+  // Combine regular and admin items
+  const allNavItems = [...navItems, ...adminItems];
+
+  // Check if user is admin
+  const isAdmin = userData?.subscriptionStatus?.plan === 'admin';
+
+  // Handle navigation click (close mobile menu)
+  const handleNavClick = () => {
+    if (window.innerWidth < 768) {
+      onClose();
+    }
+  };
 
   return (
     <>
-      {/* Overlay */}
+      {/* Mobile overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
           onClick={onClose}
         />
       )}
       
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 h-full w-64 bg-slate-800 border-r border-slate-700 z-50 transform transition-transform duration-300 ease-in-out flex flex-col
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:z-auto
+        fixed md:static inset-y-0 left-0 z-50
+        w-64 bg-gray-800 text-white flex flex-col
+        transform transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold text-white">Menu</h2>
+        {/* Mobile header with close button */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 md:hidden">
+          <div className="flex items-center space-x-3">
+            <TrendingUp className="w-8 h-8 text-crypto-blue" />
+            <h1 className="text-xl font-bold">Crypto Market Monitor</h1>
+          </div>
           <button
             onClick={onClose}
-            className="lg:hidden p-2 rounded-lg hover:bg-slate-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-700 transition-colors"
           >
-            <X className="w-5 h-5 text-slate-300" />
+            <X className="w-6 h-6 text-gray-300" />
           </button>
         </div>
-        
-        <nav className="p-4 pb-20">
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4">
           <ul className="space-y-2">
-            {menuItems.map((item) => (
-              <li key={item.label}>
-                <Link
-                  to={item.href}
-                  onClick={onClose}
-                  className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                    location.pathname === item.href
-                      ? 'bg-crypto-blue text-white'
-                      : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            ))}
+            {allNavItems.map((item) => {
+              // Skip admin-only items if user is not admin
+              if (item.adminOnly && !isAdmin) {
+                return null;
+              }
+
+              // Skip premium items if user doesn't have premium
+              if (item.requiresPremium && userData?.subscriptionStatus?.plan !== 'premium' && userData?.subscriptionStatus?.plan !== 'admin') {
+                return null;
+              }
+
+              const IconComponent = item.icon;
+              const isActive = location.pathname === item.path;
+              
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    onClick={handleNavClick}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+                      isActive
+                        ? 'bg-crypto-blue text-white'
+                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                    }`}
+                  >
+                    <IconComponent className="w-5 h-5" />
+                    <span>{item.name}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
-        
-      <div className="mt-auto pt-4">
-        <div className="bg-slate-700 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-white mb-2">Data Collection</h3>
-          <p className="text-xs text-slate-300">
-            Smart scheduling based on market hours
-          </p>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-700">
+          <div className="text-center text-sm text-gray-400">
+            <p>© 2024 Crypto Market Monitor</p>
+            <p className="mt-1">v1.0.0</p>
+          </div>
         </div>
-      </div>
       </div>
     </>
   );

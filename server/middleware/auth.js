@@ -30,14 +30,26 @@ const optionalAuth = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
+  console.log('🔍 optionalAuth - authHeader:', authHeader ? 'Present' : 'Missing');
+  console.log('🔍 optionalAuth - token:', token ? 'Present' : 'Missing');
+  console.log('🔍 optionalAuth - JWT_SECRET:', process.env.JWT_SECRET ? 'Present' : 'Missing');
+
   if (token) {
     try {
+      console.log('🔍 optionalAuth - Attempting to verify token...');
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('🔍 optionalAuth - Token verified successfully:', decoded);
+      
       const user = await getUserById(decoded.userId);
+      console.log('🔍 optionalAuth - User found:', !!user);
+      console.log('🔍 optionalAuth - User ID:', user?.id);
+      
       if (user) {
         req.user = user;
+        console.log('🔍 optionalAuth - req.user set successfully');
       }
     } catch (error) {
+      console.log('🔍 optionalAuth - JWT verification failed:', error.message);
       // Token invalid, but continue without user
     }
   }
@@ -53,6 +65,16 @@ const requireSubscription = (minPlan = 'free') => {
     }
 
     try {
+      // Check if user is admin first
+      const { isUserAdmin } = require('../database');
+      const isAdmin = await isUserAdmin(req.user.id);
+      
+      if (isAdmin) {
+        // Admin users bypass subscription requirements
+        req.subscription = { plan_type: 'admin', isAdmin: true };
+        return next();
+      }
+
       const { getActiveSubscription } = require('../database');
       const subscription = await getActiveSubscription(req.user.id);
       

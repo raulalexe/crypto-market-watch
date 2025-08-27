@@ -22,8 +22,11 @@ module.exports = {
           green: '#00ff88',
           red: '#ff4444',
           yellow: '#ffbb33',
-          blue: '#33b5e5',
-        }
+          blue: '#3b82f6',
+        },
+        'crypto-blue': '#3b82f6',
+        'crypto-green': '#00ff88',
+        'crypto-red': '#ff4444',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

@@ -21,6 +21,16 @@ class PaymentService {
     // Remove ETH provider and wallet initialization
     
     this.subscriptionPlans = {
+      admin: {
+        id: 'admin',
+        name: 'Admin',
+        price: 0,
+        priceId: null, // Admin plans cannot be purchased
+        cryptoPrice: 0,
+        features: ['all_features', 'admin_access', 'error_logs', 'unlimited_api', 'data_export', 'custom_integrations'],
+        duration: null, // Admin plans don't expire
+        isAdmin: true
+      },
       pro: {
         id: 'pro_monthly',
         name: 'Pro Plan',
@@ -362,6 +372,23 @@ class PaymentService {
 
   async getSubscriptionStatus(userId) {
     try {
+      // Check if user is admin first
+      const { isUserAdmin } = require('../database');
+      const isAdmin = await isUserAdmin(userId);
+      
+      if (isAdmin) {
+        const adminPlan = this.subscriptionPlans.admin;
+        return {
+          plan: 'admin',
+          status: 'active',
+          planName: adminPlan.name,
+          features: adminPlan.features,
+          currentPeriodEnd: null,
+          isAdmin: true,
+          role: 'admin'
+        };
+      }
+
       const subscription = await getActiveSubscription(userId);
       if (!subscription) {
         return { plan: 'free', status: 'inactive' };
@@ -400,13 +427,15 @@ class PaymentService {
   }
 
   async getPlanPricing() {
-    return Object.entries(this.subscriptionPlans).map(([id, plan]) => ({
-      id,
-      name: plan.name,
-      price: plan.price,
-      cryptoPrice: plan.cryptoPrice,
-      features: plan.features
-    }));
+    return Object.entries(this.subscriptionPlans)
+      .filter(([id, plan]) => !plan.isAdmin) // Exclude admin plans from public listing
+      .map(([id, plan]) => ({
+        id,
+        name: plan.name,
+        price: plan.price,
+        cryptoPrice: plan.cryptoPrice,
+        features: plan.features
+      }));
   }
 }
 

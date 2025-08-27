@@ -2,222 +2,536 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 require('dotenv').config();
 
-const dbPath = process.env.DATABASE_PATH || './data/market_data.db';
+// Support both SQLite and PostgreSQL
+const usePostgreSQL = process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgresql://');
 
-// Ensure data directory exists
-const fs = require('fs');
-const dataDir = path.dirname(dbPath);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+let db;
+let dbPath;
+
+if (usePostgreSQL) {
+  // PostgreSQL configuration (for Railway)
+  console.log('🗄️ Using PostgreSQL database');
+  const { Pool } = require('pg');
+  db = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+} else {
+  // SQLite configuration (for development)
+  console.log('🗄️ Using SQLite database');
+  dbPath = process.env.DATABASE_PATH || './data/market_data.db';
+  
+  // Ensure data directory exists
+  const fs = require('fs');
+  const dataDir = path.dirname(dbPath);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  
+  db = new sqlite3.Database(dbPath);
 }
-
-const db = new sqlite3.Database(dbPath);
 
 // Initialize database tables
 const initDatabase = () => {
   return new Promise((resolve, reject) => {
-    db.serialize(() => {
-      // Market data table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS market_data (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          data_type TEXT NOT NULL,
-          symbol TEXT,
-          value REAL,
-          metadata TEXT,
-          source TEXT
-        )
-      `);
+    if (usePostgreSQL) {
+      // PostgreSQL initialization
+      const createTables = async () => {
+        try {
+          const client = await db.connect();
+          
+          // Create tables if they don't exist
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS market_data (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              data_type VARCHAR(50) NOT NULL,
+              symbol VARCHAR(20),
+              value DECIMAL,
+              metadata TEXT,
+              source VARCHAR(100)
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS ai_analysis (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              market_direction VARCHAR(20),
+              confidence DECIMAL,
+              reasoning TEXT,
+              factors_analyzed TEXT,
+              analysis_data TEXT
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS crypto_prices (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              symbol VARCHAR(10) NOT NULL,
+              price DECIMAL,
+              volume_24h DECIMAL,
+              market_cap DECIMAL,
+              change_24h DECIMAL
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS fear_greed_index (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              value INTEGER,
+              classification VARCHAR(20),
+              source VARCHAR(100)
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS trending_narratives (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              narrative TEXT,
+              sentiment VARCHAR(20),
+              relevance_score DECIMAL,
+              source TEXT
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS upcoming_events (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              title VARCHAR(255) NOT NULL,
+              description TEXT,
+              category VARCHAR(50),
+              impact VARCHAR(20),
+              date TIMESTAMP NOT NULL,
+              source VARCHAR(100)
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS layer1_data (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              chain_id VARCHAR(50) UNIQUE NOT NULL,
+              name VARCHAR(100) NOT NULL,
+              symbol VARCHAR(10) NOT NULL,
+              price DECIMAL NOT NULL,
+              change_24h DECIMAL NOT NULL,
+              market_cap DECIMAL NOT NULL,
+              volume_24h DECIMAL NOT NULL,
+              tps INTEGER NOT NULL,
+              active_addresses INTEGER NOT NULL,
+              hash_rate DECIMAL,
+              dominance DECIMAL NOT NULL,
+              narrative TEXT NOT NULL,
+              sentiment VARCHAR(20) NOT NULL
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS bitcoin_dominance (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              value DECIMAL,
+              source VARCHAR(100)
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS stablecoin_metrics (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              metric_type VARCHAR(50),
+              value DECIMAL,
+              metadata TEXT,
+              source VARCHAR(100)
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS exchange_flows (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              flow_type VARCHAR(20),
+              amount DECIMAL,
+              asset VARCHAR(10),
+              exchange VARCHAR(50),
+              source VARCHAR(100)
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              email VARCHAR(255) UNIQUE NOT NULL,
+              password_hash VARCHAR(255) NOT NULL,
+              is_admin BOOLEAN DEFAULT FALSE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS subscriptions (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER REFERENCES users(id),
+              plan_id VARCHAR(50),
+              status VARCHAR(20),
+              stripe_subscription_id VARCHAR(100),
+              current_period_start TIMESTAMP,
+              current_period_end TIMESTAMP,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS api_usage (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER REFERENCES users(id),
+              endpoint VARCHAR(100),
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS alerts (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER REFERENCES users(id),
+              alert_type VARCHAR(50),
+              message TEXT,
+              is_acknowledged BOOLEAN DEFAULT FALSE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS error_logs (
+              id SERIAL PRIMARY KEY,
+              type VARCHAR(50),
+              source VARCHAR(100),
+              message TEXT,
+              details TEXT,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS backtest_results (
+              id SERIAL PRIMARY KEY,
+              prediction_date TIMESTAMP,
+              actual_date TIMESTAMP,
+              predicted_direction VARCHAR(20),
+              actual_direction VARCHAR(20),
+              accuracy DECIMAL,
+              crypto_symbol VARCHAR(10),
+              price_at_prediction DECIMAL,
+              price_at_actual DECIMAL,
+              correlation_score DECIMAL,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          
+          client.release();
+          console.log('✅ PostgreSQL database initialized successfully');
+          resolve();
+        } catch (error) {
+          console.error('❌ PostgreSQL initialization failed:', error);
+          reject(error);
+        }
+      };
+      
+      createTables();
+    } else {
+      // SQLite initialization (existing code)
+      db.serialize(() => {
+        // Market data table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS market_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            data_type TEXT NOT NULL,
+            symbol TEXT,
+            value REAL,
+            metadata TEXT,
+            source TEXT
+          )
+        `);
 
-      // AI analysis table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS ai_analysis (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          market_direction TEXT,
-          confidence REAL,
-          reasoning TEXT,
-          factors_analyzed TEXT
-        )
-      `);
+        // AI analysis table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS ai_analysis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            market_direction TEXT,
+            confidence REAL,
+            reasoning TEXT,
+            factors_analyzed TEXT,
+            analysis_data TEXT
+          )
+        `);
 
-      // Crypto prices table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS crypto_prices (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          symbol TEXT NOT NULL,
-          price REAL,
-          volume_24h REAL,
-          market_cap REAL,
-          change_24h REAL
-        )
-      `);
+        // Crypto prices table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS crypto_prices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            symbol TEXT NOT NULL,
+            price REAL,
+            volume_24h REAL,
+            market_cap REAL,
+            change_24h REAL
+          )
+        `);
 
-      // Fear & Greed Index table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS fear_greed_index (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          value INTEGER,
-          classification TEXT,
-          source TEXT
-        )
-      `);
+        // Fear & Greed Index table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS fear_greed_index (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            value INTEGER,
+            classification TEXT,
+            source TEXT
+          )
+        `);
 
-      // Trending narratives table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS trending_narratives (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          narrative TEXT,
-          sentiment TEXT,
-          relevance_score REAL,
-          source TEXT
-        )
-      `);
+        // Trending narratives table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS trending_narratives (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            narrative TEXT,
+            sentiment TEXT,
+            relevance_score REAL,
+            source TEXT
+          )
+        `);
+        
+        db.run(`
+          CREATE TABLE IF NOT EXISTS upcoming_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            title TEXT NOT NULL,
+            description TEXT,
+            category TEXT,
+            impact TEXT,
+            date DATETIME NOT NULL,
+            source TEXT
+          )
+        `);
 
-      // Backtest results table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS backtest_results (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          prediction_date DATETIME,
-          actual_date DATETIME,
-          predicted_direction TEXT,
-          actual_direction TEXT,
-          accuracy REAL,
-          crypto_symbol TEXT,
-          price_at_prediction REAL,
-          price_at_actual REAL,
-          correlation_score REAL
-        )
-      `);
+        // Layer 1 data table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS layer1_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            chain_id TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            price REAL NOT NULL,
+            change_24h REAL NOT NULL,
+            market_cap REAL NOT NULL,
+            volume_24h REAL NOT NULL,
+            tps INTEGER NOT NULL,
+            active_addresses INTEGER NOT NULL,
+            hash_rate REAL,
+            dominance REAL NOT NULL,
+            narrative TEXT NOT NULL,
+            sentiment TEXT NOT NULL
+          )
+        `);
 
-      // Error logs table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS error_logs (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          type TEXT NOT NULL,
-          source TEXT,
-          message TEXT NOT NULL,
-          details TEXT
-        )
-      `);
+        // Bitcoin dominance table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS bitcoin_dominance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            value REAL,
+            source TEXT
+          )
+        `);
 
-      // Bitcoin Dominance table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS bitcoin_dominance (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          value REAL,
-          source TEXT
-        )
-      `);
+        // Stablecoin metrics table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS stablecoin_metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            metric_type TEXT,
+            value REAL,
+            metadata TEXT,
+            source TEXT
+          )
+        `);
 
-      // Stablecoin metrics table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS stablecoin_metrics (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          metric_type TEXT NOT NULL,
-          value REAL,
-          metadata TEXT,
-          source TEXT
-        )
-      `);
+        // Exchange flows table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS exchange_flows (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            flow_type TEXT,
+            amount REAL,
+            asset TEXT,
+            exchange TEXT,
+            source TEXT
+          )
+        `);
 
-      // Exchange flows table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS exchange_flows (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          flow_type TEXT NOT NULL,
-          value REAL,
-          asset TEXT,
-          exchange TEXT,
-          source TEXT
-        )
-      `);
+        // Users table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            is_admin INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
 
-      // Alerts table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS alerts (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          type TEXT NOT NULL,
-          message TEXT NOT NULL,
-          severity TEXT NOT NULL,
-          metric TEXT,
-          value REAL,
-          acknowledged BOOLEAN DEFAULT FALSE
-        )
-      `);
+        // Subscriptions table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            plan_id TEXT,
+            status TEXT,
+            stripe_subscription_id TEXT,
+            current_period_start DATETIME,
+            current_period_end DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+          )
+        `);
 
-      // Users table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          email TEXT UNIQUE NOT NULL,
-          password_hash TEXT NOT NULL,
-          is_admin BOOLEAN DEFAULT 0,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+        // API usage table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS api_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            endpoint TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+          )
+        `);
 
-      // Subscriptions table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS subscriptions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          plan_type TEXT NOT NULL,
-          stripe_customer_id TEXT,
-          stripe_subscription_id TEXT,
-          status TEXT NOT NULL,
-          current_period_start DATETIME,
-          current_period_end DATETIME,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-      `);
+        // Alerts table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            alert_type TEXT,
+            message TEXT,
+            is_acknowledged INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+          )
+        `);
 
-      // API usage tracking table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS api_usage (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER,
-          endpoint TEXT NOT NULL,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          ip_address TEXT,
-          user_agent TEXT,
-          FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-      `);
+        // Error logs table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS error_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT,
+            source TEXT,
+            message TEXT,
+            details TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
 
-      db.run('PRAGMA journal_mode=WAL', (err) => {
-        if (err) reject(err);
-        else resolve();
+        // Backtest results table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS backtest_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            prediction_date DATETIME,
+            actual_date DATETIME,
+            predicted_direction TEXT,
+            actual_direction TEXT,
+            accuracy REAL,
+            crypto_symbol TEXT,
+            price_at_prediction REAL,
+            price_at_actual REAL,
+            correlation_score REAL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
+        console.log('✅ SQLite database initialized successfully');
+        resolve();
       });
-    });
+    }
   });
 };
 
+// Database adapter for both SQLite and PostgreSQL
+const dbAdapter = {
+  // Run a query (for INSERT, UPDATE, DELETE)
+  run: (query, params = []) => {
+    return new Promise((resolve, reject) => {
+      if (usePostgreSQL) {
+        db.query(query, params)
+          .then(result => resolve({ lastID: result.rows[0]?.id || result.rowCount }))
+          .catch(reject);
+      } else {
+        db.run(query, params, function(err) {
+          if (err) reject(err);
+          else resolve({ lastID: this.lastID });
+        });
+      }
+    });
+  },
+
+  // Get a single row
+  get: (query, params = []) => {
+    return new Promise((resolve, reject) => {
+      if (usePostgreSQL) {
+        db.query(query, params)
+          .then(result => resolve(result.rows[0] || null))
+          .catch(reject);
+      } else {
+        db.get(query, params, (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      }
+    });
+  },
+
+  // Get multiple rows
+  all: (query, params = []) => {
+    return new Promise((resolve, reject) => {
+      if (usePostgreSQL) {
+        db.query(query, params)
+          .then(result => resolve(result.rows))
+          .catch(reject);
+      } else {
+        db.all(query, params, (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+      }
+    });
+  }
+};
+
 // Helper functions for database operations
-const insertMarketData = (dataType, symbol, value, metadata = {}, source = '') => {
+const insertMarketData = (dataType, symbol, value, metadata = {}, source = 'Unknown') => {
   return new Promise((resolve, reject) => {
     const metadataStr = JSON.stringify(metadata);
-    db.run(
-      'INSERT INTO market_data (data_type, symbol, value, metadata, source) VALUES (?, ?, ?, ?, ?)',
-      [dataType, symbol, value, metadataStr, source],
-      function(err) {
-        if (err) reject(err);
-        else resolve(this.lastID);
-      }
-    );
+    
+    if (usePostgreSQL) {
+      dbAdapter.run(
+        'INSERT INTO market_data (data_type, symbol, value, metadata, source) VALUES ($1, $2, $3, $4, $5)',
+        [dataType, symbol, value, metadataStr, source]
+      ).then(result => resolve(result.lastID))
+       .catch(reject);
+    } else {
+      dbAdapter.run(
+        'INSERT INTO market_data (data_type, symbol, value, metadata, source) VALUES (?, ?, ?, ?, ?)',
+        [dataType, symbol, value, metadataStr, source]
+      ).then(result => resolve(result.lastID))
+       .catch(reject);
+    }
   });
 };
 
@@ -240,12 +554,28 @@ const getMarketData = (dataType, limit = 100, symbol = null) => {
   });
 };
 
-const insertAIAnalysis = (marketDirection, confidence, reasoning, factorsAnalyzed) => {
+const getLatestMarketData = (dataType, symbol) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM market_data WHERE data_type = ? AND symbol = ? ORDER BY timestamp DESC LIMIT 1',
+      [dataType, symbol],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
+const insertAIAnalysis = (marketDirection, confidence, reasoning, factorsAnalyzed, analysisData = null) => {
   return new Promise((resolve, reject) => {
     const factorsStr = JSON.stringify(factorsAnalyzed);
+    // analysisData is already a JSON string, don't double-encode it
+    const analysisDataStr = analysisData;
+    
     db.run(
-      'INSERT INTO ai_analysis (market_direction, confidence, reasoning, factors_analyzed) VALUES (?, ?, ?, ?)',
-      [marketDirection, confidence, reasoning, factorsStr],
+      'INSERT INTO ai_analysis (market_direction, confidence, reasoning, factors_analyzed, analysis_data) VALUES (?, ?, ?, ?, ?)',
+      [marketDirection, confidence, reasoning, factorsStr, analysisDataStr],
       function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
@@ -292,6 +622,19 @@ const getCryptoPrices = (symbol, limit = 100) => {
   });
 };
 
+const getLatestCryptoPrice = (symbol) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM crypto_prices WHERE symbol = ? ORDER BY timestamp DESC LIMIT 1',
+      [symbol],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
 const insertFearGreedIndex = (value, classification, source) => {
   return new Promise((resolve, reject) => {
     db.run(
@@ -330,18 +673,53 @@ const insertTrendingNarrative = (narrative, sentiment, relevanceScore, source) =
   });
 };
 
-const getTrendingNarratives = (limit = 10) => {
-  return new Promise((resolve, reject) => {
-    db.all(
-      'SELECT * FROM trending_narratives ORDER BY timestamp DESC LIMIT ?',
-      [limit],
-      (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      }
-    );
-  });
-};
+  const getTrendingNarratives = (limit = 10) => {
+    return new Promise((resolve, reject) => {
+      // Get the latest entry for each narrative to avoid duplicates
+      db.all(
+        `SELECT * FROM trending_narratives 
+         WHERE id IN (
+           SELECT MAX(id) 
+           FROM trending_narratives 
+           GROUP BY narrative
+         ) 
+         ORDER BY timestamp DESC 
+         LIMIT ?`,
+        [limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  };
+
+  const getLayer1Data = () => {
+    return new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM layer1_data ORDER BY market_cap DESC',
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  };
+
+  const insertLayer1Data = (chainId, name, symbol, price, change24h, marketCap, volume24h, tps, activeAddresses, hashRate, dominance, narrative, sentiment) => {
+    return new Promise((resolve, reject) => {
+      db.run(
+        `INSERT OR REPLACE INTO layer1_data 
+         (chain_id, name, symbol, price, change_24h, market_cap, volume_24h, tps, active_addresses, hash_rate, dominance, narrative, sentiment) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [chainId, name, symbol, price, change24h, marketCap, volume24h, tps, activeAddresses, hashRate, dominance, narrative, sentiment],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.lastID);
+        }
+      );
+    });
+  };
 
 const insertBacktestResult = (predictionDate, actualDate, predictedDirection, actualDirection, accuracy, cryptoSymbol, priceAtPrediction, priceAtActual, correlationScore) => {
   return new Promise((resolve, reject) => {
@@ -455,12 +833,18 @@ const updateUser = (id, updates) => {
 
 const isUserAdmin = (userId) => {
   return new Promise((resolve, reject) => {
+    // Check for active admin subscription
     db.get(
-      'SELECT is_admin FROM users WHERE id = ?',
+      'SELECT plan_type FROM subscriptions WHERE user_id = ? AND status = "active" ORDER BY created_at DESC LIMIT 1',
       [userId],
-      (err, row) => {
-        if (err) reject(err);
-        else resolve(row ? row.is_admin === 1 : false);
+      (err, subRow) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // User is admin if they have an active admin subscription
+        resolve(subRow && subRow.plan_type === 'admin');
       }
     );
   });
@@ -597,7 +981,7 @@ const insertStablecoinMetric = (metricType, value, metadata = null, source = 'Co
 const getLatestStablecoinMetrics = () => {
   return new Promise((resolve, reject) => {
     db.all(
-      'SELECT * FROM stablecoin_metrics WHERE timestamp >= datetime("now", "-1 day") ORDER BY timestamp DESC',
+      'SELECT * FROM stablecoin_metrics ORDER BY timestamp DESC LIMIT 10',
       (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
@@ -623,8 +1007,8 @@ const insertExchangeFlow = (flowType, value, asset, exchange = null, source = 'G
 const getLatestExchangeFlows = (asset = null) => {
   return new Promise((resolve, reject) => {
     const query = asset 
-      ? 'SELECT * FROM exchange_flows WHERE asset = ? AND timestamp >= datetime("now", "-1 day") ORDER BY timestamp DESC'
-      : 'SELECT * FROM exchange_flows WHERE timestamp >= datetime("now", "-1 day") ORDER BY timestamp DESC';
+      ? 'SELECT * FROM exchange_flows WHERE asset = ? ORDER BY timestamp DESC LIMIT 10'
+      : 'SELECT * FROM exchange_flows ORDER BY timestamp DESC LIMIT 10';
     const params = asset ? [asset] : [];
     
     db.all(query, params, (err, rows) => {
@@ -643,6 +1027,27 @@ const insertAlert = (alert) => {
       function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const checkAlertExists = (type, metric, timeWindow = 3600000) => { // 1 hour default
+  return new Promise((resolve, reject) => {
+    const cutoffTime = new Date(Date.now() - timeWindow);
+    const cutoffTimeStr = cutoffTime.toISOString().slice(0, 19).replace('T', ' '); // Format as SQLite datetime
+    
+    db.get(
+      'SELECT id FROM alerts WHERE type = ? AND metric = ? AND timestamp > ?',
+      [type, metric, cutoffTimeStr],
+      (err, row) => {
+        if (err) {
+          console.error('Error checking alert existence:', err);
+          reject(err);
+        } else {
+          const exists = row !== undefined;
+          resolve(exists);
+        }
       }
     );
   });
@@ -674,19 +1079,80 @@ const acknowledgeAlert = (alertId) => {
   });
 };
 
+const cleanupOldAlerts = (daysToKeep = 7) => {
+  return new Promise((resolve, reject) => {
+    const cutoffDate = new Date(Date.now() - (daysToKeep * 24 * 60 * 60 * 1000)).toISOString();
+    db.run(
+      'DELETE FROM alerts WHERE timestamp < ?',
+      [cutoffDate],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
+// Upcoming Events functions
+const insertUpcomingEvent = (title, description, category, impact, date, source) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO upcoming_events (title, description, category, impact, date, source) VALUES (?, ?, ?, ?, ?, ?)',
+      [title, description, category, impact, date, source],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getUpcomingEvents = (limit = 20) => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM upcoming_events WHERE date > datetime("now") ORDER BY date ASC LIMIT ?',
+      [limit],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+};
+
+// Admin functions for getting table data
+const getTableData = (tableName, limit = 100) => {
+  return new Promise((resolve, reject) => {
+    // All tables use timestamp column for ordering
+    const query = `SELECT * FROM ${tableName} ORDER BY timestamp DESC LIMIT ?`;
+    db.all(query, [limit], (err, rows) => {
+      if (err) {
+        console.error(`Error fetching from ${tableName}:`, err);
+        resolve([]);
+      } else {
+        resolve(rows || []);
+      }
+    });
+  });
+};
+
 module.exports = {
   db,
   initDatabase,
   insertMarketData,
   getMarketData,
+  getLatestMarketData,
   insertAIAnalysis,
   getLatestAIAnalysis,
   insertCryptoPrice,
   getCryptoPrices,
+  getLatestCryptoPrice,
   insertFearGreedIndex,
   getLatestFearGreedIndex,
   insertTrendingNarrative,
   getTrendingNarratives,
+  getLayer1Data,
+  insertLayer1Data,
   insertBacktestResult,
   getBacktestResults,
   // Error logging
@@ -717,6 +1183,13 @@ module.exports = {
   getLatestExchangeFlows,
   // Alerts
   insertAlert,
+  checkAlertExists,
   getAlerts,
-  acknowledgeAlert
+  acknowledgeAlert,
+  cleanupOldAlerts,
+  // Admin functions
+  getTableData,
+  // Upcoming Events
+  insertUpcomingEvent,
+  getUpcomingEvents
 };

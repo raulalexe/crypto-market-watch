@@ -1,72 +1,179 @@
-import React from 'react';
-import { MessageSquare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import React, { useState } from 'react';
+import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react';
 
-const NarrativesCard = ({ narratives }) => {
+const NarrativesCard = ({ data }) => {
+  const [expandedNarrative, setExpandedNarrative] = useState(null);
+
+  // Handle undefined or null data
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Trending Narratives</h3>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-gray-400">No narrative data available</p>
+        </div>
+      </div>
+    );
+  }
+
   const getSentimentIcon = (sentiment) => {
-    switch (sentiment.toLowerCase()) {
+    switch (sentiment) {
+      case 'very_positive':
       case 'positive':
-        return <TrendingUp className="w-4 h-4 text-crypto-green" />;
+        return <TrendingUp className="w-4 h-4 text-green-500" />;
+      case 'very_negative':
       case 'negative':
-        return <TrendingDown className="w-4 h-4 text-crypto-red" />;
+        return <TrendingDown className="w-4 h-4 text-red-500" />;
       default:
-        return <Minus className="w-4 h-4 text-slate-400" />;
+        return <Minus className="w-4 h-4 text-gray-500" />;
     }
   };
 
   const getSentimentColor = (sentiment) => {
-    switch (sentiment.toLowerCase()) {
+    switch (sentiment) {
+      case 'very_positive':
       case 'positive':
-        return 'text-crypto-green';
+        return 'text-green-500';
+      case 'very_negative':
       case 'negative':
-        return 'text-crypto-red';
+        return 'text-red-500';
       default:
-        return 'text-slate-300';
+        return 'text-gray-400';
     }
   };
 
-  const getSentimentBg = (sentiment) => {
-    switch (sentiment.toLowerCase()) {
-      case 'positive':
-        return 'bg-green-900/20 border-green-500/30';
-      case 'negative':
-        return 'bg-red-900/20 border-red-500/30';
-      default:
-        return 'bg-slate-700/20 border-slate-500/30';
+  const formatVolume = (volume) => {
+    if (!volume || volume === 0) return 'N/A';
+    if (volume >= 1e9) {
+      return `$${(volume / 1e9).toFixed(2)}B`;
+    } else if (volume >= 1e6) {
+      return `$${(volume / 1e6).toFixed(2)}M`;
+    } else if (volume >= 1e3) {
+      return `$${(volume / 1e3).toFixed(2)}K`;
     }
+    return `$${volume.toFixed(2)}`;
+  };
+
+  const formatChange = (change) => {
+    if (!change && change !== 0) return 'N/A';
+    return `${change > 0 ? '+' : ''}${change.toFixed(2)}%`;
+  };
+
+  const formatRelevanceScore = (score) => {
+    if (!score && score !== 0) return 'N/A';
+    return `${(score * 100).toFixed(1)}%`;
   };
 
   return (
-    <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-      <div className="flex items-center space-x-3 mb-6">
-        <MessageSquare className="w-6 h-6 text-crypto-blue" />
+    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white">Trending Narratives</h3>
+        <span className="text-sm text-gray-400">{data.length} narratives</span>
       </div>
 
-      <div className="space-y-4">
-        {narratives.map((narrative, index) => (
-          <div 
-            key={index} 
-            className={`p-4 rounded-lg border ${getSentimentBg(narrative.sentiment)}`}
-          >
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center space-x-2">
+      <div className="space-y-3">
+        {data.map((narrative, index) => (
+          <div key={index} className="bg-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-3">
                 {getSentimentIcon(narrative.sentiment)}
-                <span className={`text-sm font-medium ${getSentimentColor(narrative.sentiment)}`}>
-                  {narrative.sentiment.charAt(0).toUpperCase() + narrative.sentiment.slice(1)}
-                </span>
+                <div>
+                  <h4 className="text-white font-medium">{narrative.narrative}</h4>
+                  <p className="text-sm text-gray-400">
+                    {narrative.coins && narrative.coins.length > 0 
+                      ? `${narrative.coins.length} coins` 
+                      : 'No coins data'}
+                  </p>
+                </div>
               </div>
-              <div className="text-xs text-slate-400">
-                {(narrative.relevance_score * 100).toFixed(0)}% relevance
+              <button
+                onClick={() => setExpandedNarrative(expandedNarrative === index ? null : index)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                {expandedNarrative === index ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-400">Volume 24h</p>
+                <p className="text-white font-medium">
+                  {formatVolume(narrative.total_volume_24h)}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400">Avg Change 24h</p>
+                <p className={`font-medium ${narrative.avg_change_24h > 0 ? 'text-green-500' : narrative.avg_change_24h < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                  {formatChange(narrative.avg_change_24h)}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400">Sentiment</p>
+                <p className={`font-medium capitalize ${getSentimentColor(narrative.sentiment)}`}>
+                  {narrative.sentiment?.replace('_', ' ') || 'N/A'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400">Relevance</p>
+                <p className="text-white font-medium">
+                  {formatRelevanceScore(narrative.relevance_score)}
+                </p>
               </div>
             </div>
-            
-            <p className="text-sm text-slate-300 leading-relaxed">
-              {narrative.narrative}
-            </p>
-            
-            <div className="mt-2 text-xs text-slate-500">
-              Source: {narrative.source || 'Market Analysis'}
-            </div>
+
+            {expandedNarrative === index && (
+              <div className="mt-4 pt-4 border-t border-gray-600">
+                {/* Market Insights */}
+                {narrative.market_insights && (
+                  <div className="mb-4">
+                    <h5 className="text-sm font-medium text-crypto-blue mb-2">Market Insights & Analysis</h5>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <p className="text-gray-400">Trend Analysis</p>
+                        <p className="text-white">{narrative.market_insights.trend_analysis || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Volume Activity</p>
+                        <p className="text-white">{narrative.market_insights.volume_analysis || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Risk Level</p>
+                        <p className="text-white capitalize">{narrative.market_insights.risk_level || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Opportunity Score</p>
+                        <p className="text-white">{narrative.market_insights.opportunity_score || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Coins List */}
+                {narrative.coins && narrative.coins.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-crypto-blue mb-2">Top Coins</h5>
+                    <div className="space-y-2">
+                      {narrative.coins.slice(0, 5).map((coin, coinIndex) => (
+                        <div key={coinIndex} className="flex items-center justify-between p-2 bg-gray-600 rounded">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-white font-medium">{coin.coin_symbol}</span>
+                            <span className="text-gray-400 text-xs">{coin.coin_name}</span>
+                          </div>
+                          <div className="text-right text-xs">
+                            <p className="text-white">${coin.price_usd?.toFixed(4) || 'N/A'}</p>
+                            <p className={`${coin.change_24h > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {coin.change_24h > 0 ? '+' : ''}{coin.change_24h?.toFixed(2) || 'N/A'}%
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

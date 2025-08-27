@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, Bitcoin, Zap, Check, X, Loader } from 'lucide-react';
 import axios from 'axios';
 
-const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
+const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = null }) => {
   const [plans, setPlans] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState({});
   const [loading, setLoading] = useState(false);
@@ -15,10 +15,12 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
   const fetchPlans = async () => {
     try {
       const response = await axios.get('/api/plans');
-      setPlans(response.data.plans);
-      setPaymentMethods(response.data.paymentMethods);
+      setPlans(response.data?.plans || []);
+      setPaymentMethods(response.data?.paymentMethods || {});
     } catch (error) {
       console.error('Error fetching plans:', error);
+      setPlans([]);
+      setPaymentMethods({});
     }
   };
 
@@ -81,6 +83,15 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
 
   const getPlanFeatures = (planId) => {
     const features = {
+      admin: [
+        'All Premium features',
+        'Admin access and controls',
+        'Error logs access',
+        'Unlimited API calls',
+        'Data export capabilities',
+        'Custom integrations',
+        'System management tools'
+      ],
       free: [
         'Basic market data (limited)',
         '24-hour data history',
@@ -143,8 +154,8 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
       {/* Current Subscription Status */}
       {subscriptionStatus && (
         <div className="mb-6 p-4 bg-slate-700 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="min-w-0">
               <h4 className="text-white font-medium">
                 Current Plan: {subscriptionStatus.planName || 'Free'}
               </h4>
@@ -156,23 +167,64 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
                   Renews: {new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString()}
                 </p>
               )}
+              {subscriptionStatus.plan === 'admin' && (
+                <p className="text-purple-400 text-sm font-medium">
+                  ⚡ Admin Access - Full System Control
+                </p>
+              )}
             </div>
-            {subscriptionStatus.plan !== 'free' && (
+            {subscriptionStatus.plan !== 'free' && subscriptionStatus.plan !== 'admin' && (
               <button
                 onClick={handleCancelSubscription}
                 disabled={loading}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex-shrink-0"
               >
                 {loading ? <Loader className="w-4 h-4 animate-spin" /> : 'Cancel'}
               </button>
+            )}
+            {subscriptionStatus.plan === 'admin' && (
+              <div className="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold flex-shrink-0">
+                ADMIN
+              </div>
             )}
           </div>
         </div>
       )}
 
       {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans.map((plan) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {/* Admin Plan Card - Show only for admin users */}
+        {subscriptionStatus?.plan === 'admin' && (
+          <div className="p-6 rounded-lg border bg-purple-900/20 border-purple-500/30">
+            <div className="text-center mb-4">
+              <h4 className="text-xl font-bold text-white mb-2">Admin</h4>
+              <div className="text-3xl font-bold text-purple-400 mb-1">
+                Full Access
+              </div>
+              <div className="text-sm text-purple-300">
+                System Administrator
+              </div>
+            </div>
+
+            {/* Features */}
+            <ul className="space-y-2 mb-6">
+              {getPlanFeatures('admin').map((feature, index) => (
+                <li key={index} className="flex items-center text-sm text-purple-200">
+                  <Check className="w-4 h-4 text-purple-400 mr-2 flex-shrink-0" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+
+            <div className="text-center">
+              <div className="text-purple-400 font-medium">Current Plan</div>
+              <div className="text-xs text-purple-300 mt-1">Cannot be changed</div>
+            </div>
+          </div>
+        )}
+
+        {/* Regular Plans - Hide for admin users */}
+        {subscriptionStatus?.plan !== 'admin' && plans && plans.length > 0 ? plans.map((plan) => (
           <div
             key={plan.id}
             className={`p-6 rounded-lg border transition-colors ${
@@ -207,7 +259,7 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
               <div className="space-y-2">
                 <p className="text-sm text-slate-400 mb-3">Choose payment method:</p>
                 
-                {Object.entries(paymentMethods).map(([method, details]) => (
+                {paymentMethods && Object.keys(paymentMethods).length > 0 && Object.entries(paymentMethods).map(([method, details]) => (
                   <button
                     key={method}
                     onClick={() => handleSubscribe(plan.id, method)}
@@ -233,7 +285,11 @@ const SubscriptionCard = ({ subscriptionStatus, onSubscriptionUpdate }) => {
               </div>
             )}
           </div>
-        ))}
+        )) : subscriptionStatus?.plan !== 'admin' ? (
+          <div className="col-span-full text-center py-8">
+            <div className="text-slate-400">Loading subscription plans...</div>
+          </div>
+        ) : null}
       </div>
 
       {/* Error Message */}

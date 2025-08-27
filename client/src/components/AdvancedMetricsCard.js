@@ -101,7 +101,7 @@ const AdvancedMetricsCard = () => {
         {/* Core Metrics */}
         <div>
           <h3 className="text-lg font-semibold text-white mb-4">Core Market Metrics</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Bitcoin Dominance */}
             <div className="bg-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
@@ -230,7 +230,7 @@ const AdvancedMetricsCard = () => {
         {/* Derivatives & On-chain Metrics */}
         <div>
           <h3 className="text-lg font-semibold text-white mb-4">Derivatives & On-chain Data</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Open Interest */}
             <div className="bg-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
@@ -348,7 +348,7 @@ const AdvancedMetricsCard = () => {
       {/* Interpretation Guide */}
       <div className="mt-6 p-4 bg-slate-700 rounded-lg">
         <h4 className="text-sm font-medium text-white mb-2">Metric Interpretations</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-300">
           <div>
             <strong>Bitcoin Dominance:</strong> Higher = BTC outperforming altcoins
           </div>

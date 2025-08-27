@@ -1,181 +1,246 @@
-import React from 'react';
-import moment from 'moment';
-import MarketDataCard from './MarketDataCard';
-import AIAnalysisCard from './AIAnalysisCard';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Zap } from 'lucide-react';
 import CryptoPricesCard from './CryptoPricesCard';
-import FearGreedCard from './FearGreedCard';
 import NarrativesCard from './NarrativesCard';
-import BacktestCard from './BacktestCard';
-import SubscriptionCard from './SubscriptionCard';
-import DataCollectionCard from './DataCollectionCard';
+import Layer1Card from './Layer1Card';
 import AdvancedMetricsCard from './AdvancedMetricsCard';
-import LoadingSpinner from './LoadingSpinner';
+import AIAnalysisCard from './AIAnalysisCard';
+import DataCollectionCard from './DataCollectionCard';
+import BacktestCard from './BacktestCard';
+import UpcomingEventsCard from './UpcomingEventsCard';
+import AlertCard from './AlertCard';
 
-const Dashboard = ({ data, loading, error, onRefresh, onCollectData }) => {
-  if (loading && !data) {
-    return <LoadingSpinner />;
+const Dashboard = () => {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dataCollectionExpanded, setDataCollectionExpanded] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchDashboardData();
+    fetchAlerts();
+  }, []);
+
+  // Force re-render when subscription status changes
+  useEffect(() => {
+    if (dashboardData?.subscriptionStatus) {
+      console.log('🔍 Frontend Debug - Subscription status changed:', dashboardData.subscriptionStatus.planName);
+    }
+  }, [dashboardData?.subscriptionStatus]);
+
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const headers = {};
+      
+      console.log('🔍 Frontend Debug - Token from localStorage:', token ? 'Present' : 'Missing');
+      console.log('🔍 Frontend Debug - Token length:', token ? token.length : 0);
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      console.log('🔍 Frontend Debug - Request headers:', headers);
+      console.log('🔍 Frontend Debug - Making request to /api/dashboard');
+      
+      const response = await fetch('/api/dashboard', {
+        headers
+      });
+      
+      console.log('🔍 Frontend Debug - Response status:', response.status);
+      console.log('🔍 Frontend Debug - Response ok:', response.ok);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data');
+      }
+      
+      const data = await response.json();
+      console.log('🔍 Frontend Debug - Response data received');
+      console.log('🔍 Frontend Debug - Full response data:', data);
+      console.log('🔍 Frontend Debug - subscriptionStatus in response:', data.subscriptionStatus);
+      
+      // Always use the response, but log what we got
+      if (data.subscriptionStatus) {
+        console.log('🔍 Frontend Debug - Using response with subscription status:', data.subscriptionStatus.plan);
+        setDashboardData(data);
+      } else {
+        console.log('🔍 Frontend Debug - Response has no subscription status, but using it anyway');
+        setDashboardData(data);
+      }
+    } catch (err) {
+      console.error('🔍 Frontend Debug - Error fetching dashboard:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAlerts = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      const response = await fetch('/api/alerts?limit=20', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAlerts(data.alerts || []);
+      }
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+    }
+  };
+
+  const handleAcknowledgeAlert = async (alertId) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      const response = await fetch(`/api/alerts/${alertId}/acknowledge`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        // Remove the acknowledged alert from the list
+        setAlerts(prev => prev.filter(alert => alert.id !== alertId));
+      }
+    } catch (error) {
+      console.error('Error acknowledging alert:', error);
+    }
+  };
+
+  const handleUpgradeClick = () => {
+    navigate('/subscription');
+  };
+
+  const renderSubscriptionButton = () => {
+    const subscriptionStatus = dashboardData?.subscriptionStatus;
+    console.log('🔍 Frontend Debug - dashboardData:', dashboardData);
+    console.log('🔍 Frontend Debug - subscriptionStatus:', subscriptionStatus);
+    console.log('🔍 Frontend Debug - subscriptionStatus.plan:', subscriptionStatus?.plan);
+    console.log('🔍 Frontend Debug - Is admin plan?', subscriptionStatus?.plan === 'admin');
+    
+    const isLaunchPhase = process.env.REACT_APP_LAUNCH_PHASE === 'true';
+    
+    if (!subscriptionStatus) {
+      console.log('🔍 Frontend Debug - No subscription status, showing upgrade button');
+      // No subscription - show upgrade to Pro
+      if (isLaunchPhase) {
+        return (
+          <div className="bg-yellow-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2">
+            <Zap className="w-5 h-5" />
+            <span>Coming Soon</span>
+          </div>
+        );
+      }
+      return (
+        <button
+          onClick={handleUpgradeClick}
+          className="bg-crypto-blue hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center space-x-2"
+        >
+          <Zap className="w-5 h-5" />
+          <span>Upgrade to Pro</span>
+        </button>
+      );
+    }
+
+    if (subscriptionStatus.plan === 'admin') {
+      console.log('🔍 Frontend Debug - Admin plan detected, showing ADMIN badge');
+      // Admin user - show ADMIN badge
+      return (
+        <div className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2">
+          <Zap className="w-5 h-5" />
+          <span>ADMIN</span>
+        </div>
+      );
+    }
+
+    if (subscriptionStatus.plan === 'pro') {
+      // Pro user - show upgrade to Premium+
+      return (
+        <button
+          onClick={handleUpgradeClick}
+          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center space-x-2"
+        >
+          <Zap className="w-5 h-5" />
+          <span>Upgrade to Premium+</span>
+        </button>
+      );
+    }
+
+    // Premium+ or other plans - show current plan
+    return (
+      <div className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2">
+        <Zap className="w-5 h-5" />
+        <span>{subscriptionStatus.planName || subscriptionStatus.plan}</span>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-crypto-blue"></div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <p className="text-red-400 text-lg mb-4">{error}</p>
-          <button
-            onClick={onRefresh}
-            className="px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-red-500 text-xl">Error: {error}</div>
       </div>
     );
   }
-
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <p className="text-slate-300 text-lg">No data available</p>
-      </div>
-    );
-  }
-
-  const { marketData, analysis, cryptoPrices, fearGreed, narratives, backtestMetrics, subscriptionStatus, timestamp } = data;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-900 text-white p-6">
+      {/* Header with Subscription Button */}
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Market Dashboard</h1>
-          <p className="text-slate-400">
-            Last updated: {moment(timestamp).format('MMMM Do YYYY, h:mm:ss A')}
-          </p>
+          <h1 className="text-3xl font-bold mb-2">Market Dashboard</h1>
+          <p className="text-gray-400">Real-time cryptocurrency market insights and analysis</p>
         </div>
+        {renderSubscriptionButton()}
+      </div>
+
+      {/* Dashboard Cards - Single Column Layout */}
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Data Collection Card - Always at top, collapsible */}
+        <DataCollectionCard 
+          lastCollectionTime={dashboardData?.lastCollectionTime}
+          onCollectData={fetchDashboardData}
+          expanded={dataCollectionExpanded}
+          onToggleExpanded={() => setDataCollectionExpanded(!dataCollectionExpanded)}
+        />
         
-        {loading && (
-          <div className="flex items-center space-x-2 text-slate-400">
-            <div className="w-4 h-4 border-2 border-crypto-blue border-t-transparent rounded-full animate-spin"></div>
-            <span>Updating...</span>
-          </div>
+        {/* Debug: Show AI Analysis data */}
+        {console.log('Dashboard aiAnalysis data:', dashboardData?.aiAnalysis)}
+        <AIAnalysisCard data={dashboardData?.aiAnalysis} />
+        
+        {/* Alert Card - Show for Premium+ and Admin users */}
+        {(dashboardData?.subscriptionStatus?.plan === 'premium' || dashboardData?.subscriptionStatus?.plan === 'admin') && (
+          <AlertCard alerts={alerts} onAcknowledge={handleAcknowledgeAlert} />
         )}
-      </div>
+        
+        {/* Other Cards */}
+        <CryptoPricesCard data={dashboardData?.cryptoPrices} />
+        <UpcomingEventsCard events={dashboardData?.upcomingEvents} />
+        <NarrativesCard data={dashboardData?.trendingNarratives} />
+        <AdvancedMetricsCard data={dashboardData?.advancedMetrics} />
+        <BacktestCard data={dashboardData?.backtestResults} />
+        <Layer1Card data={dashboardData?.layer1Data} />
 
-      {/* Data Collection Card */}
-      <DataCollectionCard 
-        onCollectData={onCollectData}
-        loading={loading}
-        lastCollectionTime={timestamp}
-      />
-
-      {/* AI Analysis Section */}
-      {analysis && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AIAnalysisCard analysis={analysis} />
-          <FearGreedCard fearGreed={fearGreed} />
-        </div>
-      )}
-
-      {/* Market Data Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {marketData && (
-          <>
-            <MarketDataCard
-              title="DXY Index"
-              value={marketData.dxy}
-              format="number"
-              trend="neutral"
-              description="US Dollar Strength"
-            />
-            <MarketDataCard
-              title="2Y Treasury"
-              value={marketData.treasury_2y}
-              format="percentage"
-              trend="neutral"
-              description="2-Year Yield"
-            />
-            <MarketDataCard
-              title="10Y Treasury"
-              value={marketData.treasury_10y}
-              format="percentage"
-              trend="neutral"
-              description="10-Year Yield"
-            />
-            <MarketDataCard
-              title="VIX"
-              value={marketData.vix}
-              format="number"
-              trend={marketData.vix > 25 ? "up" : "down"}
-              description="Volatility Index"
-            />
-          </>
-        )}
-      </div>
-
-      {/* Equity Markets */}
-      {marketData && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <MarketDataCard
-            title="S&P 500"
-            value={marketData.sp500}
-            format="currency"
-            trend="neutral"
-            description="S&P 500 Index"
-          />
-          <MarketDataCard
-            title="NASDAQ"
-            value={marketData.nasdaq}
-            format="currency"
-            trend="neutral"
-            description="NASDAQ Index"
-          />
-        </div>
-      )}
-
-      {/* Crypto Prices */}
-      {cryptoPrices && (
-        <CryptoPricesCard cryptoPrices={cryptoPrices} />
-      )}
-
-      {/* Advanced Metrics */}
-      <AdvancedMetricsCard />
-
-      {/* Trending Narratives */}
-      {narratives && narratives.length > 0 && (
-        <NarrativesCard narratives={narratives} />
-      )}
-
-      {/* Backtest Results */}
-      {backtestMetrics && (
-        <BacktestCard backtestMetrics={backtestMetrics} />
-      )}
-
-      {/* Subscription Plans */}
-      <SubscriptionCard 
-        subscriptionStatus={subscriptionStatus}
-        onSubscriptionUpdate={onRefresh}
-      />
-
-      {/* Data Collection Status */}
-      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-        <h3 className="text-lg font-semibold text-white mb-4">Data Collection Status</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-crypto-green">✓</div>
-            <p className="text-slate-300 text-sm">Market Data</p>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-crypto-green">✓</div>
-            <p className="text-slate-300 text-sm">AI Analysis</p>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-crypto-green">✓</div>
-            <p className="text-slate-300 text-sm">Backtest Results</p>
-          </div>
-        </div>
-        <p className="text-slate-400 text-sm mt-4 text-center">
-          Next collection: {moment().add(3, 'hours').format('h:mm A')}
-        </p>
       </div>
     </div>
   );

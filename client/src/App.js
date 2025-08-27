@@ -10,6 +10,11 @@ import Settings from './components/Settings';
 import About from './components/About';
 import ErrorLogs from './components/ErrorLogs';
 import DataExport from './components/DataExport';
+import AlertsPage from './components/AlertsPage';
+import HistoricalData from './components/HistoricalData';
+import SubscriptionPlans from './components/SubscriptionPlans';
+import LandingPage from './components/LandingPage';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -73,7 +78,10 @@ function App() {
     setIsAuthenticated(false);
   };
 
-  if (loading && !dashboardData) {
+  // Check if current route is the landing page
+  const isLandingPage = window.location.pathname === '/landing';
+
+  if (loading && !dashboardData && !isLandingPage) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <LoadingSpinner />
@@ -84,54 +92,81 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-slate-900">
-        <Header 
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          onRefreshClick={fetchDashboardData}
-          onAuthClick={() => setAuthModalOpen(true)}
-          onLogoutClick={handleLogout}
-          loading={loading}
-          isAuthenticated={isAuthenticated}
-        />
-        
-        <div className="flex">
-          <Sidebar 
-            isOpen={sidebarOpen} 
-            onClose={() => setSidebarOpen(false)}
-          />
+        {/* Landing page route - no header/sidebar */}
+        <Routes>
+          <Route path="/landing" element={<LandingPage />} />
           
-          <main className="flex-1 p-4 md:p-6">
-            <Routes>
-              <Route 
-                path="/" 
-                element={
-                  <Dashboard 
-                    data={dashboardData}
-                    loading={loading}
-                    error={error}
-                    onRefresh={fetchDashboardData}
-                    onCollectData={triggerDataCollection}
-                  />
-                } 
+          {/* App routes with header and sidebar */}
+          <Route path="*" element={
+            <>
+              <Header 
+                onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+                onRefreshClick={fetchDashboardData}
+                onAuthClick={() => setAuthModalOpen(true)}
+                onLogoutClick={handleLogout}
+                loading={loading}
+                isAuthenticated={isAuthenticated}
               />
-              <Route 
-                path="/settings" 
-                element={<Settings />} 
-              />
-              <Route 
-                path="/export" 
-                element={<DataExport />} 
-              />
-              <Route 
-                path="/errors" 
-                element={<ErrorLogs />} 
-              />
-              <Route 
-                path="/about" 
-                element={<About />} 
-              />
-            </Routes>
-          </main>
-        </div>
+              
+              <div className="flex min-h-screen">
+                <Sidebar 
+                  isOpen={sidebarOpen} 
+                  onClose={() => setSidebarOpen(false)}
+                  userData={dashboardData}
+                />
+                
+                <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
+                  <Routes>
+                    <Route 
+                      path="/" 
+                      element={
+                        <Dashboard 
+                          data={dashboardData}
+                          loading={loading}
+                          error={error}
+                          onRefresh={fetchDashboardData}
+                          onCollectData={triggerDataCollection}
+                        />
+                      } 
+                    />
+                    <Route 
+                      path="/history" 
+                      element={<HistoricalData />} 
+                    />
+                    <Route 
+                      path="/settings" 
+                      element={<Settings />} 
+                    />
+                    <Route 
+                      path="/data-export" 
+                      element={<DataExport />} 
+                    />
+                    <Route 
+                      path="/alerts" 
+                      element={<AlertsPage />} 
+                    />
+                    <Route 
+                      path="/errors" 
+                      element={<ErrorLogs />} 
+                    />
+                    <Route 
+                      path="/about" 
+                      element={<About />} 
+                    />
+                    <Route 
+                      path="/subscription" 
+                      element={<SubscriptionPlans />} 
+                    />
+                    <Route 
+                      path="/admin" 
+                      element={<AdminDashboard />} 
+                    />
+                  </Routes>
+                </main>
+              </div>
+            </>
+          } />
+        </Routes>
       </div>
       
       <AuthModal 

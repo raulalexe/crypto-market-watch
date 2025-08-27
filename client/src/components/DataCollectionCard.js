@@ -1,167 +1,204 @@
 import React, { useState } from 'react';
-import { Clock, Play, CheckCircle, AlertCircle, Database } from 'lucide-react';
+import { Database, RefreshCw, CheckCircle, AlertCircle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import moment from 'moment';
 
-const DataCollectionCard = ({ onCollectData, loading, lastCollectionTime }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+const DataCollectionCard = ({ lastCollectionTime, onCollectData, expanded = false, onToggleExpanded }) => {
+  const [isCollecting, setIsCollecting] = useState(false);
+  const [collectionStatus, setCollectionStatus] = useState({
+    marketData: true,
+    aiAnalysis: true,
+    backtestResults: true
+  });
 
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'Never';
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
+  const handleCollectData = async () => {
+    setIsCollecting(true);
+    setCollectionStatus({
+      marketData: false,
+      aiAnalysis: false,
+      backtestResults: false
     });
-  };
 
-  const getTimeSinceLastCollection = (timestamp) => {
-    if (!timestamp) return 'Unknown';
-    const now = new Date();
-    const last = new Date(timestamp);
-    const diffMs = now - last;
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (diffHours > 0) {
-      return `${diffHours}h ${diffMinutes}m ago`;
-    } else {
-      return `${diffMinutes}m ago`;
+    try {
+      const response = await fetch('/api/collect-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        // Simulate collection progress
+        setTimeout(() => setCollectionStatus(prev => ({ ...prev, marketData: true })), 2000);
+        setTimeout(() => setCollectionStatus(prev => ({ ...prev, aiAnalysis: true })), 4000);
+        setTimeout(() => setCollectionStatus(prev => ({ ...prev, backtestResults: true })), 6000);
+        
+        if (onCollectData) {
+          setTimeout(() => onCollectData(), 7000);
+        }
+      } else {
+        throw new Error('Failed to trigger data collection');
+      }
+    } catch (error) {
+      console.error('Error collecting data:', error);
+      setCollectionStatus({
+        marketData: false,
+        aiAnalysis: false,
+        backtestResults: false
+      });
+    } finally {
+      setTimeout(() => setIsCollecting(false), 7000);
     }
   };
 
-  const getStatusColor = (timestamp) => {
-    if (!timestamp) return 'text-red-400';
-    const now = new Date();
-    const last = new Date(timestamp);
-    const diffHours = (now - last) / (1000 * 60 * 60);
-    
-    if (diffHours < 1) return 'text-crypto-green';
-    if (diffHours < 2) return 'text-yellow-400';
-    return 'text-red-400';
+  const getStatusIcon = (status) => {
+    if (status) {
+      return <CheckCircle className="w-6 h-6 text-green-500" />;
+    }
+    if (isCollecting) {
+      return <RefreshCw className="w-6 h-6 text-crypto-blue animate-spin" />;
+    }
+    return <AlertCircle className="w-6 h-6 text-red-500" />;
   };
 
-  const getStatusIcon = (timestamp) => {
-    if (!timestamp) return <AlertCircle className="w-5 h-5 text-red-400" />;
-    const now = new Date();
-    const last = new Date(timestamp);
-    const diffHours = (now - last) / (1000 * 60 * 60);
-    
-    if (diffHours < 1) return <CheckCircle className="w-5 h-5 text-crypto-green" />;
-    if (diffHours < 2) return <Clock className="w-5 h-5 text-yellow-400" />;
-    return <AlertCircle className="w-5 h-5 text-red-400" />;
+  const getNextCollectionTime = () => {
+    const lastCollection = moment(lastCollectionTime);
+    const nextCollection = lastCollection.add(30, 'minutes');
+    return nextCollection.format('h:mm A');
   };
 
   return (
-    <div className="bg-slate-800 rounded-lg border border-slate-700">
-      <div className="p-4">
+    <div className="bg-gray-800 rounded-lg border border-gray-700">
+      {/* Header - Always visible */}
+      <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Database className="w-6 h-6 text-crypto-blue" />
-            <div>
-              <h3 className="text-lg font-semibold text-white">Data Collection</h3>
-              <p className="text-sm text-slate-400">
-                Runs every 1 hour automatically
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            {getStatusIcon(lastCollectionTime)}
+            <h3 className="text-lg font-semibold text-white">Data Collection</h3>
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-slate-400 hover:text-white transition-colors"
+              onClick={onToggleExpanded}
+              className="text-gray-400 hover:text-white transition-colors"
             >
-              {isExpanded ? '−' : '+'}
+              {expanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            </button>
+          </div>
+          <div className="flex items-center space-x-3">
+            <span className="text-sm text-gray-400">
+              Last: {lastCollectionTime 
+                ? moment(lastCollectionTime).format('MMM Do, h:mm A')
+                : 'Never'
+              }
+            </span>
+            <button
+              onClick={handleCollectData}
+              disabled={isCollecting}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors duration-300 flex items-center space-x-2 ${
+                isCollecting
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-crypto-blue hover:bg-blue-600 text-white'
+              }`}
+            >
+              <RefreshCw className={`w-4 h-4 ${isCollecting ? 'animate-spin' : ''}`} />
+              <span>{isCollecting ? 'Collecting...' : 'Collect Data'}</span>
             </button>
           </div>
         </div>
+      </div>
 
-        {isExpanded && (
-          <div className="mt-4 pt-4 border-t border-slate-700 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-sm font-medium text-slate-300 mb-2">Last Collection</h4>
-                <p className={`text-sm font-semibold ${getStatusColor(lastCollectionTime)}`}>
-                  {formatTimestamp(lastCollectionTime)}
-                </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {getTimeSinceLastCollection(lastCollectionTime)}
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-slate-300 mb-2">Next Scheduled</h4>
-                <p className="text-sm text-slate-300">
-                  {(() => {
-                    const now = new Date();
-                    const nextHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1, 0, 0);
-                    return nextHour.toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    });
-                  })()}
-                </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  At the top of the next hour
-                </p>
-              </div>
+      {/* Expandable Content */}
+      {expanded && (
+        <div className="p-6">
+          {/* Last Collection Time */}
+          <div className="mb-6">
+            <div className="flex items-center space-x-2 mb-2">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-400">Last Collection</span>
             </div>
+            <p className="text-white font-medium">
+              {lastCollectionTime 
+                ? moment(lastCollectionTime).format('MMM Do YYYY, h:mm A')
+                : 'Never'
+              }
+            </p>
+          </div>
 
-            <div>
-              <h4 className="text-sm font-medium text-slate-300 mb-2">Collection Schedule</h4>
-              <div className="bg-slate-700 rounded-lg p-3">
-                <div className="grid grid-cols-2 gap-4 text-xs">
+          {/* Collection Status */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium text-gray-300 mb-3">Collection Status</h4>
+            
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {getStatusIcon(collectionStatus.marketData)}
                   <div>
-                    <p className="text-slate-400">Frequency:</p>
-                    <p className="text-white font-medium">Every 1 hour</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">Method:</p>
-                    <p className="text-white font-medium">Cron Jobs</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">Status:</p>
-                    <p className="text-crypto-green font-medium">Active</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">Timezone:</p>
-                    <p className="text-white font-medium">UTC</p>
+                    <p className="text-white font-medium">Market Data</p>
+                    <p className="text-xs text-gray-400">Crypto prices, market metrics</p>
                   </div>
                 </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  collectionStatus.marketData 
+                    ? 'bg-green-900 text-green-300' 
+                    : isCollecting 
+                      ? 'bg-blue-900 text-blue-300' 
+                      : 'bg-red-900 text-red-300'
+                }`}>
+                  {collectionStatus.marketData ? 'Complete' : isCollecting ? 'Collecting...' : 'Failed'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {getStatusIcon(collectionStatus.aiAnalysis)}
+                  <div>
+                    <p className="text-white font-medium">AI Analysis</p>
+                    <p className="text-xs text-gray-400">Market predictions & insights</p>
+                  </div>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  collectionStatus.aiAnalysis 
+                    ? 'bg-green-900 text-green-300' 
+                    : isCollecting 
+                      ? 'bg-blue-900 text-blue-300' 
+                      : 'bg-red-900 text-red-300'
+                }`}>
+                  {collectionStatus.aiAnalysis ? 'Complete' : isCollecting ? 'Collecting...' : 'Failed'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {getStatusIcon(collectionStatus.backtestResults)}
+                  <div>
+                    <p className="text-white font-medium">Backtest Results</p>
+                    <p className="text-xs text-gray-400">Strategy performance analysis</p>
+                  </div>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  collectionStatus.backtestResults 
+                    ? 'bg-green-900 text-green-300' 
+                    : isCollecting 
+                      ? 'bg-blue-900 text-blue-300' 
+                      : 'bg-red-900 text-red-300'
+                }`}>
+                  {collectionStatus.backtestResults ? 'Complete' : isCollecting ? 'Collecting...' : 'Failed'}
+                </span>
               </div>
             </div>
-
-            <div>
-              <h4 className="text-sm font-medium text-slate-300 mb-2">Manual Collection</h4>
-              <button
-                onClick={onCollectData}
-                disabled={loading}
-                className="flex items-center space-x-2 px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Collecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" />
-                    <span>Collect Data Now</span>
-                  </>
-                )}
-              </button>
-              <p className="text-xs text-slate-400 mt-2">
-                Manually trigger data collection from all sources
-              </p>
-            </div>
           </div>
-        )}
-      </div>
+
+          {/* Next Collection */}
+          <div className="mt-6 pt-4 border-t border-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Next scheduled collection</span>
+              <span className="text-sm text-white font-medium">
+                {getNextCollectionTime()}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Data is automatically collected every 30 minutes
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

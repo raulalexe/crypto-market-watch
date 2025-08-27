@@ -1,4 +1,3 @@
-const axios = require('axios');
 const moment = require('moment');
 require('dotenv').config();
 
@@ -11,230 +10,56 @@ const {
 
 class AIAnalyzer {
   constructor() {
-    this.veniceAiKey = process.env.VENICE_AI_API_KEY;
-    this.baseUrl = 'https://api.venice.ai'; // Replace with actual Venice AI endpoint
+    // Local analysis only
   }
 
-  // Analyze market data using Venice AI
+  // Analyze market data using local analysis
   async analyzeMarketDirection(marketData) {
     try {
-      if (!this.veniceAiKey) {
-        console.log('Venice AI API key not configured, using fallback analysis');
-        return this.fallbackAnalysis(marketData);
-      }
-
-      const prompt = this.buildAnalysisPrompt(marketData);
-      
-      const response = await axios.post(`${this.baseUrl}/analyze`, {
-        prompt: prompt,
-        model: 'market-analysis-v1',
-        max_tokens: 500
-      }, {
-        headers: {
-          'Authorization': `Bearer ${this.veniceAiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.data && response.data.analysis) {
-        const analysis = response.data.analysis;
-        await this.saveAnalysis(analysis);
-        return analysis;
-      } else {
-        throw new Error('Invalid response from Venice AI');
-      }
+      return await this.fallbackAnalysis(marketData);
     } catch (error) {
-      console.error('Error in Venice AI analysis:', error.message);
-      console.log('Falling back to local analysis');
-      return this.fallbackAnalysis(marketData);
+      console.error('Error in local analysis:', error.message);
+      return null;
     }
   }
 
-  // Build comprehensive analysis prompt
-  buildAnalysisPrompt(marketData) {
-    return `
-    Analyze the following crypto market data and provide a market direction prediction:
 
-    Market Data Summary:
-    - DXY (US Dollar Index): ${marketData.dxy || 'N/A'}
-    - 2Y Treasury Yield: ${marketData.treasury_2y || 'N/A'}%
-    - 10Y Treasury Yield: ${marketData.treasury_10y || 'N/A'}%
-    - S&P 500: ${marketData.sp500 || 'N/A'}
-    - NASDAQ: ${marketData.nasdaq || 'N/A'}
-    - VIX (Volatility): ${marketData.vix || 'N/A'}
-    - Oil Price: ${marketData.oil || 'N/A'}
-    - Crypto Prices: ${JSON.stringify(marketData.crypto_prices || {})}
 
-    Advanced Metrics:
-    - Bitcoin Dominance: ${marketData.bitcoin_dominance || 'N/A'}%
-    - Stablecoin Market Cap: ${marketData.stablecoin_metrics ? `$${(marketData.stablecoin_metrics.total_market_cap / 1e9).toFixed(2)}B` : 'N/A'}
-    - SSR (Stablecoin Supply Ratio): ${marketData.stablecoin_metrics ? marketData.stablecoin_metrics.ssr.toFixed(2) : 'N/A'}
-    - BTC Exchange Flows: ${marketData.exchange_flows && marketData.exchange_flows.btc ? `Net: $${(marketData.exchange_flows.btc.net_flow / 1e6).toFixed(2)}M` : 'N/A'}
-    - ETH Exchange Flows: ${marketData.exchange_flows && marketData.exchange_flows.eth ? `Net: $${(marketData.exchange_flows.eth.net_flow / 1e6).toFixed(2)}M` : 'N/A'}
+  // Calculate overall direction based on all timeframes
+  calculateOverallDirection(timeframes) {
+    const directions = timeframes.map(t => t.market_direction);
+    const bullish = directions.filter(d => d === 'BULLISH').length;
+    const bearish = directions.filter(d => d === 'BEARISH').length;
+    const neutral = directions.filter(d => d === 'NEUTRAL').length;
 
-    Please provide:
-    1. Market Direction: (BULLISH/BEARISH/NEUTRAL)
-    2. Confidence Level: (0-100)
-    3. Key Factors: List the most important factors influencing this prediction
-    4. Reasoning: Detailed explanation of the analysis
-    5. Risk Factors: Potential risks to this prediction
-    6. Time Horizon: Short-term (1-7 days) or Medium-term (1-4 weeks)
-
-    Consider:
-    - Macroeconomic indicators and their impact on crypto
-    - Risk-on vs risk-off sentiment
-    - Technical analysis patterns
-    - Market correlations
-    - Liquidity conditions
-    - Regulatory environment
-    - Bitcoin dominance trends (higher = BTC outperforming altcoins)
-    - SSR interpretation (lower = more buying power available)
-    - Exchange flows (negative net flow = bullish, positive = bearish)
-    - Stablecoin market cap growth (expanding = sidelined capital)
-    `;
+    if (bullish > bearish && bullish > neutral) return 'BULLISH';
+    if (bearish > bullish && bearish > neutral) return 'BEARISH';
+    return 'NEUTRAL';
   }
+
+  // Calculate overall confidence based on all timeframes
+  calculateOverallConfidence(timeframes) {
+    const avgConfidence = timeframes.reduce((sum, t) => sum + t.confidence, 0) / timeframes.length;
+    return Math.round(avgConfidence);
+  }
+
+
 
   // Fallback analysis when Venice AI is not available
   async fallbackAnalysis(marketData) {
     try {
-      let direction = 'NEUTRAL';
-      let confidence = 50;
-      let reasoning = '';
-      let factors = [];
-
-      // Analyze DXY (Dollar strength)
-      if (marketData.dxy) {
-        if (marketData.dxy > 105) {
-          factors.push('Strong dollar - bearish for crypto');
-          direction = 'BEARISH';
-          confidence += 10;
-        } else if (marketData.dxy < 95) {
-          factors.push('Weak dollar - bullish for crypto');
-          direction = 'BULLISH';
-          confidence += 10;
-        }
-      }
-
-      // Analyze Treasury yields
-      if (marketData.treasury_2y && marketData.treasury_10y) {
-        const yieldCurve = marketData.treasury_10y - marketData.treasury_2y;
-        if (yieldCurve < 0) {
-          factors.push('Inverted yield curve - recession risk');
-          direction = 'BEARISH';
-          confidence += 15;
-        } else if (yieldCurve > 2) {
-          factors.push('Steep yield curve - economic growth');
-          direction = 'BULLISH';
-          confidence += 10;
-        }
-      }
-
-      // Analyze VIX (Volatility)
-      if (marketData.vix) {
-        if (marketData.vix > 30) {
-          factors.push('High volatility - risk-off sentiment');
-          direction = 'BEARISH';
-          confidence += 15;
-        } else if (marketData.vix < 15) {
-          factors.push('Low volatility - risk-on sentiment');
-          direction = 'BULLISH';
-          confidence += 10;
-        }
-      }
-
-      // Analyze equity markets
-      if (marketData.sp500 && marketData.nasdaq) {
-        factors.push('Equity market correlation analysis');
-        if (marketData.sp500 > 4500 && marketData.nasdaq > 14000) {
-          factors.push('Strong equity markets - positive for crypto');
-          if (direction === 'NEUTRAL') direction = 'BULLISH';
-          confidence += 10;
-        }
-      }
-
-      // Analyze crypto prices
-      if (marketData.crypto_prices && marketData.crypto_prices.BTC) {
-        const btcPrice = marketData.crypto_prices.BTC;
-        if (btcPrice > 50000) {
-          factors.push('Bitcoin above key resistance');
-          if (direction === 'NEUTRAL') direction = 'BULLISH';
-          confidence += 5;
-        } else if (btcPrice < 40000) {
-          factors.push('Bitcoin below key support');
-          direction = 'BEARISH';
-          confidence += 10;
-        }
-      }
-
-      // Analyze Bitcoin Dominance
-      if (marketData.bitcoin_dominance) {
-        if (marketData.bitcoin_dominance > 55) {
-          factors.push('High Bitcoin dominance - BTC outperforming altcoins');
-          confidence += 5;
-        } else if (marketData.bitcoin_dominance < 40) {
-          factors.push('Low Bitcoin dominance - altcoin season potential');
-          confidence += 5;
-        }
-      }
-
-      // Analyze SSR (Stablecoin Supply Ratio)
-      if (marketData.stablecoin_metrics && marketData.stablecoin_metrics.ssr) {
-        const ssr = marketData.stablecoin_metrics.ssr;
-        if (ssr < 2) {
-          factors.push('Very low SSR - extremely bullish buying power available');
-          if (direction === 'NEUTRAL') direction = 'BULLISH';
-          confidence += 20;
-        } else if (ssr < 4) {
-          factors.push('Low SSR - good buying power available');
-          if (direction === 'NEUTRAL') direction = 'BULLISH';
-          confidence += 10;
-        } else if (ssr > 8) {
-          factors.push('Very high SSR - very low buying power');
-          direction = 'BEARISH';
-          confidence += 15;
-        } else if (ssr > 6) {
-          factors.push('High SSR - low buying power');
-          direction = 'BEARISH';
-          confidence += 10;
-        }
-      }
-
-      // Analyze Exchange Flows
-      if (marketData.exchange_flows) {
-        if (marketData.exchange_flows.btc && marketData.exchange_flows.btc.net_flow < 0) {
-          factors.push('BTC negative net flow - money leaving exchanges (bullish)');
-          if (direction === 'NEUTRAL') direction = 'BULLISH';
-          confidence += 10;
-        } else if (marketData.exchange_flows.btc && marketData.exchange_flows.btc.net_flow > 0) {
-          factors.push('BTC positive net flow - money entering exchanges (bearish)');
-          direction = 'BEARISH';
-          confidence += 10;
-        }
-
-        if (marketData.exchange_flows.eth && marketData.exchange_flows.eth.net_flow < 0) {
-          factors.push('ETH negative net flow - money leaving exchanges (bullish)');
-          if (direction === 'NEUTRAL') direction = 'BULLISH';
-          confidence += 5;
-        }
-      }
-
-      // Build reasoning
-      reasoning = `Analysis based on ${factors.length} key factors: ${factors.join(', ')}. `;
-      reasoning += `Current market conditions suggest a ${direction.toLowerCase()} outlook with ${confidence}% confidence. `;
-      reasoning += `Key considerations include macroeconomic indicators, risk sentiment, and technical levels.`;
+      // Generate predictions for different timeframes
+      const shortTerm = this.analyzeShortTerm(marketData);
+      const mediumTerm = this.analyzeMediumTerm(marketData);
+      const longTerm = this.analyzeLongTerm(marketData);
 
       const analysis = {
-        market_direction: direction,
-        confidence: Math.min(confidence, 95),
-        reasoning: reasoning,
-        factors_analyzed: factors,
-        time_horizon: 'Short-term (1-7 days)',
-        risk_factors: [
-          'Unexpected regulatory news',
-          'Macroeconomic data surprises',
-          'Technical breakdowns',
-          'Liquidity events'
-        ]
+        short_term: shortTerm,
+        medium_term: mediumTerm,
+        long_term: longTerm,
+        timestamp: new Date().toISOString(),
+        overall_direction: this.calculateOverallDirection([shortTerm, mediumTerm, longTerm]),
+        overall_confidence: this.calculateOverallConfidence([shortTerm, mediumTerm, longTerm])
       };
 
       await this.saveAnalysis(analysis);
@@ -245,16 +70,445 @@ class AIAnalyzer {
     }
   }
 
+  // Short-term analysis (1-7 days)
+  analyzeShortTerm(marketData) {
+    let direction = 'NEUTRAL';
+    let confidence = 50;
+    let factors = [];
+
+    // Analyze VIX (Volatility) - most important for short-term
+    if (marketData.vix && typeof marketData.vix === 'number') {
+      // Dynamic VIX analysis based on current market conditions
+      if (marketData.vix > 35) {
+        factors.push(`Very high volatility (VIX: ${marketData.vix}) - extreme risk-off sentiment`);
+        direction = 'BEARISH';
+        confidence += 25;
+      } else if (marketData.vix > 25) {
+        factors.push(`Elevated volatility (VIX: ${marketData.vix}) - risk-off sentiment`);
+        direction = 'BEARISH';
+        confidence += 15;
+      } else if (marketData.vix < 15) {
+        factors.push(`Low volatility (VIX: ${marketData.vix}) - risk-on sentiment`);
+        direction = 'BULLISH';
+        confidence += 10;
+      } else {
+        factors.push(`Normal volatility (VIX: ${marketData.vix}) - balanced market sentiment`);
+        confidence += 5;
+      }
+    }
+
+    // Analyze crypto price action with dynamic support/resistance
+    if (marketData.crypto_prices && marketData.crypto_prices.BTC) {
+      const btcPrice = marketData.crypto_prices.BTC.price || marketData.crypto_prices.BTC;
+      const btcChange = marketData.crypto_prices.BTC.change_24h || 0;
+      
+      // Calculate dynamic support/resistance based on current price levels
+      const currentPrice = btcPrice;
+      const priceChange = btcChange;
+      
+      // Dynamic analysis based on price action
+      if (priceChange > 5) {
+        factors.push(`Strong Bitcoin rally (+${priceChange.toFixed(2)}%) - bullish momentum`);
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 15;
+      } else if (priceChange > 2) {
+        factors.push(`Positive Bitcoin momentum (+${priceChange.toFixed(2)}%)`);
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 8;
+      } else if (priceChange < -5) {
+        factors.push(`Sharp Bitcoin decline (${priceChange.toFixed(2)}%) - bearish pressure`);
+        direction = 'BEARISH';
+        confidence += 15;
+      } else if (priceChange < -2) {
+        factors.push(`Negative Bitcoin momentum (${priceChange.toFixed(2)}%)`);
+        direction = 'BEARISH';
+        confidence += 8;
+      } else {
+        factors.push(`Bitcoin price stable (${priceChange.toFixed(2)}%) - consolidation phase`);
+        confidence += 3;
+      }
+      
+      // Add current price context
+      factors.push(`Bitcoin trading at $${currentPrice.toLocaleString()}`);
+    }
+
+    // Analyze exchange flows with context
+    if (marketData.exchange_flows && Array.isArray(marketData.exchange_flows)) {
+      const btcFlow = marketData.exchange_flows.find(flow => flow.asset === 'BTC');
+      if (btcFlow && typeof btcFlow.value === 'number') {
+        const flowValue = btcFlow.value;
+        if (flowValue > 1000000) { // $1M+ outflow
+          factors.push(`Strong institutional accumulation ($${(flowValue/1000000).toFixed(1)}M outflow)`);
+          if (direction === 'NEUTRAL') direction = 'BULLISH';
+          confidence += 12;
+        } else if (flowValue > 0) {
+          factors.push(`Positive exchange flows ($${(flowValue/1000000).toFixed(1)}M outflow)`);
+          if (direction === 'NEUTRAL') direction = 'BULLISH';
+          confidence += 6;
+        } else if (flowValue < -1000000) { // $1M+ inflow
+          factors.push(`Significant selling pressure ($${Math.abs(flowValue/1000000).toFixed(1)}M inflow)`);
+          direction = 'BEARISH';
+          confidence += 12;
+        } else if (flowValue < 0) {
+          factors.push(`Negative exchange flows ($${Math.abs(flowValue/1000000).toFixed(1)}M inflow)`);
+          direction = 'BEARISH';
+          confidence += 6;
+        }
+      }
+    }
+
+    // Analyze Fear & Greed Index with context
+    if (marketData.fear_greed && typeof marketData.fear_greed.value === 'number') {
+      const fearGreedValue = marketData.fear_greed.value;
+      if (fearGreedValue < 20) {
+        factors.push(`Extreme fear (${fearGreedValue}) - potential buying opportunity`);
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 20;
+      } else if (fearGreedValue < 35) {
+        factors.push(`Fear sentiment (${fearGreedValue}) - contrarian bullish signal`);
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 10;
+      } else if (fearGreedValue > 80) {
+        factors.push(`Extreme greed (${fearGreedValue}) - potential selling pressure`);
+        direction = 'BEARISH';
+        confidence += 20;
+      } else if (fearGreedValue > 65) {
+        factors.push(`Greed sentiment (${fearGreedValue}) - caution warranted`);
+        direction = 'BEARISH';
+        confidence += 10;
+      } else {
+        factors.push(`Neutral sentiment (${fearGreedValue}) - balanced market psychology`);
+        confidence += 5;
+      }
+    }
+
+    // Analyze market momentum across major cryptos
+    if (marketData.crypto_prices) {
+      const btcChange = marketData.crypto_prices.BTC?.change_24h || 0;
+      const ethChange = marketData.crypto_prices.ETH?.change_24h || 0;
+      const solChange = marketData.crypto_prices.SOL?.change_24h || 0;
+      
+      // Count positive vs negative performers
+      const positiveChanges = [btcChange, ethChange, solChange].filter(change => change > 0).length;
+      const negativeChanges = [btcChange, ethChange, solChange].filter(change => change < 0).length;
+      
+      if (positiveChanges >= 2 && Math.min(btcChange, ethChange, solChange) > 1) {
+        factors.push(`Broad crypto rally - BTC: ${btcChange.toFixed(2)}%, ETH: ${ethChange.toFixed(2)}%, SOL: ${solChange.toFixed(2)}%`);
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 12;
+      } else if (negativeChanges >= 2 && Math.max(btcChange, ethChange, solChange) < -1) {
+        factors.push(`Broad crypto decline - BTC: ${btcChange.toFixed(2)}%, ETH: ${ethChange.toFixed(2)}%, SOL: ${solChange.toFixed(2)}%`);
+        direction = 'BEARISH';
+        confidence += 12;
+      } else if (positiveChanges > negativeChanges) {
+        factors.push(`Mixed but positive crypto performance`);
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 5;
+      }
+    }
+
+    // Analyze stablecoin metrics with context
+    if (marketData.stablecoin_metrics && Array.isArray(marketData.stablecoin_metrics)) {
+      const totalMarketCapMetric = marketData.stablecoin_metrics.find(metric => metric.metric_type === 'total_market_cap');
+      const ssrMetric = marketData.stablecoin_metrics.find(metric => metric.metric_type === 'ssr');
+      
+      if (totalMarketCapMetric && totalMarketCapMetric.value > 200000000000) { // $200B+
+        factors.push(`Very high stablecoin market cap ($${(totalMarketCapMetric.value/1000000000).toFixed(1)}B) - significant buying power`);
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 10;
+      } else if (totalMarketCapMetric && totalMarketCapMetric.value > 150000000000) { // $150B+
+        factors.push(`High stablecoin market cap ($${(totalMarketCapMetric.value/1000000000).toFixed(1)}B) - potential buying power`);
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 6;
+      }
+      
+      if (ssrMetric && ssrMetric.value < 10) {
+        factors.push(`Low SSR (${ssrMetric.value.toFixed(2)}) - weak Bitcoin fundamentals`);
+        direction = 'BEARISH';
+        confidence += 8;
+      } else if (ssrMetric && ssrMetric.value > 20) {
+        factors.push(`High SSR (${ssrMetric.value.toFixed(2)}) - strong Bitcoin fundamentals`);
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 8;
+      }
+    }
+
+    // Analyze upcoming events with impact assessment
+    if (marketData.upcoming_events && marketData.upcoming_events.length > 0) {
+      const eventsInNextWeek = marketData.upcoming_events.filter(event => 
+        event.days_until <= 7
+      );
+      
+      if (eventsInNextWeek.length > 0) {
+        const highImpactCount = eventsInNextWeek.filter(e => e.impact === 'high').length;
+        const mediumImpactCount = eventsInNextWeek.filter(e => e.impact === 'medium').length;
+        const fedEvents = eventsInNextWeek.filter(e => e.category === 'fed').length;
+        
+        if (highImpactCount > 0) {
+          factors.push(`${highImpactCount} high-impact events in next 7 days - potential volatility`);
+          confidence += 8;
+        }
+        
+        if (fedEvents > 0) {
+          factors.push(`${fedEvents} Federal Reserve events in next 7 days - macro uncertainty`);
+          confidence += 6;
+        }
+        
+        if (mediumImpactCount > 0) {
+          factors.push(`${mediumImpactCount} medium-impact events in next 7 days`);
+          confidence += 3;
+        }
+      }
+    }
+
+    return {
+      market_direction: direction,
+      confidence: Math.min(confidence, 100),
+      reasoning: `Short-term analysis (1-7 days): ${factors.join(', ')}`,
+      factors_analyzed: factors,
+      time_horizon: '1-7 days',
+      risk_factors: ['High volatility', 'News catalysts', 'Technical breakouts']
+    };
+  }
+
+  // Medium-term analysis (1-4 weeks)
+  analyzeMediumTerm(marketData) {
+    let direction = 'NEUTRAL';
+    let confidence = 50;
+    let factors = [];
+
+    // Analyze DXY (US Dollar Index)
+    if (marketData.dxy) {
+      if (marketData.dxy > 105) {
+        factors.push('Strong dollar - risk-off environment');
+        direction = 'BEARISH';
+        confidence += 15;
+      } else if (marketData.dxy < 100) {
+        factors.push('Weak dollar - risk-on environment');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 10;
+      }
+    }
+
+    // Analyze Treasury yields
+    if (marketData.treasury_2y && marketData.treasury_10y) {
+      const yieldCurve = marketData.treasury_10y - marketData.treasury_2y;
+      if (yieldCurve < 0) {
+        factors.push('Inverted yield curve - recession risk');
+        direction = 'BEARISH';
+        confidence += 20;
+      } else if (yieldCurve > 1) {
+        factors.push('Steep yield curve - growth environment');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 10;
+      }
+    }
+
+    // Analyze Bitcoin dominance
+    if (marketData.bitcoin_dominance) {
+      if (marketData.bitcoin_dominance > 55) {
+        factors.push('High Bitcoin dominance - risk-off');
+        direction = 'BEARISH';
+        confidence += 10;
+      } else if (marketData.bitcoin_dominance < 45) {
+        factors.push('Low Bitcoin dominance - altcoin season');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 15;
+      }
+    }
+
+    // Analyze institutional flows
+    if (marketData.exchange_flows) {
+      const totalInstitutionalFlow = Object.values(marketData.exchange_flows)
+        .reduce((sum, flow) => sum + (flow.net_flow || 0), 0);
+      
+      if (totalInstitutionalFlow > 10000000) { // $10M+ net outflow
+        factors.push('Strong institutional accumulation');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 12;
+      } else if (totalInstitutionalFlow < -10000000) { // $10M+ net inflow
+        factors.push('Institutional selling pressure');
+        direction = 'BEARISH';
+        confidence += 12;
+      }
+    }
+
+    // Analyze derivatives market sentiment
+    if (marketData.derivatives) {
+      const fundingRate = marketData.derivatives.funding_rate;
+      const openInterest = marketData.derivatives.open_interest;
+      
+      if (fundingRate > 0.01) { // 1%+ positive funding
+        factors.push('High positive funding rate - bullish sentiment');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 8;
+      } else if (fundingRate < -0.01) { // 1%+ negative funding
+        factors.push('High negative funding rate - bearish sentiment');
+        direction = 'BEARISH';
+        confidence += 8;
+      }
+    }
+
+    // Analyze on-chain metrics
+    if (marketData.onchain) {
+      const activeAddresses = marketData.onchain.active_addresses;
+      const transactionVolume = marketData.onchain.transaction_volume;
+      
+      if (activeAddresses > 1000000 && transactionVolume > 50000000000) { // 1M+ addresses, $50B+ volume
+        factors.push('High on-chain activity - strong network usage');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 10;
+      }
+    }
+
+    // Analyze regulatory environment
+    if (marketData.regulatory_news) {
+      const positiveNews = marketData.regulatory_news.filter(news => news.sentiment === 'positive').length;
+      const negativeNews = marketData.regulatory_news.filter(news => news.sentiment === 'negative').length;
+      
+      if (positiveNews > negativeNews) {
+        factors.push('Positive regulatory developments');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 8;
+      } else if (negativeNews > positiveNews) {
+        factors.push('Negative regulatory developments');
+        direction = 'BEARISH';
+        confidence += 8;
+      }
+    }
+
+    // Analyze upcoming events for medium-term
+    if (marketData.upcoming_events && marketData.upcoming_events.length > 0) {
+      const eventsInNextMonth = marketData.upcoming_events.filter(event => 
+        event.days_until <= 30
+      );
+      
+      if (eventsInNextMonth.length > 0) {
+        const highImpactCount = eventsInNextMonth.filter(e => e.impact === 'high').length;
+        const fedEvents = eventsInNextMonth.filter(e => e.category === 'Fed').length;
+        
+        if (highImpactCount > 2) {
+          factors.push(`${highImpactCount} high-impact events in next 30 days`);
+          confidence += 6;
+        }
+        
+        if (fedEvents > 0) {
+          factors.push(`${fedEvents} Federal Reserve events in next 30 days`);
+          confidence += 4;
+        }
+      }
+    }
+
+    return {
+      market_direction: direction,
+      confidence: Math.min(confidence, 100),
+      reasoning: `Medium-term analysis (1-4 weeks): ${factors.join(', ')}`,
+      factors_analyzed: factors,
+      time_horizon: '1-4 weeks',
+      risk_factors: ['Macro policy changes', 'Institutional flows', 'Market structure breaks']
+    };
+  }
+
+  // Long-term analysis (1-6 months)
+  analyzeLongTerm(marketData) {
+    let direction = 'NEUTRAL';
+    let confidence = 50;
+    let factors = [];
+
+    // Analyze stablecoin metrics
+    if (marketData.stablecoin_metrics) {
+      if (marketData.stablecoin_metrics.ssr > 20) {
+        factors.push('High SSR - strong Bitcoin fundamentals');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 15;
+      } else if (marketData.stablecoin_metrics.ssr < 10) {
+        factors.push('Low SSR - weak Bitcoin fundamentals');
+        direction = 'BEARISH';
+        confidence += 10;
+      }
+    }
+
+    // Analyze adoption trends (simplified)
+    if (marketData.crypto_prices && marketData.crypto_prices.BTC) {
+      const btcPrice = marketData.crypto_prices.BTC;
+      if (btcPrice > 60000) {
+        factors.push('Bitcoin in strong uptrend');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 20;
+      } else if (btcPrice < 30000) {
+        factors.push('Bitcoin in bear market');
+        direction = 'BEARISH';
+        confidence += 25;
+      }
+    }
+
+    // Analyze institutional sentiment
+    if (marketData.exchange_flows && marketData.exchange_flows.btc) {
+      const netFlow = marketData.exchange_flows.btc.net_flow;
+      if (netFlow > 1000000) { // $1M+ net outflow
+        factors.push('Strong institutional accumulation');
+        if (direction === 'NEUTRAL') direction = 'BULLISH';
+        confidence += 15;
+      } else if (netFlow < -1000000) { // $1M+ net inflow
+        factors.push('Institutional selling pressure');
+        direction = 'BEARISH';
+        confidence += 15;
+      }
+    }
+
+    // Analyze upcoming events for long-term
+    if (marketData.upcoming_events && marketData.upcoming_events.length > 0) {
+      const eventsInNext6Months = marketData.upcoming_events.filter(event => 
+        event.days_until <= 180
+      );
+      
+      if (eventsInNext6Months.length > 0) {
+        const halvingEvents = eventsInNext6Months.filter(e => e.category === 'Crypto' && e.title.includes('Halving')).length;
+        const regulatoryEvents = eventsInNext6Months.filter(e => e.category === 'Regulation').length;
+        
+        if (halvingEvents > 0) {
+          factors.push('Bitcoin halving event in next 6 months');
+          if (direction === 'NEUTRAL') direction = 'BULLISH';
+          confidence += 12;
+        }
+        
+        if (regulatoryEvents > 3) {
+          factors.push(`${regulatoryEvents} regulatory events in next 6 months`);
+          confidence += 5;
+        }
+      }
+    }
+
+    return {
+      market_direction: direction,
+      confidence: Math.min(confidence, 100),
+      reasoning: `Long-term analysis (1-6 months): ${factors.join(', ')}`,
+      factors_analyzed: factors,
+      time_horizon: '1-6 months',
+      risk_factors: ['Regulatory changes', 'Macroeconomic cycles', 'Adoption slowdown']
+    };
+  }
+
   // Save analysis to database
   async saveAnalysis(analysis) {
     try {
+      // Use the overall direction and confidence
+      const marketDirection = analysis.overall_direction;
+      const confidence = analysis.overall_confidence;
+      const reasoning = analysis.short_term?.reasoning || 'Multi-timeframe analysis';
+      const factorsAnalyzed = analysis.short_term?.factors_analyzed || [];
+      
+      // Store the complete analysis data as JSON (ensure it's not already a string)
+      const analysisData = typeof analysis === 'string' ? analysis : JSON.stringify(analysis);
+
       await insertAIAnalysis(
-        analysis.market_direction,
-        analysis.confidence,
-        analysis.reasoning,
-        analysis.factors_analyzed
+        marketDirection,
+        confidence,
+        reasoning,
+        factorsAnalyzed,
+        analysisData
       );
-      console.log('AI analysis saved to database');
+      console.log('Multi-timeframe AI analysis saved to database');
     } catch (error) {
       console.error('Error saving AI analysis:', error.message);
     }
@@ -272,6 +526,17 @@ class AIAnalyzer {
         return;
       }
 
+      // Parse the analysis data to get overall direction
+      let predictedDirection = latestAnalysis.market_direction;
+      if (latestAnalysis.analysis_data) {
+        try {
+          const analysisData = JSON.parse(latestAnalysis.analysis_data);
+          predictedDirection = analysisData.overall_direction || latestAnalysis.market_direction;
+        } catch (error) {
+          console.log('Could not parse analysis_data, using market_direction');
+        }
+      }
+
       // Get crypto prices from prediction time and current time
       const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
       const backtestResults = [];
@@ -284,7 +549,6 @@ class AIAnalyzer {
           
           // Determine actual direction
           const actualDirection = currentPrice > previousPrice ? 'BULLISH' : 'BEARISH';
-          const predictedDirection = latestAnalysis.market_direction;
           
           // Calculate accuracy
           const accuracy = predictedDirection === actualDirection ? 100 : 0;
@@ -353,14 +617,35 @@ class AIAnalyzer {
         return null;
       }
 
-      return {
-        timestamp: latestAnalysis.timestamp,
-        market_direction: latestAnalysis.market_direction,
-        confidence: latestAnalysis.confidence,
-        reasoning: latestAnalysis.reasoning,
-        factors_analyzed: JSON.parse(latestAnalysis.factors_analyzed || '[]'),
-        time_horizon: 'Short-term (1-7 days)'
-      };
+      // Parse the complete analysis data
+      let analysisData = null;
+      if (latestAnalysis.analysis_data) {
+        try {
+          analysisData = JSON.parse(latestAnalysis.analysis_data);
+          // Handle double encoding - if the result is still a string, parse it again
+          if (typeof analysisData === 'string') {
+            analysisData = JSON.parse(analysisData);
+          }
+        } catch (error) {
+          console.error('Could not parse analysis_data:', error.message);
+          return null;
+        }
+      }
+
+      // Return the multi-timeframe format only
+      if (analysisData && (analysisData.short_term || analysisData.medium_term || analysisData.long_term)) {
+        return {
+          timestamp: latestAnalysis.timestamp,
+          overall_direction: analysisData.overall_direction,
+          overall_confidence: analysisData.overall_confidence,
+          short_term: analysisData.short_term,
+          medium_term: analysisData.medium_term,
+          long_term: analysisData.long_term
+        };
+      }
+
+      // If no valid multi-timeframe data, return null
+      return null;
     } catch (error) {
       console.error('Error getting analysis summary:', error.message);
       return null;

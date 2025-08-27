@@ -1,4 +1,4 @@
-const { insertAlert, getAlerts } = require('../database');
+const { insertAlert, checkAlertExists, getAlerts, cleanupOldAlerts } = require('../database');
 
 class AlertService {
   constructor() {
@@ -22,6 +22,22 @@ class AlertService {
         rapidDecline: -5.0   // 5%+ daily decline
       }
     };
+  }
+
+  // Helper method to check if alert already exists and insert if not
+  async insertAlertIfNotExists(alert, timeWindow = 3600000) { // 1 hour default
+    try {
+      const exists = await checkAlertExists(alert.type, alert.metric, timeWindow);
+      if (!exists) {
+        await insertAlert(alert);
+        return true; // Alert was inserted
+      } else {
+        return false; // Alert already exists
+      }
+    } catch (error) {
+      console.error('Error checking/inserting alert:', error);
+      return false;
+    }
   }
 
   // Check SSR alerts
@@ -192,17 +208,33 @@ class AlertService {
       allAlerts.push(...growthAlerts);
     }
 
-    // Store alerts in database
+    // Store alerts in database (with duplicate checking)
+    const insertedAlerts = [];
     for (const alert of allAlerts) {
-      await insertAlert(alert);
+      const wasInserted = await this.insertAlertIfNotExists(alert);
+      if (wasInserted) {
+        insertedAlerts.push(alert);
+      }
     }
 
-    return allAlerts;
+    return insertedAlerts;
   }
 
   // Get recent alerts
   async getRecentAlerts(limit = 10) {
     return await getAlerts(limit);
+  }
+
+  // Cleanup old alerts
+  async cleanupOldAlerts(daysToKeep = 7) {
+    try {
+      const deletedCount = await cleanupOldAlerts(daysToKeep);
+      console.log(`Cleaned up ${deletedCount} old alerts`);
+      return deletedCount;
+    } catch (error) {
+      console.error('Error cleaning up old alerts:', error);
+      return 0;
+    }
   }
 }
 
