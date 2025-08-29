@@ -8,6 +8,7 @@ const {
   insertUser,
   insertSubscription,
   updateSubscription,
+  updateUser,
   getUserById,
   getUserByEmail,
   getActiveSubscription
@@ -21,6 +22,16 @@ class PaymentService {
     // Remove ETH provider and wallet initialization
     
     this.subscriptionPlans = {
+      free: {
+        id: 'free',
+        name: 'Free',
+        price: 0,
+        priceId: null,
+        cryptoPrice: 0,
+        features: ['basic_dashboard', 'limited_data', 'community_support'],
+        duration: null,
+        isAdmin: false
+      },
       admin: {
         id: 'admin',
         name: 'Admin',
@@ -32,10 +43,10 @@ class PaymentService {
         isAdmin: true
       },
       pro: {
-        id: 'pro_monthly',
+        id: 'pro',
         name: 'Pro Plan',
         price: 29,
-        priceId: 'price_pro_monthly', // Stripe Price ID
+        priceId: null, // Will be created dynamically
         cryptoPrice: 0.001, // ETH
         features: [
           'all_data', 
@@ -55,10 +66,10 @@ class PaymentService {
         duration: 30 // days
       },
       premium: {
-        id: 'premium_monthly',
+        id: 'premium',
         name: 'Premium Plan',
         price: 99,
-        priceId: 'price_premium_monthly',
+        priceId: null, // Will be created dynamically
         cryptoPrice: 0.003, // ETH
         features: [
           'all_pro_features',
@@ -72,22 +83,13 @@ class PaymentService {
           'error_logs'
         ],
         duration: 30 // days
-      },
-      api: {
-        id: 'api_monthly',
-        name: 'API Plan',
-        price: 299,
-        priceId: 'price_api_monthly',
-        cryptoPrice: 0.01, // ETH
-        features: ['all_premium_features', 'high_volume_api', 'webhooks', 'dedicated_support', 'sla'],
-        duration: 30 // days
       }
     };
   }
 
   // ===== STRIPE PAYMENTS =====
 
-  async createStripeSubscription(userId, planId, paymentMethodId) {
+  async createStripeSubscription(userId, planId) {
     try {
       const plan = this.subscriptionPlans[planId];
       if (!plan) {
@@ -107,40 +109,55 @@ class PaymentService {
       } else {
         customer = await this.stripe.customers.create({
           email: user.email,
-          payment_method: paymentMethodId,
-          invoice_settings: {
-            default_payment_method: paymentMethodId,
-          },
         });
         
         // Update user with Stripe customer ID
         await updateUser(userId, { stripe_customer_id: customer.id });
       }
 
-      // Create subscription
-      const subscription = await this.stripe.subscriptions.create({
-        customer: customer.id,
-        items: [{ price: plan.priceId }],
-        payment_behavior: 'default_incomplete',
-        payment_settings: { save_default_payment_method: 'on_subscription' },
-        expand: ['latest_invoice.payment_intent'],
-      });
+      // Create or get price for the plan
+      let price;
+      if (plan.priceId) {
+        // Use existing price ID
+        price = plan.priceId;
+      } else {
+        // Create price dynamically
+        const priceData = await this.stripe.prices.create({
+          unit_amount: plan.price * 100, // Convert to cents
+          currency: 'usd',
+          recurring: {
+            interval: 'month',
+          },
+          product_data: {
+            name: plan.name,
+          },
+        });
+        price = priceData.id;
+      }
 
-      // Save subscription to database
-      await insertSubscription({
-        user_id: userId,
-        plan_type: planId,
-        stripe_customer_id: customer.id,
-        stripe_subscription_id: subscription.id,
-        status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000),
-        current_period_end: new Date(subscription.current_period_end * 1000)
+      // Create Stripe Checkout session
+      const session = await this.stripe.checkout.sessions.create({
+        customer: customer.id,
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: price,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/app/subscription?success=true`,
+        cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/app/subscription?canceled=true`,
+        metadata: {
+          userId: userId.toString(),
+          planId: planId,
+        },
       });
 
       return {
-        subscriptionId: subscription.id,
-        clientSecret: subscription.latest_invoice.payment_intent.client_secret,
-        status: subscription.status
+        success: true,
+        sessionId: session.id,
+        url: session.url,
       };
     } catch (error) {
       console.error('Stripe subscription creation error:', error);
@@ -150,7 +167,12 @@ class PaymentService {
 
   async handleStripeWebhook(event) {
     try {
+      console.log(`Processing Stripe webhook: ${event.type}`);
+      
       switch (event.type) {
+        case 'checkout.session.completed':
+          await this.handleCheckoutSessionCompleted(event.data.object);
+          break;
         case 'invoice.payment_succeeded':
           await this.handlePaymentSucceeded(event.data.object);
           break;
@@ -160,15 +182,123 @@ class PaymentService {
         case 'customer.subscription.deleted':
           await this.handleSubscriptionCancelled(event.data.object);
           break;
+        case 'customer.subscription.updated':
+          await this.handleSubscriptionUpdated(event.data.object);
+          break;
+        case 'customer.subscription.created':
+          await this.handleSubscriptionCreated(event.data.object);
+          break;
+        case 'invoice.payment_action_required':
+          await this.handlePaymentActionRequired(event.data.object);
+          break;
+        default:
+          console.log(`Unhandled webhook event type: ${event.type}`);
       }
     } catch (error) {
       console.error('Stripe webhook error:', error);
-      throw error;
+      // Don't throw the error to prevent 400 responses
+      // Just log it and continue
+    }
+  }
+
+  async handleCheckoutSessionCompleted(session) {
+    console.log(`Checkout session completed: ${session.id}`);
+    console.log(`Session metadata:`, JSON.stringify(session.metadata, null, 2));
+    
+    try {
+      // Check if metadata exists
+      if (!session.metadata || !session.metadata.userId || !session.metadata.planId) {
+        console.log('Session missing required metadata (userId or planId) - this might be a test event');
+        return;
+      }
+      
+      const userId = parseInt(session.metadata.userId);
+      const planId = session.metadata.planId;
+      
+      // Check if session has a subscription
+      if (!session.subscription) {
+        console.log('Session does not have a subscription - this might be a test event');
+        return;
+      }
+      
+      // Get the subscription from the session
+      const subscription = await this.stripe.subscriptions.retrieve(session.subscription);
+      
+      // Save subscription to database
+      await insertSubscription({
+        user_id: userId,
+        plan_type: planId,
+        stripe_customer_id: session.customer,
+        stripe_subscription_id: subscription.id,
+        status: subscription.status,
+        current_period_start: new Date(subscription.current_period_start * 1000),
+        current_period_end: new Date(subscription.current_period_end * 1000)
+      });
+      
+      console.log(`Subscription ${subscription.id} saved to database for user ${userId}`);
+    } catch (error) {
+      console.error('Error handling checkout session completed:', error);
     }
   }
 
   async handlePaymentSucceeded(invoice) {
-    const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
+    console.log(`Payment succeeded for invoice: ${invoice.id}`);
+    console.log(`Invoice object:`, JSON.stringify(invoice, null, 2));
+    
+    // Check if this invoice is associated with a subscription
+    if (!invoice.subscription) {
+      console.log(`Invoice ${invoice.id} is not associated with a subscription - this is normal for one-time payments`);
+      return;
+    }
+
+    console.log(`Invoice subscription ID: ${invoice.subscription}`);
+
+    // Validate subscription ID format
+    if (typeof invoice.subscription !== 'string' || !invoice.subscription.startsWith('sub_')) {
+      console.log(`Invalid subscription ID format: ${invoice.subscription}`);
+      return;
+    }
+
+    try {
+      const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
+      console.log(`Retrieved subscription: ${subscription.id}`);
+      
+      await updateSubscription(subscription.id, {
+        status: subscription.status,
+        current_period_start: new Date(subscription.current_period_start * 1000),
+        current_period_end: new Date(subscription.current_period_end * 1000)
+      });
+      
+      console.log(`Updated subscription ${subscription.id} status to ${subscription.status}`);
+    } catch (error) {
+      console.error(`Error handling payment succeeded for subscription ${invoice.subscription}:`, error);
+      // Don't throw the error, just log it
+    }
+  }
+
+  async handlePaymentFailed(invoice) {
+    console.log(`Payment failed for invoice: ${invoice.id}`);
+    
+    if (!invoice.subscription) {
+      console.log(`Invoice ${invoice.id} is not associated with a subscription`);
+      return;
+    }
+
+    try {
+      await updateSubscription(invoice.subscription, { status: 'past_due' });
+      console.log(`Updated subscription ${invoice.subscription} status to past_due`);
+    } catch (error) {
+      console.error(`Error handling payment failed for subscription ${invoice.subscription}:`, error);
+    }
+  }
+
+  async handleSubscriptionCancelled(subscription) {
+    console.log(`Subscription cancelled: ${subscription.id}`);
+    await updateSubscription(subscription.id, { status: 'cancelled' });
+  }
+
+  async handleSubscriptionUpdated(subscription) {
+    console.log(`Subscription updated: ${subscription.id}`);
     await updateSubscription(subscription.id, {
       status: subscription.status,
       current_period_start: new Date(subscription.current_period_start * 1000),
@@ -176,12 +306,29 @@ class PaymentService {
     });
   }
 
-  async handlePaymentFailed(invoice) {
-    await updateSubscription(invoice.subscription, { status: 'past_due' });
+  async handleSubscriptionCreated(subscription) {
+    console.log(`Subscription created: ${subscription.id}`);
+    await updateSubscription(subscription.id, {
+      status: subscription.status,
+      current_period_start: new Date(subscription.current_period_start * 1000),
+      current_period_end: new Date(subscription.current_period_end * 1000)
+    });
   }
 
-  async handleSubscriptionCancelled(subscription) {
-    await updateSubscription(subscription.id, { status: 'cancelled' });
+  async handlePaymentActionRequired(invoice) {
+    console.log(`Payment action required for invoice: ${invoice.id}`);
+    
+    if (!invoice.subscription) {
+      console.log(`Invoice ${invoice.id} is not associated with a subscription`);
+      return;
+    }
+
+    try {
+      await updateSubscription(invoice.subscription, { status: 'incomplete' });
+      console.log(`Updated subscription ${invoice.subscription} status to incomplete`);
+    } catch (error) {
+      console.error(`Error handling payment action required for subscription ${invoice.subscription}:`, error);
+    }
   }
 
   // ===== NOWPAYMENTS (CRYPTO) =====
@@ -206,7 +353,7 @@ class PaymentService {
         subscription_period: plan.duration, // days
         metadata: {
           user_id: userId,
-          plan_id: planId,
+          plan_type: planId,
           is_subscription: isSubscription
         }
       };
@@ -254,7 +401,7 @@ class PaymentService {
         subscription_period: plan.duration, // days
         metadata: {
           user_id: userId,
-          plan_id: planId,
+          plan_type: planId,
           subscription_type: 'recurring'
         }
       };
@@ -291,7 +438,7 @@ class PaymentService {
         const paymentId = event.payment_id;
         const metadata = event.metadata || {};
         const userId = metadata.user_id;
-        const planId = metadata.plan_id;
+        const planId = metadata.plan_type;
         const isSubscription = metadata.is_subscription || metadata.subscription_type === 'recurring';
 
         if (userId && planId) {
@@ -415,7 +562,13 @@ class PaymentService {
 
       const subscription = await getActiveSubscription(userId);
       if (!subscription) {
-        return { plan: 'free', status: 'inactive' };
+        const freePlan = this.subscriptionPlans.free;
+        return { 
+          plan: 'free', 
+          status: 'inactive',
+          planName: freePlan.name,
+          features: freePlan.features
+        };
       }
 
       const plan = this.subscriptionPlans[subscription.plan_type];

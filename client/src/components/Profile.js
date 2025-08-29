@@ -24,6 +24,7 @@ import {
 import axios from 'axios';
 import { isAuthenticated, isAdmin, hasProAccess, hasPremiumAccess } from '../utils/authUtils';
 import NotificationSettings from './NotificationSettings';
+import ToastNotification from './ToastNotification';
 
 const Profile = ({ onProfileUpdate }) => {
   const navigate = useNavigate();
@@ -38,6 +39,7 @@ const Profile = ({ onProfileUpdate }) => {
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const [newApiKey, setNewApiKey] = useState(null);
   const [showNewKey, setShowNewKey] = useState(false);
+  const [toastAlert, setToastAlert] = useState(null);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -48,6 +50,10 @@ const Profile = ({ onProfileUpdate }) => {
     }
   });
 
+  const showAlert = (message, type = 'info') => {
+    setToastAlert({ message, type });
+  };
+
   useEffect(() => {
     checkAuthAndFetchProfile();
   }, []);
@@ -56,7 +62,7 @@ const Profile = ({ onProfileUpdate }) => {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) {
-        navigate('/auth-required?feature=Profile&type=auth');
+        navigate('/app/auth-required?feature=Profile&type=auth');
         return;
       }
 
@@ -68,7 +74,7 @@ const Profile = ({ onProfileUpdate }) => {
       
       // Check if user is authenticated using centralized method
       if (!isAuthenticated(user)) {
-        navigate('/auth-required?feature=Profile&type=auth');
+        navigate('/app/auth-required?feature=Profile&type=auth');
         return;
       }
 
@@ -91,7 +97,7 @@ const Profile = ({ onProfileUpdate }) => {
       console.error('Error fetching user profile:', error);
       // If there's an auth error, redirect to auth required
       if (error.response?.status === 401) {
-        navigate('/auth-required?feature=Profile&type=auth');
+        navigate('/app/auth-required?feature=Profile&type=auth');
         return;
       }
       setMessage({ type: 'error', text: 'Failed to load profile data' });
@@ -681,7 +687,7 @@ const Profile = ({ onProfileUpdate }) => {
               <span className="text-red-400">Sign Out</span>
             </button>
             <Link
-              to="/contact"
+              to="/app/contact"
               className="flex items-center space-x-3 px-4 py-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
             >
               <Mail className="w-4 h-4 text-slate-300" />
@@ -706,7 +712,7 @@ const Profile = ({ onProfileUpdate }) => {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(newApiKey.api_key);
-                  alert('API key copied to clipboard!');
+                  showAlert('API key copied to clipboard!', 'success');
                 }}
                 className="flex-1 px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
@@ -725,6 +731,9 @@ const Profile = ({ onProfileUpdate }) => {
           </div>
         </div>
       )}
+      
+      {/* Toast Notification */}
+      {toastAlert && <ToastNotification message={toastAlert.message} type={toastAlert.type} onClose={() => setToastAlert(null)} />}
     </div>
   );
 };

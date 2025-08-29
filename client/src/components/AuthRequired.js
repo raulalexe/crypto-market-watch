@@ -7,11 +7,12 @@ const AuthRequired = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
+  const [, setUserData] = useState(null);
   
   const featureName = searchParams.get('feature') || 'this feature';
   const type = searchParams.get('type') || 'auth';
   const isPremium = type === 'premium';
+  const isUpgrade = type === 'upgrade';
 
   useEffect(() => {
     checkAuthStatus();
@@ -39,13 +40,19 @@ const AuthRequired = () => {
         
         // For auth-required features, if user has Pro or higher, redirect to dashboard
         if (type === 'auth' && hasPro) {
-          navigate('/');
+          navigate('/app/');
+          return;
+        }
+        
+        // For upgrade-required features, if user has Pro or higher, redirect to dashboard
+        if (type === 'upgrade' && hasPro) {
+          navigate('/app/');
           return;
         }
         
         // For premium-required features, if user has Premium or is admin, redirect to dashboard
         if (type === 'premium' && hasPremium) {
-          navigate('/');
+          navigate('/app/');
           return;
         }
       }
@@ -68,7 +75,7 @@ const AuthRequired = () => {
       <div className="max-w-md w-full">
         {/* Back button */}
         <Link 
-          to="/"
+          to="/app/"
           className="inline-flex items-center space-x-2 text-slate-400 hover:text-white transition-colors mb-8"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -84,11 +91,13 @@ const AuthRequired = () => {
               <Lock className="w-16 h-16 text-crypto-blue mx-auto mb-4" />
             )}
             <h1 className="text-2xl font-bold text-white mb-2">
-              {isPremium ? 'Premium Feature' : 'Authentication Required'}
+              {isPremium ? 'Premium Feature' : isUpgrade ? 'Upgrade Required' : 'Authentication Required'}
             </h1>
             <p className="text-slate-400">
               {isPremium 
                 ? `To access ${featureName}, you need a Premium+ subscription.`
+                : isUpgrade
+                ? `To access ${featureName}, you need to upgrade to Pro or higher.`
                 : `To access ${featureName}, you must be logged in.`
               }
             </p>
@@ -104,7 +113,19 @@ const AuthRequired = () => {
                   <li>• Custom Alert Thresholds</li>
                   <li>• Priority Notification Delivery</li>
                   <li>• White-label Options</li>
-                  <li>• Dedicated Support</li>
+                  <li>• </li>
+                </ul>
+              </div>
+            ) : isUpgrade ? (
+              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                <h3 className="text-white font-semibold mb-2">Pro Features Include:</h3>
+                <ul className="text-sm text-slate-300 space-y-1 text-left">
+                  <li>• Real-time Market Alerts</li>
+                  <li>• Email & Push Notifications</li>
+                  <li>• Telegram Bot Integration</li>
+                  <li>• Advanced Market Data</li>
+                  <li>• Historical Data Access</li>
+                  <li>• Data Export (CSV, JSON, Excel)</li>
                 </ul>
               </div>
             ) : (
@@ -123,10 +144,17 @@ const AuthRequired = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               {isPremium ? (
                 <Link
-                  to="/subscription"
+                  to="/app/subscription"
                   className="flex-1 bg-crypto-blue text-white py-3 px-6 rounded-lg hover:bg-blue-600 transition-colors font-medium"
                 >
                   View Premium+ Plans
+                </Link>
+              ) : isUpgrade ? (
+                <Link
+                  to="/app/subscription"
+                  className="flex-1 bg-crypto-blue text-white py-3 px-6 rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                >
+                  Upgrade to Pro
                 </Link>
               ) : (
                 <>
@@ -146,7 +174,7 @@ const AuthRequired = () => {
               )}
             </div>
 
-            {!isPremium && (
+            {!isPremium && !isUpgrade && (
               <p className="text-xs text-slate-500 mt-4">
                 Already have an account?{' '}
                 <Link
@@ -162,13 +190,13 @@ const AuthRequired = () => {
             <div className="mt-8 pt-4 border-t border-slate-700">
               <div className="flex justify-center space-x-4 text-xs text-slate-500">
                 <Link 
-                  to="/privacy" 
+                  to="/app/privacy" 
                   className="hover:text-slate-300 transition-colors"
                 >
                   Privacy Policy
                 </Link>
                 <Link 
-                  to="/terms" 
+                  to="/app/terms" 
                   className="hover:text-slate-300 transition-colors"
                 >
                   Terms & Conditions

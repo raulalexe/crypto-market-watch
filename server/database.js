@@ -107,7 +107,8 @@ const initDatabase = () => {
               category VARCHAR(50),
               impact VARCHAR(20),
               date TIMESTAMP NOT NULL,
-              source VARCHAR(100)
+              source VARCHAR(100),
+              ignored BOOLEAN DEFAULT FALSE
             )
           `);
           
@@ -171,6 +172,7 @@ const initDatabase = () => {
               is_admin BOOLEAN DEFAULT FALSE,
               email_verified BOOLEAN DEFAULT FALSE,
               confirmation_token VARCHAR(500),
+              stripe_customer_id VARCHAR(255),
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -180,7 +182,7 @@ const initDatabase = () => {
             CREATE TABLE IF NOT EXISTS subscriptions (
               id SERIAL PRIMARY KEY,
               user_id INTEGER REFERENCES users(id),
-              plan_id VARCHAR(50),
+              plan_type VARCHAR(50),
               status VARCHAR(20),
               stripe_subscription_id VARCHAR(100),
               current_period_start TIMESTAMP,
@@ -259,6 +261,17 @@ const initDatabase = () => {
               usage_count INTEGER DEFAULT 0
             )
           `);
+          
+          // Add stripe_customer_id column if it doesn't exist (migration)
+          try {
+            await client.query(`
+              ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(255)
+            `);
+          } catch (error) {
+            if (!error.message.includes('already exists')) {
+              console.log('⚠️ Migration note: stripe_customer_id column already exists');
+            }
+          }
           
           client.release();
           console.log('✅ PostgreSQL database initialized successfully');
@@ -344,7 +357,8 @@ const initDatabase = () => {
             category TEXT,
             impact TEXT,
             date DATETIME NOT NULL,
-            source TEXT
+            source TEXT,
+            ignored INTEGER DEFAULT 0
           )
         `);
 
@@ -413,6 +427,7 @@ const initDatabase = () => {
             is_admin INTEGER DEFAULT 0,
             email_verified INTEGER DEFAULT 0,
             confirmation_token TEXT,
+            stripe_customer_id TEXT,
             email_notifications INTEGER DEFAULT 0,
             push_notifications INTEGER DEFAULT 0,
             telegram_notifications INTEGER DEFAULT 0,
@@ -427,7 +442,7 @@ const initDatabase = () => {
           CREATE TABLE IF NOT EXISTS subscriptions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
-            plan_id TEXT,
+            plan_type TEXT,
             status TEXT,
             stripe_subscription_id TEXT,
             current_period_start DATETIME,
@@ -452,12 +467,16 @@ const initDatabase = () => {
         db.run(`
           CREATE TABLE IF NOT EXISTS alerts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            alert_type TEXT,
+            type TEXT,
             message TEXT,
-            is_acknowledged INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            severity TEXT,
+            metric TEXT,
+            value TEXT,
+            eventId INTEGER,
+            eventDate TEXT,
+            eventTitle TEXT,
+            eventCategory TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
           )
         `);
 
@@ -549,6 +568,16 @@ const initDatabase = () => {
         `);
 
         console.log('✅ SQLite database initialized successfully');
+        
+        // Add stripe_customer_id column if it doesn't exist (migration)
+        db.run(`
+          ALTER TABLE users ADD COLUMN stripe_customer_id TEXT
+        `, [], (err) => {
+          if (err && !err.message.includes('duplicate column name')) {
+            console.log('⚠️ Migration note: stripe_customer_id column already exists');
+          }
+        });
+        
         resolve();
       });
     }
@@ -1145,8 +1174,8 @@ const getLatestExchangeFlows = (asset = null) => {
 const insertAlert = (alert) => {
   return new Promise((resolve, reject) => {
     db.run(
-      'INSERT INTO alerts (type, message, severity, metric, value) VALUES (?, ?, ?, ?, ?)',
-      [alert.type, alert.message, alert.severity, alert.metric, alert.value],
+      'INSERT INTO alerts (type, message, severity, metric, value, eventId, eventDate, eventTitle, eventCategory) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [alert.type, alert.message, alert.severity, alert.metric, alert.value, alert.eventId || null, alert.eventDate || null, alert.eventTitle || null, alert.eventCategory || null],
       function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
@@ -1160,20 +1189,37 @@ const checkAlertExists = (alert, timeWindow = 3600000) => { // 1 hour default
     const cutoffTime = new Date(Date.now() - timeWindow);
     const cutoffTimeStr = cutoffTime.toISOString().slice(0, 19).replace('T', ' '); // Format as SQLite datetime
     
-    // Check for exact duplicates (same type, metric, and value) within time window
-    db.get(
-      'SELECT id FROM alerts WHERE type = ? AND metric = ? AND value = ? AND timestamp > ?',
-      [alert.type, alert.metric, alert.value, cutoffTimeStr],
-      (err, row) => {
-        if (err) {
-          console.error('Error checking alert existence:', err);
-          reject(err);
-        } else {
-          const exists = row !== undefined;
-          resolve(exists);
+    // For event notifications, check by eventId and type
+    if (alert.type === 'UPCOMING_EVENT' && alert.eventId) {
+      db.get(
+        'SELECT id FROM alerts WHERE type = ? AND eventId = ? AND timestamp > ?',
+        [alert.type, alert.eventId, cutoffTimeStr],
+        (err, row) => {
+          if (err) {
+            console.error('Error checking alert existence:', err);
+            reject(err);
+          } else {
+            const exists = row !== undefined;
+            resolve(exists);
+          }
         }
-      }
-    );
+      );
+    } else {
+      // Check for exact duplicates (same type, metric, and value) within time window
+      db.get(
+        'SELECT id FROM alerts WHERE type = ? AND metric = ? AND value = ? AND timestamp > ?',
+        [alert.type, alert.metric, alert.value, cutoffTimeStr],
+        (err, row) => {
+          if (err) {
+            console.error('Error checking alert existence:', err);
+            reject(err);
+          } else {
+            const exists = row !== undefined;
+            resolve(exists);
+          }
+        }
+      );
+    }
   });
 };
 
@@ -1490,11 +1536,63 @@ const insertUpcomingEvent = (title, description, category, impact, date, source)
 const getUpcomingEvents = (limit = 20) => {
   return new Promise((resolve, reject) => {
     db.all(
+      'SELECT * FROM upcoming_events WHERE date > datetime("now") AND ignored = 0 ORDER BY date ASC LIMIT ?',
+      [limit],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+};
+
+const getAllUpcomingEvents = (limit = 20) => {
+  return new Promise((resolve, reject) => {
+    db.all(
       'SELECT * FROM upcoming_events WHERE date > datetime("now") ORDER BY date ASC LIMIT ?',
       [limit],
       (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
+      }
+    );
+  });
+};
+
+const ignoreUpcomingEvent = (eventId) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE upcoming_events SET ignored = 1 WHERE id = ?',
+      [eventId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
+const unignoreUpcomingEvent = (eventId) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE upcoming_events SET ignored = 0 WHERE id = ?',
+      [eventId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
+const deleteUpcomingEvent = (eventId) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'DELETE FROM upcoming_events WHERE id = ?',
+      [eventId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
       }
     );
   });
@@ -1693,6 +1791,10 @@ module.exports = {
   // Upcoming Events
   insertUpcomingEvent,
   getUpcomingEvents,
+  getAllUpcomingEvents,
+  ignoreUpcomingEvent,
+  unignoreUpcomingEvent,
+  deleteUpcomingEvent,
   // API Key management
   createApiKey,
   getUserApiKeys,

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Calendar, TrendingUp, TrendingDown, Minus, Download, ChevronUp, ChevronDown } from 'lucide-react';
+import { BarChart3, Calendar, TrendingUp, TrendingDown, Minus, Download, ChevronUp, ChevronDown, Lock } from 'lucide-react';
 import axios from 'axios';
+import { hasProAccess } from '../utils/authUtils';
 
 // Create axios instance without default headers for public endpoints
 const publicAxios = axios.create();
 
-const HistoricalData = () => {
+const HistoricalData = ({ userData }) => {
   const [selectedDataType, setSelectedDataType] = useState('EQUITY_INDEX');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -468,54 +469,88 @@ const HistoricalData = () => {
         </div>
         {data.length > 0 && (
           <div className="relative group">
-                  <button className="flex items-center space-x-2 px-3 py-1.5 bg-crypto-blue text-white text-sm rounded hover:bg-blue-600 transition-colors">
-                    <Download className="w-4 h-4" />
-                    <span>Export</span>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-slate-700 border border-slate-600 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                    <div className="py-1">
-                      <button
-                        onClick={exportToCSV}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 transition-colors flex items-center space-x-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span>CSV File</span>
-                      </button>
-                      <button
-                        onClick={exportToJSON}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 transition-colors flex items-center space-x-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                        </svg>
-                        <span>JSON Data</span>
-                      </button>
-                      <button
-                        onClick={exportToExcel}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 transition-colors flex items-center space-x-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span>Excel File</span>
-                      </button>
-                      <button
-                        onClick={exportToPDF}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 transition-colors flex items-center space-x-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span>PDF Report</span>
-                      </button>
-                    </div>
+            {hasProAccess(userData) ? (
+              <>
+                <button className="flex items-center space-x-2 px-3 py-1.5 bg-crypto-blue text-white text-sm rounded hover:bg-blue-600 transition-colors">
+                  <Download className="w-4 h-4" />
+                  <span>Export</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-slate-700 border border-slate-600 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                  <div className="py-1">
+                    <button
+                      onClick={exportToCSV}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>CSV File</span>
+                    </button>
+                    <button
+                      onClick={exportToJSON}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                      <span>JSON Data</span>
+                    </button>
+                    <button
+                      onClick={exportToExcel}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Excel File</span>
+                    </button>
+                    <button
+                      onClick={exportToPDF}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>PDF Report</span>
+                    </button>
                   </div>
                 </div>
+              </>
+            ) : (
+              <div className="relative group">
+                <button 
+                  className="flex items-center space-x-2 px-3 py-1.5 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
+                  title="Export requires Pro+ subscription"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>Export</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute right-0 mt-2 w-64 bg-slate-700 border border-slate-600 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                  <div className="p-3">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Lock className="w-4 h-4 text-crypto-blue" />
+                      <span className="text-sm font-medium text-white">Pro+ Required</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-3">
+                      Export functionality is available for Pro+ subscribers only.
+                    </p>
+                    <a
+                      href="/app/subscription"
+                      className="inline-block w-full text-center px-3 py-1.5 bg-crypto-blue text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                    >
+                      Upgrade to Pro
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

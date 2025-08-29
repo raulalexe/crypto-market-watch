@@ -1,5 +1,6 @@
 const DataCollector = require('../server/services/dataCollector');
 const AIAnalyzer = require('../server/services/aiAnalyzer');
+const EventNotificationService = require('../server/services/eventNotificationService');
 const { initDatabase } = require('../server/database');
 require('dotenv').config();
 
@@ -15,6 +16,7 @@ async function runDataCollection() {
     // Initialize services
     const dataCollector = new DataCollector();
     const aiAnalyzer = new AIAnalyzer();
+    const eventNotificationService = new EventNotificationService();
     
     // Collect all market data
     console.log('Collecting market data...');
@@ -43,6 +45,13 @@ async function runDataCollection() {
             console.log(`Backtest completed for ${backtestResults.length} assets`);
           }
         }
+      }
+      
+      // Check for upcoming event notifications
+      console.log('Checking for upcoming event notifications...');
+      const eventNotifications = await eventNotificationService.checkUpcomingEventNotifications();
+      if (eventNotifications.length > 0) {
+        console.log(`Created ${eventNotifications.length} event notifications`);
       }
       
       console.log(`Data collection and analysis completed at ${timestamp}`);

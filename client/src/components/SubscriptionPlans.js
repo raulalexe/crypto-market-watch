@@ -7,13 +7,18 @@ import {
   Star,
   Check,
   X,
-  Clock
+  Clock,
+  Bitcoin
 } from 'lucide-react';
+import ToastNotification from './ToastNotification';
 
-const SubscriptionPlans = () => {
+const SubscriptionPlans = ({ setAuthModalOpen }) => {
   const [loading, setLoading] = useState(true);
   const [isLaunchPhase, setIsLaunchPhase] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [alert, setAlert] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
 
   useEffect(() => {
     fetchPlans();
@@ -37,9 +42,15 @@ const SubscriptionPlans = () => {
 
   const fetchSubscriptionStatus = async () => {
     try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.log('No auth token found, skipping subscription status fetch');
+        return;
+      }
+      
       const response = await fetch('/api/subscription', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       if (response.ok) {
@@ -51,13 +62,106 @@ const SubscriptionPlans = () => {
     }
   };
 
+  const showAlert = (message, type = 'info') => {
+    setAlert({ message, type });
+  };
+
   const handleSubscribe = async (planId) => {
     if (isLaunchPhase && (planId === 'pro' || planId === 'premium')) {
-      alert('Pro and Premium plans are coming soon! Stay tuned for updates.');
+      showAlert('Pro and Premium plans are coming soon! Stay tuned for updates.', 'info');
       return;
     }
-    // Implementation for subscription logic
-    console.log('Subscribing to plan:', planId);
+    
+    // Check if user is authenticated
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      if (setAuthModalOpen) {
+        setAuthModalOpen(true);
+      } else {
+        showAlert('Please sign in to subscribe to a plan.', 'warning');
+      }
+      return;
+    }
+    
+    // For now, redirect to a subscription page or show payment options
+    if (planId === 'free') {
+      showAlert('You are already on the free plan!', 'info');
+      return;
+    }
+    
+    // For Pro and Premium plans, show payment modal
+    const plan = plansData.find(p => p.id === planId);
+    setSelectedPlan(plan);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentMethod = async (method) => {
+    if (!selectedPlan) return;
+    
+    // Check if user is authenticated
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      if (setAuthModalOpen) {
+        setAuthModalOpen(true);
+      } else {
+        showAlert('Please sign in to subscribe to a plan.', 'warning');
+      }
+      setShowPaymentModal(false);
+      return;
+    }
+    
+    setShowPaymentModal(false);
+    
+    try {
+      if (method === 'stripe') {
+        // Stripe payment
+        const response = await fetch('/api/subscribe/stripe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ planId: selectedPlan.id })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.url) {
+            // Redirect to Stripe Checkout
+            window.location.href = result.url;
+          } else {
+            showAlert('Subscription failed: ' + (result.error || 'Unknown error'), 'error');
+          }
+        } else {
+          const errorData = await response.json();
+          showAlert('Subscription failed: ' + (errorData.error || 'Please try again.'), 'error');
+        }
+      } else {
+        // Crypto payment
+        const response = await fetch('/api/subscribe/crypto-subscription', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ planId: selectedPlan.id })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.hostedUrl) {
+            window.open(result.hostedUrl, '_blank');
+          } else {
+            showAlert('Crypto payment setup failed. Please try again.', 'error');
+          }
+        } else {
+          showAlert('Crypto payment setup failed. Please try again.', 'error');
+        }
+      }
+    } catch (error) {
+      console.error('Subscription error:', error);
+      showAlert('Subscription failed. Please try again.', 'error');
+    }
   };
 
   const plansData = [
@@ -383,6 +487,52 @@ const SubscriptionPlans = () => {
           </div>
         </div>
       </div>
+      
+      {/* Payment Method Selection Modal */}
+      {showPaymentModal && selectedPlan && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full border border-gray-700">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-white mb-2">
+                Choose Payment Method
+              </h3>
+              <p className="text-gray-400">
+                Subscribe to {selectedPlan.name} plan for ${selectedPlan.price}/{selectedPlan.period}
+              </p>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <button
+                onClick={() => handlePaymentMethod('stripe')}
+                className="w-full flex items-center justify-center space-x-3 bg-crypto-blue hover:bg-blue-600 text-white py-4 px-6 rounded-lg transition-colors duration-200"
+              >
+                <CreditCard className="w-6 h-6" />
+                <span className="font-semibold">Pay with Credit Card</span>
+              </button>
+              
+              <button
+                onClick={() => handlePaymentMethod('crypto')}
+                className="w-full flex items-center justify-center space-x-3 bg-gray-700 hover:bg-gray-600 text-white py-4 px-6 rounded-lg transition-colors duration-200"
+              >
+                <Bitcoin className="w-6 h-6" />
+                <span className="font-semibold">Pay with Cryptocurrency</span>
+              </button>
+            </div>
+
+            <div className="text-center">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Toast Notification */}
+      {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
     </div>
   );
 };

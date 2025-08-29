@@ -8,17 +8,26 @@ import {
   TrendingDown,
   Activity,
   DollarSign,
-  Target
+  Target,
+  BarChart3,
+  Settings,
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 import axios from 'axios';
-import { shouldShowPremiumUpgradePrompt } from '../utils/authUtils';
+import { shouldShowPremiumUpgradePrompt, isAuthenticated, hasProAccess } from '../utils/authUtils';
+import ToastNotification from './ToastNotification';
 
 const CustomAlertThresholds = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [thresholds, setThresholds] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [alert, setAlert] = useState(null);
 
+  const showAlert = (message, type = 'info') => {
+    setAlert({ message, type });
+  };
 
 
   useEffect(() => {
@@ -72,10 +81,10 @@ const CustomAlertThresholds = () => {
       }, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}` }
       });
-      alert('Custom alert thresholds saved successfully!');
+      showAlert('Custom alert thresholds saved successfully!', 'success');
     } catch (error) {
       console.error('Error saving thresholds:', error);
-      alert('Failed to save thresholds. Please try again.');
+      showAlert('Failed to save thresholds. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -388,6 +397,9 @@ const CustomAlertThresholds = () => {
           })}
         </div>
       </div>
+      
+      {/* Toast Notification */}
+      {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
     </div>
   );
 };

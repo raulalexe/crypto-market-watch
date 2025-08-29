@@ -4,7 +4,8 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cron = require('node-cron');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+require('dotenv').config({ path: path.join(__dirname, '../.env.local') });
 
 const { 
   db,
@@ -33,6 +34,7 @@ const DataCollector = require('./services/dataCollector');
 const AIAnalyzer = require('./services/aiAnalyzer');
 const PaymentService = require('./services/paymentService');
 const EventCollector = require('./services/eventCollector');
+const EventNotificationService = require('./services/eventNotificationService');
 const EmailService = require('./services/emailService');
 const PushService = require('./services/pushService');
 const TelegramService = require('./services/telegramService');
@@ -43,8 +45,16 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client/build')));
+
+// Parse JSON for all routes except webhooks
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/webhooks/')) {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 
 // Initialize database
 initDatabase().then(() => {
@@ -58,6 +68,7 @@ const dataCollector = new DataCollector();
 const aiAnalyzer = new AIAnalyzer();
 const paymentService = new PaymentService();
 const eventCollector = new EventCollector();
+const eventNotificationService = new EventNotificationService();
 const emailService = new EmailService();
 const pushService = new PushService();
 const telegramService = new TelegramService();
@@ -459,6 +470,83 @@ app.get('/api/events', async (req, res) => {
   } catch (error) {
     console.error('Error fetching events:', error);
     res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+// Get approaching events (within 7 days) with time remaining
+app.get('/api/approaching-events', async (req, res) => {
+  try {
+    const approachingEvents = await eventNotificationService.getApproachingEvents();
+    res.json(approachingEvents);
+  } catch (error) {
+    console.error('Error fetching approaching events:', error);
+    res.status(500).json({ error: 'Failed to fetch approaching events' });
+  }
+});
+
+// Admin: Get all upcoming events (including ignored ones)
+app.get('/api/admin/events', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { getAllUpcomingEvents } = require('./database');
+    const events = await getAllUpcomingEvents(100);
+    res.json(events);
+  } catch (error) {
+    console.error('Error fetching all events:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+// Admin: Ignore an upcoming event
+app.post('/api/admin/events/:id/ignore', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { ignoreUpcomingEvent } = require('./database');
+    const eventId = parseInt(req.params.id);
+    const result = await ignoreUpcomingEvent(eventId);
+    
+    if (result > 0) {
+      res.json({ success: true, message: 'Event ignored successfully' });
+    } else {
+      res.status(404).json({ error: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error ignoring event:', error);
+    res.status(500).json({ error: 'Failed to ignore event' });
+  }
+});
+
+// Admin: Unignore an upcoming event
+app.post('/api/admin/events/:id/unignore', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { unignoreUpcomingEvent } = require('./database');
+    const eventId = parseInt(req.params.id);
+    const result = await unignoreUpcomingEvent(eventId);
+    
+    if (result > 0) {
+      res.json({ success: true, message: 'Event unignored successfully' });
+    } else {
+      res.status(404).json({ error: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error unignoring event:', error);
+    res.status(500).json({ error: 'Failed to unignore event' });
+  }
+});
+
+// Admin: Delete an upcoming event
+app.delete('/api/admin/events/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { deleteUpcomingEvent } = require('./database');
+    const eventId = parseInt(req.params.id);
+    const result = await deleteUpcomingEvent(eventId);
+    
+    if (result > 0) {
+      res.json({ success: true, message: 'Event deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'Event not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ error: 'Failed to delete event' });
   }
 });
 
@@ -1032,6 +1120,80 @@ app.get('/api/errors', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// Helper function to get data for different types
+const getDataForType = async (type, limit) => {
+  const { getMarketData, getCryptoPrices, getLatestFearGreedIndex, getTrendingNarratives, getLatestAIAnalysis } = require('./database');
+  
+  switch (type) {
+    case 'crypto_prices':
+      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
+      const cryptoData = [];
+      for (const symbol of cryptoSymbols) {
+        const prices = await getCryptoPrices(symbol, Math.ceil(limit / cryptoSymbols.length));
+        if (prices && prices.length > 0) {
+          cryptoData.push(...prices.map(price => ({
+            timestamp: price.timestamp,
+            symbol: price.symbol,
+            price: price.price,
+            volume_24h: price.volume_24h,
+            market_cap: price.market_cap,
+            change_24h: price.change_24h
+          })));
+        }
+      }
+      return cryptoData;
+      
+    case 'market_data':
+      const marketTypes = ['EQUITY_INDEX', 'DXY', 'TREASURY_YIELD', 'VOLATILITY_INDEX', 'ENERGY_PRICE'];
+      const marketData = [];
+      for (const marketType of marketTypes) {
+        const marketDataItems = await getMarketData(marketType, Math.ceil(limit / marketTypes.length));
+        if (marketDataItems && marketDataItems.length > 0) {
+          marketData.push(...marketDataItems.map(item => ({
+            timestamp: item.timestamp,
+            data_type: item.data_type,
+            symbol: item.symbol,
+            value: item.value,
+            source: item.source
+          })));
+        }
+      }
+      return marketData;
+      
+    case 'fear_greed':
+      const fearGreed = await getLatestFearGreedIndex();
+      return fearGreed ? [{
+        timestamp: fearGreed.timestamp,
+        value: fearGreed.value,
+        classification: fearGreed.classification,
+        source: fearGreed.source
+      }] : [];
+      
+    case 'narratives':
+      const narratives = await getTrendingNarratives(limit);
+      return narratives.map(narrative => ({
+        timestamp: narrative.timestamp,
+        narrative: narrative.narrative,
+        sentiment: narrative.sentiment,
+        relevance_score: narrative.relevance_score,
+        source: narrative.source
+      }));
+      
+    case 'ai_analysis':
+      const analysis = await getLatestAIAnalysis();
+      return analysis ? [{
+        timestamp: analysis.timestamp,
+        market_direction: analysis.market_direction,
+        confidence: analysis.confidence,
+        reasoning: analysis.reasoning,
+        factors_analyzed: analysis.factors_analyzed
+      }] : [];
+      
+    default:
+      return [];
+  }
+};
+
 // Data export endpoints (premium+ only)
 app.get('/api/exports/history', authenticateToken, requireSubscription('premium'), async (req, res) => {
   try {
@@ -1045,7 +1207,7 @@ app.get('/api/exports/history', authenticateToken, requireSubscription('premium'
 
 app.post('/api/exports/create', authenticateToken, requireSubscription('premium'), async (req, res) => {
   try {
-    const { type, dateRange, format } = req.body;
+    const { dataType: type, dateRange, format } = req.body;
     
     // Get actual data based on type and date range
     const { getMarketData, getCryptoPrices, getLatestFearGreedIndex, getTrendingNarratives, getLatestAIAnalysis } = require('./database');
@@ -1632,72 +1794,6 @@ const convertToExcel = (data) => {
 };
 
 // Helper function to get data for different types
-const getDataForType = async (type, limit) => {
-  const { getMarketData, getCryptoPrices, getLatestFearGreedIndex, getTrendingNarratives, getLatestAIAnalysis } = require('./database');
-  
-  switch (type) {
-    case 'crypto_prices':
-      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-      const cryptoData = [];
-      for (const symbol of cryptoSymbols) {
-        const prices = await getCryptoPrices(symbol, Math.ceil(limit / cryptoSymbols.length));
-        if (prices && prices.length > 0) {
-          cryptoData.push(...prices.map(price => ({
-            timestamp: price.timestamp,
-            symbol: price.symbol,
-            price: price.price,
-            volume_24h: price.volume_24h,
-            market_cap: price.market_cap,
-            change_24h: price.change_24h
-          })));
-        }
-      }
-      return cryptoData;
-      
-    case 'market_data':
-      const marketTypes = ['EQUITY_INDEX', 'DXY', 'TREASURY_YIELD', 'VOLATILITY_INDEX', 'ENERGY_PRICE'];
-      const marketData = [];
-      for (const marketType of marketTypes) {
-        const marketDataItems = await getMarketData(marketType, Math.ceil(limit / marketTypes.length));
-        if (marketDataItems && marketDataItems.length > 0) {
-          marketData.push(...marketDataItems.map(item => ({
-            timestamp: item.timestamp,
-            data_type: item.data_type,
-            symbol: item.symbol,
-            value: item.value,
-            source: item.source
-          })));
-        }
-      }
-      return marketData;
-      
-    case 'fear_greed':
-      const fearGreed = await getLatestFearGreedIndex();
-      return fearGreed ? [{
-        timestamp: fearGreed.timestamp,
-        value: fearGreed.value,
-        classification: fearGreed.classification,
-        source: fearGreed.source
-      }] : [];
-      
-    case 'narratives':
-      const narratives = await getTrendingNarratives(limit);
-      return narratives.map(narrative => ({
-        timestamp: narrative.timestamp,
-        narrative: narrative.narrative,
-        sentiment: narrative.sentiment,
-        relevance_score: narrative.relevance_score,
-        source: narrative.source
-      }));
-      
-    case 'ai_analysis':
-      const analysis = await aiAnalyzer.getAnalysisSummary();
-      return analysis ? [analysis] : [];
-      
-    default:
-      return [];
-  }
-};
 
 // Get backtest results
 app.get('/api/backtest', async (req, res) => {
@@ -2074,13 +2170,33 @@ app.get('/api/subscription', authenticateToken, async (req, res) => {
 
 // Stripe webhook
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  
+  if (!sig) {
+    console.error('Stripe webhook: Missing signature');
+    return res.status(400).json({ error: 'Missing stripe-signature header' });
+  }
+
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('Stripe webhook: Missing STRIPE_WEBHOOK_SECRET environment variable');
+    return res.status(500).json({ error: 'Webhook secret not configured' });
+  }
+
   try {
-    const sig = req.headers['stripe-signature'];
     const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    console.log(`Received Stripe webhook: ${event.type} (ID: ${event.id})`);
+    
     await paymentService.handleStripeWebhook(event);
+    
+    console.log(`Successfully processed Stripe webhook: ${event.type}`);
     res.json({ received: true });
   } catch (error) {
     console.error('Stripe webhook error:', error);
+    
+    if (error.type === 'StripeSignatureVerificationError') {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+    
     res.status(400).json({ error: error.message });
   }
 });

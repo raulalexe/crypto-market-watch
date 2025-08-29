@@ -7,6 +7,7 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
   const [paymentMethods, setPaymentMethods] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     fetchPlans();
@@ -64,10 +65,7 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
   };
 
   const handleCancelSubscription = async () => {
-    if (!window.confirm('Are you sure you want to cancel your subscription?')) {
-      return;
-    }
-
+    setShowCancelModal(false);
     setLoading(true);
     try {
       await axios.post('/api/subscribe/cancel');
@@ -84,7 +82,7 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
   const getPlanFeatures = (planId) => {
     const features = {
       admin: [
-        'All Premium features',
+        'All Premium+ features',
         'Admin access and controls',
         'Error logs access',
         'Unlimited API calls',
@@ -93,33 +91,38 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
         'System management tools'
       ],
       free: [
-        'Basic market data (limited)',
-        '24-hour data history',
-        'Basic AI analysis',
-        '1 manual data collection per day'
+        'Basic dashboard access',
+        'Real-time crypto prices',
+        'Basic market metrics',
+        'Fear & Greed Index',
+        'Community support'
       ],
       pro: [
-        'All crypto assets (BTC, ETH, SOL, SUI, XRP)',
-        '30-day historical data',
-        'Advanced AI analysis with confidence scores',
-        'Unlimited data collection',
-        'Email alerts for extreme market conditions',
+        'All Free features',
+        'AI market analysis (short, medium, long-term)',
+        'Real-time market alerts',
+        'Email notifications',
+        'Push notifications',
+        'Telegram bot alerts',
+        'Advanced metrics (VIX, DXY, Treasury yields)',
+        'Exchange flow data',
+        'Stablecoin metrics (SSR)',
+        'Data exports (CSV, JSON)',
         'API access (1,000 calls/day)',
-        'Data export (CSV/JSON)'
+        'Upcoming market events tracking'
       ],
       premium: [
         'All Pro features',
-        '1-year historical data',
-        'Custom AI model training',
-        'Priority support',
+        'Unlimited API calls',
         'White-label options',
-        'API access (10,000 calls/day)',
-        'Advanced data export',
-        'Custom integrations',
-        'Error logs access'
+        'Advanced analytics',
+        'Priority notification delivery',
+        'Custom alert thresholds',
+        'Advanced data exports',
+        'Webhook integrations'
       ],
       api: [
-        'All Premium features',
+        'All Premium+ features',
         '100,000 API calls per day',
         'Real-time data streaming',
         'Webhook support',
@@ -174,7 +177,7 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
             </div>
             {subscriptionStatus.plan !== 'free' && subscriptionStatus.plan !== 'admin' && (
               <button
-                onClick={handleCancelSubscription}
+                onClick={() => setShowCancelModal(true)}
                 disabled={loading}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex-shrink-0"
               >
@@ -309,6 +312,38 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
             Your plan includes API access with rate limiting. 
             Check your usage at <code className="bg-slate-600 px-1 rounded">/api/usage</code>
           </p>
+        </div>
+      )}
+
+      {/* Cancel Subscription Confirmation Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-lg p-8 max-w-md w-full border border-slate-700">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-white mb-2">
+                Cancel Subscription
+              </h3>
+              <p className="text-gray-400">
+                Are you sure you want to cancel your subscription? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+              >
+                Keep Subscription
+              </button>
+              <button
+                onClick={handleCancelSubscription}
+                disabled={loading}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {loading ? <Loader className="w-4 h-4 animate-spin mx-auto" /> : 'Cancel Subscription'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

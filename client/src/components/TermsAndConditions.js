@@ -261,8 +261,7 @@ const TermsAndConditions = () => {
           <h2 className="text-xl font-semibold mb-4">Governing Law and Disputes</h2>
           <div className="space-y-4">
             <p className="text-gray-300">
-              These terms are governed by the laws of [Jurisdiction]. Any disputes will be resolved through 
-              binding arbitration in accordance with the rules of [Arbitration Organization].
+              These terms are governed by the laws of the State of Wyoming.
             </p>
             <p className="text-gray-300">
               You agree to resolve disputes individually and waive any right to participate in class action lawsuits.

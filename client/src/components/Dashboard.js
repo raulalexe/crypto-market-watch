@@ -11,7 +11,7 @@ import BacktestCard from './BacktestCard';
 import UpcomingEventsCard from './UpcomingEventsCard';
 import AlertCard from './AlertCard';
 
-const Dashboard = ({ isAuthenticated }) => {
+const Dashboard = ({ isAuthenticated, userData }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -208,7 +208,7 @@ const Dashboard = ({ isAuthenticated }) => {
         <AlertCard 
           alerts={alerts} 
           onAcknowledge={handleAcknowledgeAlert} 
-          userData={dashboardData?.subscriptionStatus}
+          userData={userData}
         />
         
         {/* Other Cards */}

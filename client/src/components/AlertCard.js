@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Bell, CheckCircle, X, TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
 import { shouldShowUpgradePrompt } from '../utils/authUtils';
 
 const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
   const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
+
+  const handleUpgradeClick = () => {
+    navigate('/app/subscription');
+  };
   const [acknowledgedAlerts, setAcknowledgedAlerts] = useState(new Set());
 
   const getSeverityColor = (severity) => {
@@ -109,7 +115,10 @@ const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
               <span>Stablecoin market cap changes</span>
             </div>
           </div>
-          <button className="mt-4 px-6 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors">
+          <button 
+            onClick={handleUpgradeClick}
+            className="mt-4 px-6 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
             Upgrade to Pro
           </button>
         </div>
@@ -182,9 +191,12 @@ const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
             </div>
           ))}
           {unacknowledgedAlerts.length > 2 && (
-            <div className="text-center text-slate-400 text-sm">
+            <button
+              onClick={() => setExpanded(true)}
+              className="text-center text-slate-400 text-sm hover:text-crypto-blue transition-colors cursor-pointer w-full py-2"
+            >
               +{unacknowledgedAlerts.length - 2} more alerts
-            </div>
+            </button>
           )}
         </div>
       )}

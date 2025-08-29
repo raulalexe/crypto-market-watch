@@ -180,7 +180,6 @@ const DataExport = () => {
                   <li>• All Pro features</li>
                   <li>• Unlimited exports</li>
                   <li>• Custom date ranges</li>
-                  <li>• Priority support</li>
                 </ul>
               </div>
             </div>

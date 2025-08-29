@@ -25,6 +25,7 @@ import TermsAndConditions from './components/TermsAndConditions';
 import Profile from './components/Profile';
 import ContactForm from './components/ContactForm';
 import UpcomingEventsPage from './components/UpcomingEventsPage';
+import MarketingPage from './components/MarketingPage';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -140,12 +141,15 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-slate-900">
-        {/* Landing page route - no header/sidebar */}
+                {/* Marketing page as index - no header/sidebar */}
         <Routes>
+          <Route path="/" element={<MarketingPage />} />
           <Route path="/landing" element={<LandingPage />} />
           
+
+          
           {/* App routes with header and sidebar */}
-          <Route path="*" element={
+          <Route path="/app/*" element={
             <>
               <Header 
                 onMenuClick={() => setSidebarOpen(!sidebarOpen)}
@@ -154,6 +158,7 @@ function App() {
                 onLogoutClick={handleLogout}
                 loading={loading}
                 isAuthenticated={isAuthenticated}
+                userData={userData}
                 setAuthModalOpen={setAuthModalOpen}
               />
               
@@ -171,73 +176,74 @@ function App() {
                       element={
                         <Dashboard 
                           isAuthenticated={isAuthenticated}
+                          userData={userData}
                         />
                       } 
                     />
                     <Route 
-                      path="/history" 
-                      element={<HistoricalData />} 
+                      path="history" 
+                      element={<HistoricalData userData={userData} />} 
                     />
                     
                     <Route 
-                      path="/data-export" 
+                      path="data-export" 
                       element={<DataExport />} 
                     />
                     <Route 
-                      path="/alerts" 
+                      path="alerts" 
                       element={<AlertsPage isAuthenticated={isAuthenticated} userData={userData} />} 
                     />
                     <Route 
-                      path="/events" 
+                      path="events" 
                       element={<UpcomingEventsPage />} 
                     />
                     <Route 
-                      path="/advanced-analytics" 
+                      path="advanced-analytics" 
                       element={<AdvancedAnalytics />} 
                     />
                     <Route 
-                      path="/advanced-export" 
+                      path="advanced-export" 
                       element={<AdvancedDataExport />} 
                     />
                     <Route 
-                      path="/custom-alerts" 
+                      path="custom-alerts" 
                       element={<CustomAlertThresholds />} 
                     />
                     <Route 
-                      path="/errors" 
+                      path="errors" 
                       element={<ErrorLogs />} 
                     />
                     <Route 
-                      path="/about" 
-                      element={<About />} 
+                      path="subscription" 
+                      element={<SubscriptionPlans setAuthModalOpen={setAuthModalOpen} />} 
                     />
                     <Route 
-                      path="/subscription" 
-                      element={<SubscriptionPlans />} 
-                    />
-                    <Route 
-                      path="/admin" 
+                      path="admin" 
                       element={<AdminDashboard isAuthenticated={isAuthenticated} userData={userData} />} 
                     />
                     <Route 
-                      path="/auth-required" 
+                      path="auth-required" 
                       element={<AuthRequired />} 
                     />
                     <Route 
-                      path="/privacy" 
-                      element={<PrivacyPolicy />} 
-                    />
-                    <Route 
-                      path="/terms" 
-                      element={<TermsAndConditions />} 
-                    />
-                    <Route 
-                      path="/profile" 
+                      path="profile" 
                       element={<Profile onProfileUpdate={fetchUserData} />} 
                     />
                     <Route 
-                      path="/contact" 
+                      path="contact" 
                       element={<ContactForm />} 
+                    />
+                    <Route 
+                      path="privacy" 
+                      element={<PrivacyPolicy />} 
+                    />
+                    <Route 
+                      path="terms" 
+                      element={<TermsAndConditions />} 
+                    />
+                    <Route 
+                      path="about" 
+                      element={<About />} 
                     />
                   </Routes>
                 </main>
@@ -252,25 +258,25 @@ function App() {
                     </div>
                     <div className="flex space-x-6">
                       <Link 
-                        to="/contact" 
+                        to="/app/contact" 
                         className="text-slate-400 hover:text-white transition-colors text-sm"
                       >
                         Contact
                       </Link>
                       <Link 
-                        to="/privacy" 
+                        to="/app/privacy" 
                         className="text-slate-400 hover:text-white transition-colors text-sm"
                       >
                         Privacy Policy
                       </Link>
                       <Link 
-                        to="/terms" 
+                        to="/app/terms" 
                         className="text-slate-400 hover:text-white transition-colors text-sm"
                       >
                         Terms & Conditions
                       </Link>
                       <Link 
-                        to="/about" 
+                        to="/app/about" 
                         className="text-slate-400 hover:text-white transition-colors text-sm"
                       >
                         About

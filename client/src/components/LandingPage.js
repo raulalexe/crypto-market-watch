@@ -9,8 +9,6 @@ import {
   Clock,
   ArrowRight,
   Check,
-  Star,
-  Users,
   Activity
 } from 'lucide-react';
 
@@ -54,6 +52,7 @@ const LandingPage = () => {
       price: '$0',
       period: 'forever',
       features: [
+        'Basic dashboard access',
         'Real-time crypto prices',
         'Basic market metrics',
         'Fear & Greed Index',
@@ -67,11 +66,17 @@ const LandingPage = () => {
       period: 'month',
       features: [
         'All Free features',
-        'AI market analysis (multi-timeframe)',
+        'AI market analysis (short, medium, long-term)',
         'Real-time market alerts',
-        'Email, push & Telegram notifications',
-        'Advanced metrics (VIX, DXY, yields)',
-        'Data exports & API access'
+        'Email notifications',
+        'Push notifications',
+        'Telegram bot alerts',
+        'Advanced metrics (VIX, DXY, Treasury yields)',
+        'Exchange flow data',
+        'Stablecoin metrics (SSR)',
+        'Data exports (CSV, JSON)',
+        'API access (1,000 calls/day)',
+        'Upcoming market events tracking'
       ],
       popular: true
     },
@@ -83,8 +88,11 @@ const LandingPage = () => {
         'All Pro features',
         'Unlimited API calls',
         'White-label options',
-        'Priority notifications',
-        'Custom alerts'
+        'Advanced analytics',
+        'Priority notification delivery',
+        'Custom alert thresholds',
+        'Advanced data exports',
+        'Webhook integrations'
       ],
       popular: false
     }
@@ -92,6 +100,38 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      {/* Navigation Header */}
+      <nav className="bg-gray-800 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="w-8 h-8 text-crypto-blue" />
+              <span className="text-xl font-bold text-white">Crypto Market Monitor</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Features
+              </Link>
+              <Link
+                to="/app/subscription"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Pricing
+              </Link>
+              <Link
+                to="/app"
+                className="px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                Launch App
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20"></div>
@@ -111,7 +151,7 @@ const LandingPage = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                to="/"
+                to="/app"
                 className="inline-flex items-center px-8 py-4 bg-crypto-blue text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
               >
                 <TrendingUp className="w-5 h-5 mr-2" />
@@ -119,7 +159,7 @@ const LandingPage = () => {
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
               <Link
-                to="/subscription"
+                to="/app/subscription"
                 className="inline-flex items-center px-8 py-4 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors"
               >
                 View Plans

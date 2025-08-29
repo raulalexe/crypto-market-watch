@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, AlertTriangle, TrendingUp, TrendingDown, DollarSign, Users, Filter, Search, CalendarDays, Target, Info } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, TrendingUp, TrendingDown, DollarSign, Users, Filter, Search, CalendarDays, Target, Info, Trash2, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
+import { isAdmin } from '../utils/authUtils';
 
 const UpcomingEventsPage = () => {
   const [events, setEvents] = useState([]);
@@ -10,64 +11,113 @@ const UpcomingEventsPage = () => {
   const [filters, setFilters] = useState({
     category: 'all',
     impact: 'all',
-    search: ''
+    search: '',
+    showIgnored: false
   });
   const [sortBy, setSortBy] = useState('date');
+  const [userData, setUserData] = useState(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  useEffect(() => {
-    filterAndSortEvents();
-  }, [events, filters, sortBy]);
+  const checkUserAuth = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        const response = await axios.get('/api/subscription', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const user = response.data;
+        setUserData(user);
+        setIsAdminUser(isAdmin(user));
+      }
+    } catch (error) {
+      console.error('Error checking user auth:', error);
+    }
+  };
 
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/events');
-      setEvents(response.data);
+      setError(null);
+      
+      // Always use the approaching-events endpoint for now
+      // Admin functionality can be added later if needed
+      const response = await axios.get('/api/approaching-events');
+      
+      // Ensure we always set an array, even if the response is not an array
+      const eventsData = Array.isArray(response.data) ? response.data : [];
+      setEvents(eventsData);
     } catch (error) {
       console.error('Error fetching events:', error);
       setError('Failed to load events');
+      setEvents([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    const initializeData = async () => {
+      await checkUserAuth();
+      await fetchEvents();
+    };
+    initializeData();
+  }, []);
+
+  useEffect(() => {
+    filterAndSortEvents();
+  }, [events, filters, sortBy, isAdminUser]);
+
+  // Refetch events when filters change (for admin functionality)
+  useEffect(() => {
+    if (isAdminUser) {
+      fetchEvents();
+    }
+  }, [filters.showIgnored, isAdminUser]);
+
   const filterAndSortEvents = () => {
+    // Ensure events is an array before proceeding
+    if (!Array.isArray(events)) {
+      setFilteredEvents([]);
+      return;
+    }
+
     let filtered = [...events];
 
     // Apply category filter
     if (filters.category !== 'all') {
-      filtered = filtered.filter(event => event.category === filters.category);
+      filtered = filtered.filter(event => event?.category === filters.category);
     }
 
     // Apply impact filter
     if (filters.impact !== 'all') {
-      filtered = filtered.filter(event => event.impact === filters.impact);
+      filtered = filtered.filter(event => event?.impact === filters.impact);
     }
 
     // Apply search filter
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       filtered = filtered.filter(event => 
-        event.title.toLowerCase().includes(searchLower) ||
-        event.description.toLowerCase().includes(searchLower) ||
-        event.source.toLowerCase().includes(searchLower)
+        (event?.title?.toLowerCase() || '').includes(searchLower) ||
+        (event?.description?.toLowerCase() || '').includes(searchLower) ||
+        (event?.source?.toLowerCase() || '').includes(searchLower)
       );
+    }
+
+    // Apply ignored filter (only for admin users)
+    if (isAdminUser && !filters.showIgnored) {
+      filtered = filtered.filter(event => !event?.ignored);
     }
 
     // Sort events
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'date':
-          return new Date(a.date) - new Date(b.date);
+          return new Date(a?.date || 0) - new Date(b?.date || 0);
         case 'impact':
           const impactOrder = { high: 3, medium: 2, low: 1 };
-          return impactOrder[b.impact] - impactOrder[a.impact];
+          return impactOrder[b?.impact || 'medium'] - impactOrder[a?.impact || 'medium'];
         case 'category':
-          return a.category.localeCompare(b.category);
+          return (a?.category || '').localeCompare(b?.category || '');
         default:
           return 0;
       }
@@ -105,6 +155,7 @@ const UpcomingEventsPage = () => {
   };
 
   const getDaysUntilText = (date) => {
+    if (!date) return 'Date not available';
     const now = new Date();
     const eventDate = new Date(date);
     const diffTime = eventDate - now;
@@ -119,6 +170,7 @@ const UpcomingEventsPage = () => {
   };
 
   const getTimeUntilText = (date) => {
+    if (!date) return 'Time not available';
     const now = new Date();
     const eventDate = new Date(date);
     const diffTime = eventDate - now;
@@ -131,6 +183,7 @@ const UpcomingEventsPage = () => {
   };
 
   const getCategoryLabel = (category) => {
+    if (!category) return 'Other';
     switch (category) {
       case 'fed':
         return 'Federal Reserve';
@@ -146,6 +199,7 @@ const UpcomingEventsPage = () => {
   };
 
   const getImpactLabel = (impact) => {
+    if (!impact) return 'Medium Impact';
     switch (impact) {
       case 'high':
         return 'High Impact';
@@ -155,6 +209,58 @@ const UpcomingEventsPage = () => {
         return 'Low Impact';
       default:
         return impact;
+    }
+  };
+
+  const handleIgnoreEvent = async (eventId) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      await axios.post(`/api/admin/events/${eventId}/ignore`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      // Refresh events
+      fetchEvents();
+    } catch (error) {
+      console.error('Error ignoring event:', error);
+    }
+  };
+
+  const handleUnignoreEvent = async (eventId) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      await axios.post(`/api/admin/events/${eventId}/unignore`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      // Refresh events
+      fetchEvents();
+    } catch (error) {
+      console.error('Error unignoring event:', error);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      await axios.delete(`/api/admin/events/${eventId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      // Refresh events
+      fetchEvents();
+    } catch (error) {
+      console.error('Error deleting event:', error);
     }
   };
 
@@ -187,20 +293,22 @@ const UpcomingEventsPage = () => {
   }
 
   const stats = {
-    total: events.length,
-    highImpact: events.filter(e => e.impact === 'high').length,
-    thisWeek: events.filter(e => {
+    total: Array.isArray(events) ? events.length : 0,
+    highImpact: Array.isArray(events) ? events.filter(e => e?.impact === 'high').length : 0,
+    thisWeek: Array.isArray(events) ? events.filter(e => {
+      if (!e?.date) return false;
       const eventDate = new Date(e.date);
       const now = new Date();
       const diffDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
       return diffDays >= 0 && diffDays <= 7;
-    }).length,
-    nextMonth: events.filter(e => {
+    }).length : 0,
+    nextMonth: Array.isArray(events) ? events.filter(e => {
+      if (!e?.date) return false;
       const eventDate = new Date(e.date);
       const now = new Date();
       const diffDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
       return diffDays >= 0 && diffDays <= 30;
-    }).length
+    }).length : 0
   };
 
   return (
@@ -319,6 +427,33 @@ const UpcomingEventsPage = () => {
               <option value="category">Sort by Category</option>
             </select>
           </div>
+
+          {/* Admin Controls */}
+          {isAdminUser && (
+            <div className="mt-4 pt-4 border-t border-slate-700">
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center space-x-2 text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={filters.showIgnored}
+                    onChange={(e) => {
+                      setFilters(prev => ({ ...prev, showIgnored: e.target.checked }));
+                      // Refresh events when toggling ignored filter
+                      setTimeout(() => fetchEvents(), 100);
+                    }}
+                    className="rounded border-slate-600 bg-slate-700 text-crypto-blue focus:ring-crypto-blue"
+                  />
+                  <span>Show Ignored Events</span>
+                </label>
+                <button
+                  onClick={fetchEvents}
+                  className="px-3 py-1 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors text-sm"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Events List */}
@@ -341,28 +476,40 @@ const UpcomingEventsPage = () => {
                   <div className="flex-1">
                     <div className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
-                        <div className={`p-2 rounded-lg ${getImpactColor(event.impact)}`}>
-                          {getEventIcon(event.category)}
+                        <div className={`p-2 rounded-lg ${getImpactColor(event?.impact || 'medium')}`}>
+                          {getEventIcon(event?.category || 'other')}
                         </div>
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">{event.title}</h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event.impact)}`}>
-                            {getImpactLabel(event.impact)}
+                          <h3 className="text-lg font-semibold text-white">{event?.title || 'Untitled Event'}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')}`}>
+                            {getImpactLabel(event?.impact || 'medium')}
                           </span>
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300">
-                            {getCategoryLabel(event.category)}
+                            {getCategoryLabel(event?.category || 'other')}
                           </span>
+                          {event?.daysUntil === 3 && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-900/20 text-orange-400 border border-orange-500/30 flex items-center space-x-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              <span>Notification Sent</span>
+                            </span>
+                          )}
+                          {event?.ignored && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900/20 text-gray-400 border border-gray-500/30 flex items-center space-x-1">
+                              <EyeOff className="w-3 h-3" />
+                              <span>Ignored</span>
+                            </span>
+                          )}
                         </div>
                         
-                        <p className="text-slate-400 mb-3">{event.description}</p>
+                        <p className="text-slate-400 mb-3">{event?.description || 'No description available'}</p>
                         
                         <div className="flex items-center space-x-4 text-sm text-slate-500">
                           <div className="flex items-center space-x-1">
                             <Info className="w-4 h-4" />
-                            <span>{event.source}</span>
+                            <span>{event?.source || 'Unknown source'}</span>
                           </div>
                         </div>
                       </div>
@@ -372,22 +519,64 @@ const UpcomingEventsPage = () => {
                   <div className="mt-4 lg:mt-0 lg:ml-6">
                     <div className="text-right">
                       <div className="text-lg font-semibold text-white">
-                        {new Date(event.date).toLocaleDateString('en-US', { 
+                        {event?.date ? new Date(event.date).toLocaleDateString('en-US', { 
                           month: 'short', 
                           day: 'numeric',
                           year: 'numeric'
-                        })}
+                        }) : 'Date not available'}
                       </div>
                       <div className="text-sm text-slate-400">
-                        {new Date(event.date).toLocaleTimeString('en-US', { 
+                        {event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
                           hour: '2-digit', 
                           minute: '2-digit',
                           timeZoneName: 'short'
-                        })}
+                        }) : ''}
                       </div>
                       <div className="text-sm text-crypto-blue font-medium mt-1">
-                        {getDaysUntilText(event.date)}
+                        {event?.timeRemaining ? (
+                          <span className="flex items-center space-x-1">
+                            <Clock className="w-4 h-4" />
+                            <span>{event.timeRemaining}</span>
+                          </span>
+                        ) : (
+                          event?.date ? getDaysUntilText(event.date) : 'Time not available'
+                        )}
                       </div>
+                      
+                      {/* Admin Actions */}
+                      {isAdminUser && (
+                        <div className="mt-3 pt-3 border-t border-slate-600">
+                          <div className="flex items-center justify-end space-x-2">
+                            {event?.ignored ? (
+                              <button
+                                onClick={() => handleUnignoreEvent(event.id)}
+                                className="flex items-center space-x-1 px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
+                                title="Unignore event"
+                              >
+                                <Eye className="w-3 h-3" />
+                                <span>Unignore</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleIgnoreEvent(event.id)}
+                                className="flex items-center space-x-1 px-2 py-1 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 transition-colors"
+                                title="Ignore event"
+                              >
+                                <EyeOff className="w-3 h-3" />
+                                <span>Ignore</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteEvent(event.id)}
+                              className="flex items-center space-x-1 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
+                              title="Delete event"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

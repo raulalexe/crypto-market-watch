@@ -1528,11 +1528,7 @@ class DataCollector {
         this.collectTrendingNarratives(),
         this.collectStablecoinMetricsOptimized(), // Uses data from collectCryptoPrices
         this.collectBitcoinDominanceOptimized(), // Uses data from collectCryptoPrices
-        this.collectLayer1DataOptimized(), // Uses data from collectCryptoPrices
-        this.collectAltcoinSeasonIndicator(),
-        this.collectDerivativesData(),
-        this.collectOnchainData(),
-        this.collectExchangeFlows()
+        this.collectLayer1DataOptimized() // Uses data from collectCryptoPrices
       ]);
       
       // Run AI analysis after all data is collected

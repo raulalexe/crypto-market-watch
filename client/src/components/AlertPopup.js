@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Bell, CheckCircle, X, TrendingUp, TrendingDown, Activity, DollarSign } from 'lucide-react';
 import { shouldShowUpgradePrompt } from '../utils/authUtils';
 
-const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount = 0, isAuthenticated = false }) => {
+const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount = 0, isAuthenticated = false, userData = null }) => {
   const popupRef = useRef(null);
+  const navigate = useNavigate();
+
+  const handleUpgradeClick = () => {
+    navigate('/app/subscription');
+  };
 
   // Close popup when clicking outside
   useEffect(() => {
@@ -110,7 +116,7 @@ const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount =
 
         {/* Alerts List */}
         <div className="max-h-80 overflow-y-auto">
-          {shouldShowUpgradePrompt({ isAuthenticated }) ? (
+          {shouldShowUpgradePrompt(userData) ? (
             <div className="p-6 text-center">
               <Bell className="w-12 h-12 mx-auto mb-3 text-crypto-blue" />
               <h3 className="text-white font-medium mb-2">Get Real-Time Market Alerts</h3>
@@ -136,7 +142,10 @@ const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount =
                   <span>Stablecoin market cap changes</span>
                 </div>
               </div>
-              <button className="px-6 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors">
+              <button 
+                onClick={handleUpgradeClick}
+                className="px-6 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
                 Upgrade to Pro
               </button>
             </div>
@@ -181,6 +190,20 @@ const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount =
                   </div>
                 </div>
               ))}
+              
+              {/* Show "more alerts" indicator */}
+              {alerts.length > 10 && (
+                <div className="p-3 border-t border-slate-600 bg-slate-700/30">
+                  <Link
+                    to="/app/alerts"
+                    onClick={onClose}
+                    className="flex items-center justify-center space-x-2 text-crypto-blue hover:text-blue-400 transition-colors cursor-pointer text-sm font-medium"
+                  >
+                    <span>View {alerts.length - 10} more alerts</span>
+                    <span>→</span>
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -190,7 +213,18 @@ const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount =
           <div className="p-3 border-t border-slate-600 bg-slate-700/50">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>{alerts.length} total alerts</span>
-              <span>{unreadCount} unread</span>
+              <div className="flex items-center space-x-3">
+                {alerts.length > 10 && (
+                  <Link
+                    to="/app/alerts"
+                    onClick={onClose}
+                    className="text-crypto-blue hover:text-blue-400 transition-colors cursor-pointer"
+                  >
+                    View all alerts
+                  </Link>
+                )}
+                <span>{unreadCount} unread</span>
+              </div>
             </div>
           </div>
         )}

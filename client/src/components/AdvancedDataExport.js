@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { shouldShowPremiumUpgradePrompt } from '../utils/authUtils';
+import ToastNotification from './ToastNotification';
 
 const AdvancedDataExport = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -21,6 +22,7 @@ const AdvancedDataExport = () => {
   const [dateRange, setDateRange] = useState('7d');
   const [exportFormat, setExportFormat] = useState('csv');
   const [scheduledExports, setScheduledExports] = useState([]);
+  const [alert, setAlert] = useState(null);
 
   const dataTypes = [
     { 
@@ -98,6 +100,10 @@ const AdvancedDataExport = () => {
     { value: 'pdf', label: 'PDF Report', description: 'Professional PDF report with charts' },
     { value: 'xml', label: 'XML', description: 'Extensible Markup Language' }
   ];
+
+  const showAlert = (message, type = 'info') => {
+    setAlert({ message, type });
+  };
 
   useEffect(() => {
     checkAuthAndSubscription();
@@ -184,7 +190,7 @@ const AdvancedDataExport = () => {
       await fetchExportHistory();
     } catch (error) {
       console.error('Error creating export:', error);
-      alert('Failed to create export. Please try again.');
+      showAlert('Failed to create export. Please try again.', 'error');
     } finally {
       setExporting(false);
     }
@@ -203,10 +209,10 @@ const AdvancedDataExport = () => {
       });
 
       await fetchScheduledExports();
-      alert('Export scheduled successfully!');
+      showAlert('Export scheduled successfully!', 'success');
     } catch (error) {
       console.error('Error scheduling export:', error);
-      alert('Failed to schedule export. Please try again.');
+      showAlert('Failed to schedule export. Please try again.', 'error');
     }
   };
 
@@ -461,6 +467,9 @@ const AdvancedDataExport = () => {
           </div>
         </div>
       </div>
+      
+      {/* Toast Notification */}
+      {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
     </div>
   );
 };

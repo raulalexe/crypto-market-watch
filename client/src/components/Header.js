@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, RefreshCw, TrendingUp, Bell, User } from 'lucide-react';
+import { Menu, RefreshCw, TrendingUp, Bell, User, LogOut } from 'lucide-react';
 import AlertPopup from './AlertPopup';
 
-const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loading, isAuthenticated, setAuthModalOpen }) => {
+const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loading, isAuthenticated, userData, setAuthModalOpen }) => {
   const [alerts, setAlerts] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isAlertPopupOpen, setIsAlertPopupOpen] = useState(false);
   const [lastSeenAlertId, setLastSeenAlertId] = useState(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   // Load last seen alert ID from localStorage
   useEffect(() => {
@@ -16,6 +17,20 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
       setLastSeenAlertId(parseInt(stored));
     }
   }, []);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isProfileDropdownOpen && !event.target.closest('.profile-dropdown')) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isProfileDropdownOpen]);
 
   // Fetch alerts
   const fetchAlerts = async () => {
@@ -107,7 +122,7 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
             <Menu className="w-6 h-6 text-slate-300" />
           </button>
           
-          <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+          <Link to="/app" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <TrendingUp className="w-8 h-8 text-crypto-green" />
             <h1 className="text-xl font-bold text-white">Crypto Market Monitor</h1>
           </Link>
@@ -146,19 +161,45 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
           
           {isAuthenticated ? (
             <div className="flex items-center space-x-2">
-              <Link
-                to="/profile"
-                className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
-                title="Profile"
-              >
-                <User className="w-5 h-5 text-slate-300" />
-              </Link>
-              <button
-                onClick={onLogoutClick}
-                className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
-              >
-                Logout
-              </button>
+              <div className="relative profile-dropdown">
+                <button
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
+                  title="Profile"
+                >
+                  <User className="w-5 h-5 text-slate-300" />
+                </button>
+                
+                {/* Profile Dropdown */}
+                {isProfileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50">
+                    <div className="p-4 border-b border-slate-600">
+                      <p className="text-white font-medium">Hello,</p>
+                      <p className="text-slate-300 text-sm truncate">{userData?.email || 'User'}</p>
+                    </div>
+                    <div className="p-2">
+                      <Link
+                        to="/app/profile"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors w-full"
+                      >
+                        <User className="w-4 h-4" />
+                        <span>View Profile</span>
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          onLogoutClick();
+                        }}
+                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors w-full"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex items-center space-x-2">
@@ -187,6 +228,7 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
         onAcknowledge={handleAcknowledgeAlert}
         unreadCount={unreadCount}
         isAuthenticated={isAuthenticated}
+        userData={userData}
       />
     </header>
   );

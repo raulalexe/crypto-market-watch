@@ -15,7 +15,7 @@ export const isAuthenticated = (userData) => {
  * @returns {boolean}
  */
 export const isAdmin = (userData) => {
-  return isAuthenticated(userData) && userData.role === 'admin';
+  return isAuthenticated(userData) && (userData.role === 'admin' || userData.isAdmin === true);
 };
 
 /**
@@ -33,7 +33,7 @@ export const hasPremiumAccess = (userData) => {
  * @returns {boolean}
  */
 export const hasProAccess = (userData) => {
-  return isAuthenticated(userData) && (userData.plan === 'pro' || userData.plan === 'premium' || userData.role === 'admin');
+  return isAuthenticated(userData) && (userData.plan === 'pro' || userData.plan === 'premium' || userData.role === 'admin' || userData.isAdmin === true);
 };
 
 /**

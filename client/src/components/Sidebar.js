@@ -10,97 +10,99 @@ import {
   X,
   Settings,
   User,
-  MessageSquare,
-  Calendar
+  Calendar,
+  Mail
 } from 'lucide-react';
-import { shouldShowUpgradePrompt, shouldShowPremiumUpgradePrompt, isAdmin as isAdminUser } from '../utils/authUtils';
+import { isAdmin as isAdminUser, isAuthenticated, hasProAccess, hasPremiumAccess } from '../utils/authUtils';
 
 const Sidebar = ({ userData, isOpen, onClose }) => {
   const location = useLocation();
 
   const navItems = [
     {
-      path: '/',
+      path: '/app',
       name: 'Market Dashboard',
       icon: BarChart3
     },
     {
-      path: '/profile',
-      name: 'Profile',
-      icon: User,
-      requiresAuth: true
+      path: '/app/events',
+      name: 'Upcoming Events',
+      icon: Calendar
     },
     {
-      path: '/history',
+      path: '/app/history',
       name: 'Historical Data',
-      icon: History,
-      requiresAuth: true
+      icon: History
     },
     {
-      path: '/advanced-analytics',
-      name: 'Advanced Analytics',
-      icon: BarChart3,
-      requiresAuth: true,
-      requiresPremium: true
-    },
-    {
-      path: '/advanced-export',
-      name: 'Advanced Export',
-      icon: Download,
-      requiresAuth: true,
-      requiresPremium: true
-    },
-    {
-      path: '/custom-alerts',
-      name: 'Custom Alerts',
-      icon: AlertTriangle,
-      requiresAuth: true,
-      requiresPremium: true
-    },
-    {
-      path: '/data-export',
+      path: '/app/data-export',
       name: 'Data Export',
       icon: Download,
       requiresAuth: true
     },
     {
-      path: '/subscription',
+      path: '/app/advanced-export',
+      name: 'Advanced Export',
+      icon: Download,
+      requiresAuth: true,
+      requiresPro: true
+    },
+    {
+      path: '/app/advanced-analytics',
+      name: 'Advanced Analytics',
+      icon: BarChart3,
+      requiresAuth: true,
+      requiresPro: true
+    },
+    {
+      path: '/app/custom-alerts',
+      name: 'Custom Alerts',
+      icon: AlertTriangle,
+      requiresAuth: true,
+      requiresPro: true
+    },
+    {
+      path: '/app/subscription',
       name: 'Subscription Plans',
       icon: CreditCard
-    },
-    {
-      path: '/alerts',
-      name: 'Market Alerts',
-      icon: AlertTriangle,
-      requiresAuth: true
-    },
-    {
-      path: '/events',
-      name: 'Upcoming Events',
-      icon: Calendar,
-      requiresAuth: true
-    },
-
+    }
   ];
 
-  // Add admin-specific menu items
+  // Admin-specific menu items
   const adminItems = [
     {
-      path: '/admin',
+      path: '/app/admin',
       name: 'Admin Dashboard',
       icon: Settings,
       adminOnly: true
     },
     {
-      path: '/errors',
+      path: '/app/alerts',
+      name: 'Market Alerts',
+      icon: AlertTriangle,
+      adminOnly: true
+    },
+    {
+      path: '/app/errors',
       name: 'Error Logs',
       icon: AlertTriangle,
       adminOnly: true
     }
   ];
 
-  // Combine regular and admin items
-  const allNavItems = [...navItems, ...adminItems];
+  // Profile and contact items
+  const profileItem = {
+    path: '/app/profile',
+    name: 'Profile',
+    icon: User,
+    requiresAuth: true
+  };
+  
+  const contactItem = {
+    path: '/app/contact',
+    name: 'Contact',
+    icon: Mail
+  };
 
   // Check if user is admin using shared utility
   const isAdmin = isAdminUser(userData);
@@ -146,18 +148,14 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
         {/* Navigation */}
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
-            {allNavItems.map((item) => {
-              // Skip admin-only items if user is not admin
-              if (item.adminOnly && !isAdmin) {
-                return null;
-              }
-
-                              // Show auth required link for auth-required items if user should see upgrade prompts (but not for admins)
-              if (item.requiresAuth && shouldShowUpgradePrompt(userData) && !isAdmin) {
+            {/* Regular Navigation Items */}
+            {navItems.map((item) => {
+              // Show auth required link for auth-required items if user is NOT authenticated (but not for admins)
+              if (item.requiresAuth && !isAuthenticated(userData) && !isAdmin) {
                 return (
                   <li key={item.path}>
                     <Link
-                      to={`/auth-required?feature=${encodeURIComponent(item.name)}&type=auth`}
+                      to="/app/subscription"
                       onClick={handleNavClick}
                       className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                     >
@@ -168,12 +166,44 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                 );
               }
 
-              // Show auth required link for premium items if user doesn't have premium (but not for admins)
-              if (item.requiresPremium && shouldShowPremiumUpgradePrompt(userData) && !isAdmin) {
+              // Show upgrade link for auth-required items if user is authenticated but doesn't have pro access (but not for admins)
+              if (item.requiresAuth && isAuthenticated(userData) && !hasProAccess(userData) && !isAdmin) {
                 return (
                   <li key={item.path}>
                     <Link
-                      to={`/auth-required?feature=${encodeURIComponent(item.name)}&type=premium`}
+                      to="/app/subscription"
+                      onClick={handleNavClick}
+                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  </li>
+                );
+              }
+
+              // Show upgrade link for premium items if user doesn't have premium (but not for admins)
+              if (item.requiresPremium && !hasPremiumAccess(userData) && !isAdmin) {
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to="/app/subscription"
+                      onClick={handleNavClick}
+                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  </li>
+                );
+              }
+
+              // Show upgrade link for pro items if user doesn't have pro access (but not for admins)
+              if (item.requiresPro && !hasProAccess(userData) && !isAdmin) {
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to="/app/subscription"
                       onClick={handleNavClick}
                       className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                     >
@@ -205,40 +235,75 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                 </li>
               );
             })}
+            
+            {/* Admin Section */}
+            {isAdmin && adminItems.length > 0 && (
+              <>
+                <li className="mt-8 pt-4 border-t border-gray-700">
+                  <div className="px-4 py-2">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin</span>
+                  </div>
+                </li>
+                {adminItems.map((item) => {
+                  const IconComponent = item.icon;
+                  const isActive = location.pathname === item.path;
+                  
+                  return (
+                    <li key={item.path}>
+                      <Link
+                        to={item.path}
+                        onClick={handleNavClick}
+                        className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+                          isActive
+                            ? 'bg-crypto-blue text-white'
+                            : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                        }`}
+                      >
+                        <IconComponent className="w-5 h-5" />
+                        <span>{item.name}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </>
+            )}
+            
+            {/* Profile and Contact Section */}
+            <li className="mt-8 pt-4 border-t border-gray-700">
+              <div className="px-4 py-2">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Account</span>
+              </div>
+            </li>
+            <li>
+              <Link
+                to={profileItem.path}
+                onClick={handleNavClick}
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+                  location.pathname === profileItem.path
+                    ? 'bg-crypto-blue text-white'
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                <profileItem.icon className="w-5 h-5" />
+                <span>{profileItem.name}</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to={contactItem.path}
+                onClick={handleNavClick}
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+                  location.pathname === contactItem.path
+                    ? 'bg-crypto-blue text-white'
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                <contactItem.icon className="w-5 h-5" />
+                <span>{contactItem.name}</span>
+              </Link>
+            </li>
           </ul>
         </nav>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-700">
-          <div className="text-center text-sm text-gray-400">
-                          <p>© 2024 Crypto Market Monitor</p>
-              <p className="mt-1">v1.0.0</p>
-              <div className="mt-3 space-y-1">
-                <Link
-                  to="/contact"
-                  className="block text-xs text-gray-500 hover:text-gray-300 transition-colors flex items-center"
-                  onClick={handleNavClick}
-                >
-                  <MessageSquare className="w-3 h-3 mr-1" />
-                  Contact Us
-                </Link>
-                <Link
-                  to="/privacy"
-                  className="block text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                  onClick={handleNavClick}
-                >
-                  Privacy Policy
-                </Link>
-                <Link
-                  to="/terms"
-                  className="block text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                  onClick={handleNavClick}
-                >
-                  Terms & Conditions
-                </Link>
-              </div>
-          </div>
-        </div>
       </div>
     </>
   );

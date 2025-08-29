@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Settings as SettingsIcon, User, CreditCard, Shield, Bell, Database, Key } from 'lucide-react';
 import axios from 'axios';
 import { shouldShowUpgradePrompt } from '../utils/authUtils';
 import NotificationSettings from './NotificationSettings';
+import ToastNotification from './ToastNotification';
 
 const Settings = ({ setAuthModalOpen }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('preferences');
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+
+  const handleUpgradeClick = () => {
+    navigate('/app/subscription');
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [alert, setAlert] = useState(null);
 
   useEffect(() => {
     checkAuthStatus();
@@ -45,6 +53,10 @@ const Settings = ({ setAuthModalOpen }) => {
     } catch (error) {
       console.error('Error fetching subscription status:', error);
     }
+  };
+
+  const showAlert = (message, type = 'info') => {
+    setAlert({ message, type });
   };
 
   const handleSave = async (section) => {
@@ -416,7 +428,10 @@ const Settings = ({ setAuthModalOpen }) => {
         {subscriptionStatus?.plan === 'free' ? (
           <div className="bg-slate-700 rounded-lg p-4">
             <p className="text-slate-400 mb-3">API access requires a Pro or Premium subscription.</p>
-            <button className="px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors">
+            <button 
+              onClick={handleUpgradeClick}
+              className="px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
               Upgrade to Pro
             </button>
           </div>
@@ -492,7 +507,7 @@ const Settings = ({ setAuthModalOpen }) => {
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(newApiKey.api_key);
-                        alert('API key copied to clipboard!');
+                        showAlert('API key copied to clipboard!', 'success');
                       }}
                       className="flex-1 px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
                     >
@@ -694,6 +709,9 @@ const Settings = ({ setAuthModalOpen }) => {
           </div>
         </div>
       </div>
+      
+      {/* Toast Notification */}
+      {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
     </div>
   );
 };

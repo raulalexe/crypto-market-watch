@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Bell, CheckCircle, Filter, Search, RefreshCw } from 'lucide-react';
 import { shouldShowUpgradePrompt } from '../utils/authUtils';
 
 const AlertsPage = ({ isAuthenticated, userData }) => {
+  const navigate = useNavigate();
   const [alerts, setAlerts] = useState([]);
+
+  const handleUpgradeClick = () => {
+    navigate('/app/subscription');
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // all, high, medium, low
@@ -149,7 +154,10 @@ const AlertsPage = ({ isAuthenticated, userData }) => {
             </div>
           </div>
           <div className="space-y-3">
-            <button className="w-full px-6 py-3 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors">
+            <button 
+              onClick={handleUpgradeClick}
+              className="w-full px-6 py-3 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
               Upgrade to Pro
             </button>
             <Link

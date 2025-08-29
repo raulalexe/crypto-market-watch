@@ -217,16 +217,6 @@ const About = () => {
       {/* Version Info */}
       <div className="text-center text-slate-400 text-sm">
         <p>Version 1.0.0 • Built with ❤️ for the crypto community</p>
-        <p className="mt-1">
-          <a 
-            href="https://github.com/your-repo/crypto-market-watch" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-crypto-blue hover:text-blue-400 transition-colors"
-          >
-            View on GitHub
-          </a>
-        </p>
       </div>
     </div>
   );
