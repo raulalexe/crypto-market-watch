@@ -38,17 +38,24 @@ DATABASE_URL=your_railway_postgresql_url_here
 
 # API Keys
 ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key_here
+COINAPI_API_KEY=your_coinapi_key_here
 FRED_API_KEY=your_fred_api_key_here
 VENICE_AI_API_KEY=your_venice_ai_key_here
 
 # JWT Configuration
 JWT_SECRET=your_secure_jwt_secret_here
+JWT_EXPIRES_IN=7d
 
 # Stripe Configuration (if using payments)
 STRIPE_SECRET_KEY=your_stripe_secret_key_here
+STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
 STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret_here
 
-# Cron Jobs Configuration
+# NOWPayments Configuration (for crypto payments)
+NOWPAYMENTS_API_KEY=your_nowpayments_key_here
+
+# Data Collection Settings
+COLLECTION_INTERVAL_HOURS=3
 ENABLE_CRON_JOBS=true
 
 # Rate Limiting
