@@ -1,23 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import pushNotificationService from './services/pushNotificationService';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LoadingSpinner from './components/LoadingSpinner';
 import AuthModal from './components/AuthModal';
-import Settings from './components/Settings';
+
 import About from './components/About';
 import ErrorLogs from './components/ErrorLogs';
 import DataExport from './components/DataExport';
 import AlertsPage from './components/AlertsPage';
+import AdvancedAnalytics from './components/AdvancedAnalytics';
+import AdvancedDataExport from './components/AdvancedDataExport';
+import CustomAlertThresholds from './components/CustomAlertThresholds';
 import HistoricalData from './components/HistoricalData';
 import SubscriptionPlans from './components/SubscriptionPlans';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
+import AuthRequired from './components/AuthRequired';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsAndConditions from './components/TermsAndConditions';
+import Profile from './components/Profile';
+import ContactForm from './components/ContactForm';
+import UpcomingEventsPage from './components/UpcomingEventsPage';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,6 +46,24 @@ function App() {
       setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserData = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setUserData(null);
+        return;
+      }
+
+      const response = await axios.get('/api/subscription', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setUserData(response.data);
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+      setUserData(null);
     }
   };
 
@@ -60,6 +89,10 @@ function App() {
     }
     
     fetchDashboardData();
+    fetchUserData();
+    
+    // Initialize push notifications
+    initializePushNotifications();
     
     // Refresh data every 5 minutes
     const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
@@ -67,9 +100,24 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const initializePushNotifications = async () => {
+    try {
+      const result = await pushNotificationService.initialize();
+      if (result.success) {
+        console.log('Push notifications initialized successfully');
+        pushNotificationService.setupMessageListener();
+      } else {
+        console.log('Push notifications not available:', result.error);
+      }
+    } catch (error) {
+      console.error('Error initializing push notifications:', error);
+    }
+  };
+
   const handleAuthSuccess = () => {
     setIsAuthenticated(true);
     fetchDashboardData();
+    fetchUserData();
   };
 
   const handleLogout = () => {
@@ -106,13 +154,14 @@ function App() {
                 onLogoutClick={handleLogout}
                 loading={loading}
                 isAuthenticated={isAuthenticated}
+                setAuthModalOpen={setAuthModalOpen}
               />
               
               <div className="flex min-h-screen">
                 <Sidebar 
                   isOpen={sidebarOpen} 
                   onClose={() => setSidebarOpen(false)}
-                  userData={dashboardData}
+                  userData={userData}
                 />
                 
                 <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
@@ -121,11 +170,7 @@ function App() {
                       path="/" 
                       element={
                         <Dashboard 
-                          data={dashboardData}
-                          loading={loading}
-                          error={error}
-                          onRefresh={fetchDashboardData}
-                          onCollectData={triggerDataCollection}
+                          isAuthenticated={isAuthenticated}
                         />
                       } 
                     />
@@ -133,17 +178,30 @@ function App() {
                       path="/history" 
                       element={<HistoricalData />} 
                     />
-                    <Route 
-                      path="/settings" 
-                      element={<Settings />} 
-                    />
+                    
                     <Route 
                       path="/data-export" 
                       element={<DataExport />} 
                     />
                     <Route 
                       path="/alerts" 
-                      element={<AlertsPage />} 
+                      element={<AlertsPage isAuthenticated={isAuthenticated} userData={userData} />} 
+                    />
+                    <Route 
+                      path="/events" 
+                      element={<UpcomingEventsPage />} 
+                    />
+                    <Route 
+                      path="/advanced-analytics" 
+                      element={<AdvancedAnalytics />} 
+                    />
+                    <Route 
+                      path="/advanced-export" 
+                      element={<AdvancedDataExport />} 
+                    />
+                    <Route 
+                      path="/custom-alerts" 
+                      element={<CustomAlertThresholds />} 
                     />
                     <Route 
                       path="/errors" 
@@ -159,11 +217,68 @@ function App() {
                     />
                     <Route 
                       path="/admin" 
-                      element={<AdminDashboard />} 
+                      element={<AdminDashboard isAuthenticated={isAuthenticated} userData={userData} />} 
+                    />
+                    <Route 
+                      path="/auth-required" 
+                      element={<AuthRequired />} 
+                    />
+                    <Route 
+                      path="/privacy" 
+                      element={<PrivacyPolicy />} 
+                    />
+                    <Route 
+                      path="/terms" 
+                      element={<TermsAndConditions />} 
+                    />
+                    <Route 
+                      path="/profile" 
+                      element={<Profile onProfileUpdate={fetchUserData} />} 
+                    />
+                    <Route 
+                      path="/contact" 
+                      element={<ContactForm />} 
                     />
                   </Routes>
                 </main>
               </div>
+              
+              {/* Main Footer */}
+              <footer className="bg-slate-800 border-t border-slate-700 py-6 px-4 md:px-6">
+                <div className="max-w-7xl mx-auto">
+                  <div className="flex flex-col md:flex-row justify-between items-center">
+                    <div className="text-slate-400 text-sm mb-4 md:mb-0">
+                      <p>© 2024 Crypto Market Monitor. All rights reserved.</p>
+                    </div>
+                    <div className="flex space-x-6">
+                      <Link 
+                        to="/contact" 
+                        className="text-slate-400 hover:text-white transition-colors text-sm"
+                      >
+                        Contact
+                      </Link>
+                      <Link 
+                        to="/privacy" 
+                        className="text-slate-400 hover:text-white transition-colors text-sm"
+                      >
+                        Privacy Policy
+                      </Link>
+                      <Link 
+                        to="/terms" 
+                        className="text-slate-400 hover:text-white transition-colors text-sm"
+                      >
+                        Terms & Conditions
+                      </Link>
+                      <Link 
+                        to="/about" 
+                        className="text-slate-400 hover:text-white transition-colors text-sm"
+                      >
+                        About
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </footer>
             </>
           } />
         </Routes>

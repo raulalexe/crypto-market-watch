@@ -8,8 +8,12 @@ import {
   TrendingUp,
   AlertTriangle,
   X,
-  Settings
+  Settings,
+  User,
+  MessageSquare,
+  Calendar
 } from 'lucide-react';
+import { shouldShowUpgradePrompt, shouldShowPremiumUpgradePrompt, isAdmin as isAdminUser } from '../utils/authUtils';
 
 const Sidebar = ({ userData, isOpen, onClose }) => {
   const location = useLocation();
@@ -21,14 +25,43 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
       icon: BarChart3
     },
     {
+      path: '/profile',
+      name: 'Profile',
+      icon: User,
+      requiresAuth: true
+    },
+    {
       path: '/history',
       name: 'Historical Data',
-      icon: History
+      icon: History,
+      requiresAuth: true
+    },
+    {
+      path: '/advanced-analytics',
+      name: 'Advanced Analytics',
+      icon: BarChart3,
+      requiresAuth: true,
+      requiresPremium: true
+    },
+    {
+      path: '/advanced-export',
+      name: 'Advanced Export',
+      icon: Download,
+      requiresAuth: true,
+      requiresPremium: true
+    },
+    {
+      path: '/custom-alerts',
+      name: 'Custom Alerts',
+      icon: AlertTriangle,
+      requiresAuth: true,
+      requiresPremium: true
     },
     {
       path: '/data-export',
       name: 'Data Export',
-      icon: Download
+      icon: Download,
+      requiresAuth: true
     },
     {
       path: '/subscription',
@@ -39,8 +72,15 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
       path: '/alerts',
       name: 'Market Alerts',
       icon: AlertTriangle,
-      requiresPremium: true
-    }
+      requiresAuth: true
+    },
+    {
+      path: '/events',
+      name: 'Upcoming Events',
+      icon: Calendar,
+      requiresAuth: true
+    },
+
   ];
 
   // Add admin-specific menu items
@@ -62,8 +102,8 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
   // Combine regular and admin items
   const allNavItems = [...navItems, ...adminItems];
 
-  // Check if user is admin
-  const isAdmin = userData?.subscriptionStatus?.plan === 'admin';
+  // Check if user is admin using shared utility
+  const isAdmin = isAdminUser(userData);
 
   // Handle navigation click (close mobile menu)
   const handleNavClick = () => {
@@ -112,11 +152,39 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                 return null;
               }
 
-              // Skip premium items if user doesn't have premium
-              if (item.requiresPremium && userData?.subscriptionStatus?.plan !== 'premium' && userData?.subscriptionStatus?.plan !== 'admin') {
-                return null;
+                              // Show auth required link for auth-required items if user should see upgrade prompts (but not for admins)
+              if (item.requiresAuth && shouldShowUpgradePrompt(userData) && !isAdmin) {
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={`/auth-required?feature=${encodeURIComponent(item.name)}&type=auth`}
+                      onClick={handleNavClick}
+                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  </li>
+                );
               }
 
+              // Show auth required link for premium items if user doesn't have premium (but not for admins)
+              if (item.requiresPremium && shouldShowPremiumUpgradePrompt(userData) && !isAdmin) {
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={`/auth-required?feature=${encodeURIComponent(item.name)}&type=premium`}
+                      onClick={handleNavClick}
+                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  </li>
+                );
+              }
+
+              // Show regular navigation for users who have access
               const IconComponent = item.icon;
               const isActive = location.pathname === item.path;
               
@@ -143,8 +211,32 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
         {/* Footer */}
         <div className="p-4 border-t border-gray-700">
           <div className="text-center text-sm text-gray-400">
-            <p>© 2024 Crypto Market Monitor</p>
-            <p className="mt-1">v1.0.0</p>
+                          <p>© 2024 Crypto Market Monitor</p>
+              <p className="mt-1">v1.0.0</p>
+              <div className="mt-3 space-y-1">
+                <Link
+                  to="/contact"
+                  className="block text-xs text-gray-500 hover:text-gray-300 transition-colors flex items-center"
+                  onClick={handleNavClick}
+                >
+                  <MessageSquare className="w-3 h-3 mr-1" />
+                  Contact Us
+                </Link>
+                <Link
+                  to="/privacy"
+                  className="block text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  onClick={handleNavClick}
+                >
+                  Privacy Policy
+                </Link>
+                <Link
+                  to="/terms"
+                  className="block text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  onClick={handleNavClick}
+                >
+                  Terms & Conditions
+                </Link>
+              </div>
           </div>
         </div>
       </div>

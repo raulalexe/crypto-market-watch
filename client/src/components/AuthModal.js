@@ -8,6 +8,8 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,22 +22,39 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
       if (isLogin) {
         // Login
         response = await axios.post('/api/auth/login', { email, password });
+        
+        const { token, user } = response.data;
+        
+        // Store the real JWT token
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        // Set default auth header for all future requests
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        onAuthSuccess();
+        onClose();
       } else {
         // Register
         response = await axios.post('/api/auth/register', { email, password });
+        
+        if (response.data.requiresConfirmation) {
+          setEmailSent(true);
+          setConfirmationMessage('Please check your email and click the confirmation link to activate your account.');
+        } else {
+          const { token, user } = response.data;
+          
+          // Store the real JWT token
+          localStorage.setItem('authToken', token);
+          localStorage.setItem('user', JSON.stringify(user));
+          
+          // Set default auth header for all future requests
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          onAuthSuccess();
+          onClose();
+        }
       }
-      
-      const { token, user } = response.data;
-      
-      // Store the real JWT token
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      // Set default auth header for all future requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      onAuthSuccess();
-      onClose();
     } catch (error) {
       setError(error.response?.data?.error || 'Authentication failed');
     } finally {
@@ -44,6 +63,35 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   };
 
   if (!isOpen) return null;
+
+  // Email confirmation view
+  if (emailSent) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-slate-800 rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="text-center">
+            <Mail className="w-16 h-16 text-crypto-blue mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-white mb-4">Check Your Email</h2>
+            <p className="text-slate-400 mb-6">{confirmationMessage}</p>
+            <div className="bg-slate-700 rounded-lg p-4 mb-6">
+              <p className="text-sm text-slate-300 mb-2">Email sent to:</p>
+              <p className="text-crypto-blue font-medium">{email}</p>
+            </div>
+            <button
+              onClick={() => {
+                setEmailSent(false);
+                setConfirmationMessage('');
+                setError('');
+              }}
+              className="text-crypto-blue hover:text-blue-400 text-sm"
+            >
+              Back to Sign Up
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

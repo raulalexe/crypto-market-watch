@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, RefreshCw, TrendingUp, Bell } from 'lucide-react';
+import { Menu, RefreshCw, TrendingUp, Bell, User } from 'lucide-react';
 import AlertPopup from './AlertPopup';
 
-const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loading, isAuthenticated }) => {
+const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loading, isAuthenticated, setAuthModalOpen }) => {
   const [alerts, setAlerts] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isAlertPopupOpen, setIsAlertPopupOpen] = useState(false);
@@ -114,37 +114,52 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
         </div>
         
         <div className="flex items-center space-x-2">
+          {/* Refresh button - Only for authenticated users */}
           {isAuthenticated && (
-            <>
-              <button
-                onClick={onRefreshClick}
-                disabled={loading}
-                className="p-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`w-5 h-5 text-slate-300 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-              
-              <button
-                onClick={handleAlertClick}
-                className="relative p-2 rounded-lg hover:bg-slate-700 transition-colors"
-              >
-                <Bell className="w-5 h-5 text-slate-300" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </button>
-            </>
+            <button
+              onClick={onRefreshClick}
+              disabled={loading}
+              className="p-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-5 h-5 text-slate-300 ${loading ? 'animate-spin' : ''}`} />
+            </button>
           )}
           
+          {/* Alert Icon - Show for all users with upgrade prompt for non-authenticated */}
+          <button
+            onClick={isAuthenticated ? handleAlertClick : () => setAuthModalOpen(true)}
+            className="relative p-2 rounded-lg hover:bg-slate-700 transition-colors"
+            title={isAuthenticated ? "Market Alerts" : "Sign up for Market Alerts"}
+          >
+            <Bell className="w-5 h-5 text-slate-300" />
+            {isAuthenticated && unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+            {!isAuthenticated && (
+              <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-xs px-1 py-0.5 rounded-full text-[10px]">
+                Pro
+              </span>
+            )}
+          </button>
+          
           {isAuthenticated ? (
-            <button
-              onClick={onLogoutClick}
-              className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
-            >
-              Logout
-            </button>
+            <div className="flex items-center space-x-2">
+              <Link
+                to="/profile"
+                className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
+                title="Profile"
+              >
+                <User className="w-5 h-5 text-slate-300" />
+              </Link>
+              <button
+                onClick={onLogoutClick}
+                className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
           ) : (
             <div className="flex items-center space-x-2">
               <Link
@@ -164,13 +179,14 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
         </div>
       </div>
       
-      {/* Alert Popup */}
+      {/* Alert Popup - Show for all users */}
       <AlertPopup
         isOpen={isAlertPopupOpen}
         onClose={() => setIsAlertPopupOpen(false)}
         alerts={alerts}
         onAcknowledge={handleAcknowledgeAlert}
         unreadCount={unreadCount}
+        isAuthenticated={isAuthenticated}
       />
     </header>
   );

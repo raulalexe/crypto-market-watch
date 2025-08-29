@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Bell, CheckCircle, X, TrendingUp, TrendingDown, Activity, DollarSign } from 'lucide-react';
+import { shouldShowUpgradePrompt } from '../utils/authUtils';
 
-const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount = 0 }) => {
+const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount = 0, isAuthenticated = false }) => {
   const popupRef = useRef(null);
 
   // Close popup when clicking outside
@@ -109,7 +110,37 @@ const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount =
 
         {/* Alerts List */}
         <div className="max-h-80 overflow-y-auto">
-          {alerts.length === 0 ? (
+          {shouldShowUpgradePrompt({ isAuthenticated }) ? (
+            <div className="p-6 text-center">
+              <Bell className="w-12 h-12 mx-auto mb-3 text-crypto-blue" />
+              <h3 className="text-white font-medium mb-2">Get Real-Time Market Alerts</h3>
+              <p className="text-slate-400 mb-4">
+                Stay ahead of market movements with instant notifications for price changes, 
+                volume spikes, and market sentiment shifts.
+              </p>
+              <div className="space-y-2 text-sm text-slate-400 mb-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>SSR (Stablecoin Supply Ratio) alerts</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span>Bitcoin dominance changes</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <span>Exchange flow movements</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span>Stablecoin market cap changes</span>
+                </div>
+              </div>
+              <button className="px-6 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors">
+                Upgrade to Pro
+              </button>
+            </div>
+          ) : alerts.length === 0 ? (
             <div className="p-6 text-center">
               <Bell className="w-12 h-12 mx-auto mb-3 text-slate-500" />
               <p className="text-slate-400">No alerts</p>
@@ -129,12 +160,12 @@ const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount =
                         {getSeverityIcon(alert.severity)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white mb-1 truncate">
+                        <p className="text-sm font-medium text-white mb-1 break-words leading-relaxed">
                           {alert.message}
                         </p>
                         <div className="flex items-center justify-between text-xs text-slate-400">
-                          <span>{alert.type.replace(/_/g, ' ')}</span>
-                          <span>{formatTimestamp(alert.timestamp)}</span>
+                          <span className="truncate">{alert.type.replace(/_/g, ' ')}</span>
+                          <span className="flex-shrink-0 ml-2">{formatTimestamp(alert.timestamp)}</span>
                         </div>
                       </div>
                     </div>

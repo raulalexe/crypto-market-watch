@@ -37,7 +37,21 @@ class PaymentService {
         price: 29,
         priceId: 'price_pro_monthly', // Stripe Price ID
         cryptoPrice: 0.001, // ETH
-        features: ['all_data', 'ai_analysis', 'alerts', 'api_access', 'data_export'],
+        features: [
+          'all_data', 
+          'ai_analysis', 
+          'market_alerts', 
+          'email_notifications',
+          'push_notifications', 
+          'telegram_notifications',
+          'advanced_metrics',
+          'exchange_flows',
+          'stablecoin_metrics',
+          'api_access', 
+          'data_export',
+          'upcoming_events',
+          'community_support'
+        ],
         duration: 30 // days
       },
       premium: {
@@ -46,7 +60,17 @@ class PaymentService {
         price: 99,
         priceId: 'price_premium_monthly',
         cryptoPrice: 0.003, // ETH
-        features: ['all_features', 'custom_models', 'priority_support', 'white_label', 'error_logs'],
+        features: [
+          'all_pro_features',
+          'unlimited_api_calls',
+          'white_label_options',
+          'dedicated_support',
+          'priority_notifications',
+          'custom_alert_thresholds',
+          'advanced_data_exports',
+          'webhook_integrations',
+          'error_logs'
+        ],
         duration: 30 // days
       },
       api: {

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, User, CreditCard, Shield, Bell, Database, Key } from 'lucide-react';
 import axios from 'axios';
+import { shouldShowUpgradePrompt } from '../utils/authUtils';
+import NotificationSettings from './NotificationSettings';
 
-const Settings = () => {
+const Settings = ({ setAuthModalOpen }) => {
   const [activeTab, setActiveTab] = useState('preferences');
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -236,28 +238,16 @@ const Settings = () => {
             <h3 className="text-lg font-medium text-white mb-4">Billing Information</h3>
             <div className="bg-slate-700 rounded-lg p-4">
               <p className="text-slate-400 text-sm mb-2">Payment Method</p>
-              <p className="text-white">•••• •••• •••• 4242</p>
-              <p className="text-slate-400 text-sm">Expires 12/25</p>
+              <p className="text-white">No payment method on file</p>
+              <p className="text-slate-400 text-sm">Add a payment method to manage your subscription</p>
             </div>
           </div>
 
           <div>
             <h3 className="text-lg font-medium text-white mb-4">Billing History</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                <div>
-                  <p className="text-white font-medium">Pro Plan - Monthly</p>
-                  <p className="text-slate-400 text-sm">March 1, 2024</p>
-                </div>
-                <span className="text-crypto-green">$29.00</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                <div>
-                  <p className="text-white font-medium">Pro Plan - Monthly</p>
-                  <p className="text-slate-400 text-sm">February 1, 2024</p>
-                </div>
-                <span className="text-crypto-green">$29.00</span>
-              </div>
+            <div className="bg-slate-700 rounded-lg p-4">
+              <p className="text-slate-400">No billing history available</p>
+              <p className="text-slate-400 text-sm">Billing history will appear here once you have active subscriptions</p>
             </div>
           </div>
         </>
@@ -267,59 +257,37 @@ const Settings = () => {
 
   const renderNotificationsTab = () => (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-white mb-4">Email Notifications</h3>
-        <div className="space-y-3">
-          <label className="flex items-center">
-            <input type="checkbox" className="mr-3" defaultChecked />
-            <span className="text-slate-300">Market alerts</span>
-          </label>
-          <label className="flex items-center">
-            <input type="checkbox" className="mr-3" defaultChecked />
-            <span className="text-slate-300">Price movements</span>
-          </label>
-          <label className="flex items-center">
-            <input type="checkbox" className="mr-3" />
-            <span className="text-slate-300">Weekly reports</span>
-          </label>
-          <label className="flex items-center">
-            <input type="checkbox" className="mr-3" />
-            <span className="text-slate-300">News updates</span>
-          </label>
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-lg font-medium text-white mb-4">Alert Thresholds</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Price Change %</label>
-            <input
-              type="number"
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
-              placeholder="5"
-              defaultValue="5"
-            />
+      {shouldShowUpgradePrompt({ isAuthenticated }) ? (
+        <div className="bg-slate-700 rounded-lg p-6 text-center">
+          <Bell className="w-12 h-12 text-crypto-blue mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">Get Real-Time Notifications</h3>
+          <p className="text-slate-400 mb-4">
+            Stay ahead of market movements with instant notifications via email, push, and Telegram.
+          </p>
+          <div className="space-y-2 text-sm text-slate-400 mb-4">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>Email notifications</span>
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span>Push notifications</span>
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <span>Telegram alerts</span>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Volume Spike %</label>
-            <input
-              type="number"
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
-              placeholder="50"
-              defaultValue="50"
-            />
-          </div>
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            className="px-6 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Sign Up for Pro
+          </button>
         </div>
-      </div>
-
-      <button
-        onClick={() => handleSave('Notification')}
-        disabled={loading}
-        className="px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
-      >
-        {loading ? 'Saving...' : 'Save Notifications'}
-      </button>
+      ) : (
+        <NotificationSettings />
+      )}
     </div>
   );
 
@@ -361,12 +329,16 @@ const Settings = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white font-medium">2FA Status</p>
-              <p className="text-slate-400 text-sm">Not enabled</p>
+              <p className="text-slate-400 text-sm">Coming soon</p>
             </div>
-            <button className="px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors">
+            <button 
+              className="px-4 py-2 bg-slate-600 text-slate-400 rounded-lg cursor-not-allowed"
+              disabled
+            >
               Enable 2FA
             </button>
           </div>
+          <p className="text-slate-400 text-sm mt-2">Two-factor authentication will be available in a future update</p>
         </div>
       </div>
 
@@ -380,6 +352,63 @@ const Settings = () => {
     </div>
   );
 
+  const [apiKeys, setApiKeys] = useState([]);
+  const [apiKeyLoading, setApiKeyLoading] = useState(false);
+  const [newApiKey, setNewApiKey] = useState(null);
+  const [showNewKey, setShowNewKey] = useState(false);
+
+  const fetchApiKeys = async () => {
+    try {
+      setApiKeyLoading(true);
+      const response = await axios.get('/api/keys');
+      setApiKeys(response.data);
+    } catch (error) {
+      console.error('Error fetching API keys:', error);
+    } finally {
+      setApiKeyLoading(false);
+    }
+  };
+
+  const createApiKey = async (name) => {
+    try {
+      const response = await axios.post('/api/keys', { name });
+      setNewApiKey(response.data);
+      setShowNewKey(true);
+      fetchApiKeys();
+    } catch (error) {
+      console.error('Error creating API key:', error);
+    }
+  };
+
+  const regenerateApiKey = async (id) => {
+    try {
+      const response = await axios.put(`/api/keys/${id}/regenerate`);
+      setNewApiKey(response.data);
+      setShowNewKey(true);
+      fetchApiKeys();
+    } catch (error) {
+      console.error('Error regenerating API key:', error);
+    }
+  };
+
+  const deactivateApiKey = async (id) => {
+    if (!window.confirm('Are you sure you want to deactivate this API key?')) {
+      return;
+    }
+    try {
+      await axios.delete(`/api/keys/${id}`);
+      fetchApiKeys();
+    } catch (error) {
+      console.error('Error deactivating API key:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (subscriptionStatus?.plan !== 'free') {
+      fetchApiKeys();
+    }
+  }, [subscriptionStatus]);
+
   const renderApiTab = () => (
     <div className="space-y-6">
       <div>
@@ -392,36 +421,141 @@ const Settings = () => {
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* API Key Management */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">API Key</label>
-              <div className="flex">
-                <input
-                  type="text"
-                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
-                  value="sk_test_1234567890abcdef"
-                  readOnly
-                />
-                <button className="ml-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors">
-                  Copy
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-md font-medium text-white">API Keys</h4>
+                <button
+                  onClick={() => createApiKey('New API Key')}
+                  className="px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Create New Key
                 </button>
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Usage</label>
-              <div className="bg-slate-700 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-slate-300">Calls today:</span>
-                  <span className="text-white">245 / 1,000</span>
+              
+              {apiKeyLoading ? (
+                <div className="bg-slate-700 rounded-lg p-4">
+                  <p className="text-slate-400">Loading API keys...</p>
                 </div>
-                <div className="w-full bg-slate-600 rounded-full h-2">
-                  <div className="bg-crypto-blue h-2 rounded-full" style={{ width: '24.5%' }}></div>
+              ) : apiKeys.length === 0 ? (
+                <div className="bg-slate-700 rounded-lg p-4">
+                  <p className="text-slate-400">No API keys found. Create your first API key to get started.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {apiKeys.map((key) => (
+                    <div key={key.id} className="bg-slate-700 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">{key.name}</p>
+                          <p className="text-slate-400 text-sm font-mono">{key.api_key}</p>
+                          <p className="text-slate-400 text-xs">
+                            Created: {new Date(key.created_at).toLocaleDateString()}
+                            {key.last_used && ` • Last used: ${new Date(key.last_used).toLocaleDateString()}`}
+                            {key.usage_count > 0 && ` • Used ${key.usage_count} times`}
+                          </p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => regenerateApiKey(key.id)}
+                            className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 transition-colors"
+                          >
+                            Regenerate
+                          </button>
+                          <button
+                            onClick={() => deactivateApiKey(key.id)}
+                            className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+                          >
+                            Deactivate
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* New API Key Modal */}
+            {showNewKey && newApiKey && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
+                  <h3 className="text-lg font-medium text-white mb-4">New API Key Created</h3>
+                  <p className="text-slate-400 text-sm mb-4">
+                    Copy this API key now. You won't be able to see it again!
+                  </p>
+                  <div className="bg-slate-700 rounded-lg p-3 mb-4">
+                    <p className="text-white font-mono text-sm break-all">{newApiKey.api_key}</p>
+                  </div>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(newApiKey.api_key);
+                        alert('API key copied to clipboard!');
+                      }}
+                      className="flex-1 px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      Copy to Clipboard
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowNewKey(false);
+                        setNewApiKey(null);
+                      }}
+                      className="flex-1 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* API Usage Info */}
+            <div>
+              <h4 className="text-md font-medium text-white mb-2">API Usage Limits</h4>
+              <div className="bg-slate-700 rounded-lg p-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-300">Pro Plan:</span>
+                    <span className="text-white">1,000 calls/day</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-300">Premium+ Plan:</span>
+                    <span className="text-white">10,000 calls/day</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-300">Admin:</span>
+                    <span className="text-white">Unlimited</span>
+                  </div>
                 </div>
               </div>
             </div>
-            <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-              Regenerate API Key
-            </button>
+
+            {/* API Documentation */}
+            <div>
+              <h4 className="text-md font-medium text-white mb-2">API Endpoints</h4>
+              <div className="bg-slate-700 rounded-lg p-4">
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <p className="text-white font-mono">GET /api/v1/market-data</p>
+                    <p className="text-slate-400">Get latest market data</p>
+                  </div>
+                  <div>
+                    <p className="text-white font-mono">GET /api/v1/crypto-prices</p>
+                    <p className="text-slate-400">Get crypto prices</p>
+                  </div>
+                  <div>
+                    <p className="text-white font-mono">GET /api/v1/analysis</p>
+                    <p className="text-slate-400">Get AI analysis</p>
+                  </div>
+                </div>
+                <p className="text-slate-400 text-xs mt-3">
+                  Include your API key in the X-API-Key header or Authorization header
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -18,7 +18,8 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    req.user = user;
+    // Add userId to the user object for consistency
+    req.user = { ...user, userId: user.id };
     next();
   } catch (error) {
     return res.status(403).json({ error: 'Invalid token' });
@@ -30,26 +31,19 @@ const optionalAuth = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  console.log('🔍 optionalAuth - authHeader:', authHeader ? 'Present' : 'Missing');
-  console.log('🔍 optionalAuth - token:', token ? 'Present' : 'Missing');
-  console.log('🔍 optionalAuth - JWT_SECRET:', process.env.JWT_SECRET ? 'Present' : 'Missing');
+
 
   if (token) {
     try {
-      console.log('🔍 optionalAuth - Attempting to verify token...');
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('🔍 optionalAuth - Token verified successfully:', decoded);
-      
       const user = await getUserById(decoded.userId);
-      console.log('🔍 optionalAuth - User found:', !!user);
-      console.log('🔍 optionalAuth - User ID:', user?.id);
       
       if (user) {
-        req.user = user;
-        console.log('🔍 optionalAuth - req.user set successfully');
+        // Add userId to the user object for consistency
+        req.user = { ...user, userId: user.id };
       }
     } catch (error) {
-      console.log('🔍 optionalAuth - JWT verification failed:', error.message);
+
       // Token invalid, but continue without user
     }
   }

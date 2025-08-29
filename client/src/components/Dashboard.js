@@ -11,7 +11,7 @@ import BacktestCard from './BacktestCard';
 import UpcomingEventsCard from './UpcomingEventsCard';
 import AlertCard from './AlertCard';
 
-const Dashboard = () => {
+const Dashboard = ({ isAuthenticated }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ const Dashboard = () => {
   // Force re-render when subscription status changes
   useEffect(() => {
     if (dashboardData?.subscriptionStatus) {
-      console.log('🔍 Frontend Debug - Subscription status changed:', dashboardData.subscriptionStatus.planName);
+      console.log('🔍 Frontend Debug - Subscription status changed');
     }
   }, [dashboardData?.subscriptionStatus]);
 
@@ -36,42 +36,27 @@ const Dashboard = () => {
       const token = localStorage.getItem('authToken');
       const headers = {};
       
-      console.log('🔍 Frontend Debug - Token from localStorage:', token ? 'Present' : 'Missing');
-      console.log('🔍 Frontend Debug - Token length:', token ? token.length : 0);
-      
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      console.log('🔍 Frontend Debug - Request headers:', headers);
-      console.log('🔍 Frontend Debug - Making request to /api/dashboard');
-      
       const response = await fetch('/api/dashboard', {
         headers
       });
-      
-      console.log('🔍 Frontend Debug - Response status:', response.status);
-      console.log('🔍 Frontend Debug - Response ok:', response.ok);
       
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data');
       }
       
       const data = await response.json();
-      console.log('🔍 Frontend Debug - Response data received');
-      console.log('🔍 Frontend Debug - Full response data:', data);
-      console.log('🔍 Frontend Debug - subscriptionStatus in response:', data.subscriptionStatus);
       
       // Always use the response, but log what we got
       if (data.subscriptionStatus) {
-        console.log('🔍 Frontend Debug - Using response with subscription status:', data.subscriptionStatus.plan);
         setDashboardData(data);
       } else {
-        console.log('🔍 Frontend Debug - Response has no subscription status, but using it anyway');
         setDashboardData(data);
       }
     } catch (err) {
-      console.error('🔍 Frontend Debug - Error fetching dashboard:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -125,15 +110,9 @@ const Dashboard = () => {
 
   const renderSubscriptionButton = () => {
     const subscriptionStatus = dashboardData?.subscriptionStatus;
-    console.log('🔍 Frontend Debug - dashboardData:', dashboardData);
-    console.log('🔍 Frontend Debug - subscriptionStatus:', subscriptionStatus);
-    console.log('🔍 Frontend Debug - subscriptionStatus.plan:', subscriptionStatus?.plan);
-    console.log('🔍 Frontend Debug - Is admin plan?', subscriptionStatus?.plan === 'admin');
-    
     const isLaunchPhase = process.env.REACT_APP_LAUNCH_PHASE === 'true';
     
     if (!subscriptionStatus) {
-      console.log('🔍 Frontend Debug - No subscription status, showing upgrade button');
       // No subscription - show upgrade to Pro
       if (isLaunchPhase) {
         return (
@@ -155,7 +134,6 @@ const Dashboard = () => {
     }
 
     if (subscriptionStatus.plan === 'admin') {
-      console.log('🔍 Frontend Debug - Admin plan detected, showing ADMIN badge');
       // Admin user - show ADMIN badge
       return (
         <div className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2">
@@ -224,14 +202,14 @@ const Dashboard = () => {
           onToggleExpanded={() => setDataCollectionExpanded(!dataCollectionExpanded)}
         />
         
-        {/* Debug: Show AI Analysis data */}
-        {console.log('Dashboard aiAnalysis data:', dashboardData?.aiAnalysis)}
         <AIAnalysisCard data={dashboardData?.aiAnalysis} />
         
-        {/* Alert Card - Show for Premium+ and Admin users */}
-        {(dashboardData?.subscriptionStatus?.plan === 'premium' || dashboardData?.subscriptionStatus?.plan === 'admin') && (
-          <AlertCard alerts={alerts} onAcknowledge={handleAcknowledgeAlert} />
-        )}
+        {/* Alert Card - Show for all users, component handles upgrade prompts */}
+        <AlertCard 
+          alerts={alerts} 
+          onAcknowledge={handleAcknowledgeAlert} 
+          userData={dashboardData?.subscriptionStatus}
+        />
         
         {/* Other Cards */}
         <CryptoPricesCard data={dashboardData?.cryptoPrices} />

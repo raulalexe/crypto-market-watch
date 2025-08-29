@@ -1,4 +1,7 @@
-const { insertAlert, checkAlertExists, getAlerts, cleanupOldAlerts } = require('../database');
+const { insertAlert, checkAlertExists, getAlerts, cleanupOldAlerts, cleanupDuplicateAlerts, getUsersWithNotifications } = require('../database');
+const EmailService = require('./emailService');
+const PushService = require('./pushService');
+const TelegramService = require('./telegramService');
 
 class AlertService {
   constructor() {
@@ -22,12 +25,17 @@ class AlertService {
         rapidDecline: -5.0   // 5%+ daily decline
       }
     };
+
+    // Initialize notification services
+    this.emailService = new EmailService();
+    this.pushService = new PushService();
+    this.telegramService = new TelegramService();
   }
 
   // Helper method to check if alert already exists and insert if not
   async insertAlertIfNotExists(alert, timeWindow = 3600000) { // 1 hour default
     try {
-      const exists = await checkAlertExists(alert.type, alert.metric, timeWindow);
+      const exists = await checkAlertExists(alert, timeWindow);
       if (!exists) {
         await insertAlert(alert);
         return true; // Alert was inserted
@@ -214,6 +222,9 @@ class AlertService {
       const wasInserted = await this.insertAlertIfNotExists(alert);
       if (wasInserted) {
         insertedAlerts.push(alert);
+        
+        // Send notifications for new alerts
+        await this.sendNotifications(alert);
       }
     }
 
@@ -235,6 +246,114 @@ class AlertService {
       console.error('Error cleaning up old alerts:', error);
       return 0;
     }
+  }
+
+  // Cleanup duplicate alerts
+  async cleanupDuplicateAlerts() {
+    try {
+      const deletedCount = await cleanupDuplicateAlerts();
+      console.log(`Cleaned up ${deletedCount} duplicate alerts`);
+      return deletedCount;
+    } catch (error) {
+      console.error('Error cleaning up duplicate alerts:', error);
+      return 0;
+    }
+  }
+
+  // Send notifications for an alert with priority delivery
+  async sendNotifications(alert) {
+    try {
+      // Get users with notification preferences (only authenticated users)
+      const users = await getUsersWithNotifications();
+      
+      if (users.length === 0) {
+        console.log('📢 No authenticated users with notification preferences found');
+        return;
+      }
+
+      console.log(`📢 Sending notifications to ${users.length} authenticated users for alert: ${alert.type}`);
+
+      // Separate users by subscription level for priority delivery
+      const premiumUsers = users.filter(user => user.plan === 'premium' || user.plan === 'admin');
+      const proUsers = users.filter(user => user.plan === 'pro');
+      const freeUsers = users.filter(user => user.plan === 'free');
+
+      // Send to Premium+ users first (priority delivery)
+      if (premiumUsers.length > 0) {
+        console.log(`🚀 Sending priority notifications to ${premiumUsers.length} Premium+ users`);
+        await this.sendNotificationsByType(premiumUsers, alert, true);
+      }
+
+      // Send to Pro users with standard delivery
+      if (proUsers.length > 0) {
+        console.log(`📤 Sending standard notifications to ${proUsers.length} Pro users`);
+        await this.sendNotificationsByType(proUsers, alert, false);
+      }
+
+      // Send to Free users with delayed delivery
+      if (freeUsers.length > 0) {
+        console.log(`⏰ Scheduling delayed notifications to ${freeUsers.length} Free users`);
+        setTimeout(async () => {
+          await this.sendNotificationsByType(freeUsers, alert, false);
+        }, 30000); // 30 second delay for free users
+      }
+
+    } catch (error) {
+      console.error('❌ Error sending notifications:', error);
+    }
+  }
+
+  // Send notifications by type with priority handling
+  async sendNotificationsByType(users, alert, isPriority = false) {
+    try {
+      // Send email notifications
+      const emailUsers = users.filter(user => user.emailNotifications && user.email);
+      if (emailUsers.length > 0) {
+        if (isPriority) {
+          // Priority email delivery (immediate)
+          await this.emailService.sendBulkAlertEmails(emailUsers, alert);
+        } else {
+          // Standard email delivery (with slight delay)
+          setTimeout(async () => {
+            await this.emailService.sendBulkAlertEmails(emailUsers, alert);
+          }, 5000);
+        }
+      }
+
+      // Send push notifications
+      const pushUsers = users.filter(user => user.pushNotifications && user.pushSubscriptions.length > 0);
+      if (pushUsers.length > 0) {
+        if (isPriority) {
+          // Priority push delivery (immediate)
+          await this.pushService.sendBulkPushNotifications(pushUsers, alert);
+        } else {
+          // Standard push delivery (with slight delay)
+          setTimeout(async () => {
+            await this.pushService.sendBulkPushNotifications(pushUsers, alert);
+          }, 5000);
+        }
+      }
+
+      // Send Telegram notifications (admin controlled, always priority)
+      if (isPriority) {
+        await this.telegramService.sendBulkAlertMessages(alert);
+      }
+
+    } catch (error) {
+      console.error('❌ Error sending notifications by type:', error);
+    }
+  }
+
+  // Test notification services
+  async testNotificationServices() {
+    const results = {
+      email: await this.emailService.testConnection(),
+      push: await this.pushService.testConnection(),
+      telegram: await this.telegramService.testConnection()
+    };
+
+    console.log('🧪 Notification service test results:', results);
+    return results;
   }
 }
 

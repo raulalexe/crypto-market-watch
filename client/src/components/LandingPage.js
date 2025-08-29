@@ -54,9 +54,9 @@ const LandingPage = () => {
       price: '$0',
       period: 'forever',
       features: [
-        'Basic market data',
-        '24-hour history',
-        'Basic AI analysis',
+        'Real-time crypto prices',
+        'Basic market metrics',
+        'Fear & Greed Index',
         'Community support'
       ],
       popular: false
@@ -67,11 +67,11 @@ const LandingPage = () => {
       period: 'month',
       features: [
         'All Free features',
-        '30-day history',
-        'Advanced AI analysis',
-        'Data exports',
-        'API access',
-        'Email alerts'
+        'AI market analysis (multi-timeframe)',
+        'Real-time market alerts',
+        'Email, push & Telegram notifications',
+        'Advanced metrics (VIX, DXY, yields)',
+        'Data exports & API access'
       ],
       popular: true
     },
@@ -81,11 +81,10 @@ const LandingPage = () => {
       period: 'month',
       features: [
         'All Pro features',
-        '1-year history',
-        'Custom AI models',
-        'Priority support',
+        'Unlimited API calls',
         'White-label options',
-        'Error logs access'
+        'Priority notifications',
+        'Custom alerts'
       ],
       popular: false
     }

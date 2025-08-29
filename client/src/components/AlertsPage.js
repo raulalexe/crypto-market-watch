@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { AlertTriangle, Bell, CheckCircle, Filter, Search, RefreshCw } from 'lucide-react';
+import { shouldShowUpgradePrompt } from '../utils/authUtils';
 
-const AlertsPage = () => {
+const AlertsPage = ({ isAuthenticated, userData }) => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -117,6 +119,50 @@ const AlertsPage = () => {
   const highSeverityCount = alerts.filter(a => a.severity === 'high' && !a.acknowledged).length;
   const mediumSeverityCount = alerts.filter(a => a.severity === 'medium' && !a.acknowledged).length;
   const lowSeverityCount = alerts.filter(a => a.severity === 'low' && !a.acknowledged).length;
+
+  if (shouldShowUpgradePrompt(userData)) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <Bell className="w-16 h-16 text-crypto-blue mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Get Real-Time Market Alerts</h2>
+          <p className="text-slate-400 mb-6">
+            Stay ahead of market movements with instant notifications for price changes, 
+            volume spikes, and market sentiment shifts.
+          </p>
+          <div className="space-y-3 text-sm text-slate-400 mb-6">
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span>SSR (Stablecoin Supply Ratio) alerts</span>
+            </div>
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <span>Bitcoin dominance changes</span>
+            </div>
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+              <span>Exchange flow movements</span>
+            </div>
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+              <span>Stablecoin market cap changes</span>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <button className="w-full px-6 py-3 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors">
+              Upgrade to Pro
+            </button>
+            <Link
+              to="/"
+              className="block px-6 py-3 text-slate-400 hover:text-white transition-colors"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

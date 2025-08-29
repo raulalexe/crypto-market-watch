@@ -169,7 +169,10 @@ const initDatabase = () => {
               email VARCHAR(255) UNIQUE NOT NULL,
               password_hash VARCHAR(255) NOT NULL,
               is_admin BOOLEAN DEFAULT FALSE,
-              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+              email_verified BOOLEAN DEFAULT FALSE,
+              confirmation_token VARCHAR(500),
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
           `);
           
@@ -230,6 +233,30 @@ const initDatabase = () => {
               price_at_actual DECIMAL,
               correlation_score DECIMAL,
               timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS contact_messages (
+              id SERIAL PRIMARY KEY,
+              name VARCHAR(255) NOT NULL,
+              email VARCHAR(255) NOT NULL,
+              subject VARCHAR(255) NOT NULL,
+              message TEXT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS api_keys (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER REFERENCES users(id),
+              api_key VARCHAR(255) UNIQUE NOT NULL,
+              name VARCHAR(255),
+              is_active BOOLEAN DEFAULT TRUE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              last_used TIMESTAMP,
+              usage_count INTEGER DEFAULT 0
             )
           `);
           
@@ -384,7 +411,14 @@ const initDatabase = () => {
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             is_admin INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            email_verified INTEGER DEFAULT 0,
+            confirmation_token TEXT,
+            email_notifications INTEGER DEFAULT 0,
+            push_notifications INTEGER DEFAULT 0,
+            telegram_notifications INTEGER DEFAULT 0,
+            notification_preferences TEXT DEFAULT '{}',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )
         `);
 
@@ -439,6 +473,34 @@ const initDatabase = () => {
           )
         `);
 
+        // Push subscriptions table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            endpoint TEXT NOT NULL,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+          )
+        `);
+
+        // API keys table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            api_key TEXT UNIQUE NOT NULL,
+            name TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_used DATETIME,
+            usage_count INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+          )
+        `);
+
         // Backtest results table
         db.run(`
           CREATE TABLE IF NOT EXISTS backtest_results (
@@ -453,6 +515,36 @@ const initDatabase = () => {
             price_at_actual REAL,
             correlation_score REAL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
+        // Contact messages table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS contact_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
+        // Create user_alert_thresholds table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS user_alert_thresholds (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            threshold_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            metric TEXT NOT NULL,
+            condition TEXT NOT NULL,
+            value REAL NOT NULL,
+            unit TEXT,
+            enabled INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
           )
         `);
 
@@ -788,6 +880,19 @@ const insertUser = (email, passwordHash, isAdmin = false) => {
   });
 };
 
+const insertUserWithConfirmation = (email, passwordHash, confirmationToken) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO users (email, password_hash, email_verified, confirmation_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [email, passwordHash, 0, confirmationToken, new Date().toISOString(), new Date().toISOString()],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
 const getUserById = (id) => {
   return new Promise((resolve, reject) => {
     db.get(
@@ -833,18 +938,36 @@ const updateUser = (id, updates) => {
 
 const isUserAdmin = (userId) => {
   return new Promise((resolve, reject) => {
-    // Check for active admin subscription
+    // First check user is_admin field
     db.get(
-      'SELECT plan_type FROM subscriptions WHERE user_id = ? AND status = "active" ORDER BY created_at DESC LIMIT 1',
+      'SELECT is_admin FROM users WHERE id = ?',
       [userId],
-      (err, subRow) => {
+      (err, userRow) => {
         if (err) {
           reject(err);
           return;
         }
         
-        // User is admin if they have an active admin subscription
-        resolve(subRow && subRow.plan_type === 'admin');
+        // If user has is_admin = 1, they are admin
+        if (userRow && userRow.is_admin === 1) {
+          resolve(true);
+          return;
+        }
+        
+        // Otherwise check for active admin subscription
+        db.get(
+          'SELECT plan_type FROM subscriptions WHERE user_id = ? AND status = "active" ORDER BY created_at DESC LIMIT 1',
+          [userId],
+          (err, subRow) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            
+            // User is admin if they have an active admin subscription
+            resolve(subRow && subRow.plan_type === 'admin');
+          }
+        );
       }
     );
   });
@@ -1032,14 +1155,15 @@ const insertAlert = (alert) => {
   });
 };
 
-const checkAlertExists = (type, metric, timeWindow = 3600000) => { // 1 hour default
+const checkAlertExists = (alert, timeWindow = 3600000) => { // 1 hour default
   return new Promise((resolve, reject) => {
     const cutoffTime = new Date(Date.now() - timeWindow);
     const cutoffTimeStr = cutoffTime.toISOString().slice(0, 19).replace('T', ' '); // Format as SQLite datetime
     
+    // Check for exact duplicates (same type, metric, and value) within time window
     db.get(
-      'SELECT id FROM alerts WHERE type = ? AND metric = ? AND timestamp > ?',
-      [type, metric, cutoffTimeStr],
+      'SELECT id FROM alerts WHERE type = ? AND metric = ? AND value = ? AND timestamp > ?',
+      [alert.type, alert.metric, alert.value, cutoffTimeStr],
       (err, row) => {
         if (err) {
           console.error('Error checking alert existence:', err);
@@ -1055,8 +1179,100 @@ const checkAlertExists = (type, metric, timeWindow = 3600000) => { // 1 hour def
 
 const getAlerts = (limit = 10) => {
   return new Promise((resolve, reject) => {
+    // Get alerts with deduplication - only return the most recent alert of each type/metric combination
     db.all(
-      'SELECT * FROM alerts ORDER BY timestamp DESC LIMIT ?',
+      `SELECT * FROM alerts 
+       WHERE id IN (
+         SELECT MAX(id) 
+         FROM alerts 
+         GROUP BY type, metric
+       )
+       ORDER BY timestamp DESC 
+       LIMIT ?`,
+      [limit],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+};
+
+// Get user's custom alert thresholds
+const getUserAlertThresholds = (userId) => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM user_alert_thresholds WHERE user_id = ? ORDER BY created_at DESC',
+      [userId],
+      (err, rows) => {
+        if (err) {
+          console.error('Error getting user alert thresholds:', err);
+          reject(err);
+        } else {
+          resolve(rows);
+        }
+      }
+    );
+  });
+};
+
+// Save user's custom alert thresholds
+const saveUserAlertThresholds = (userId, thresholds) => {
+  return new Promise((resolve, reject) => {
+    // First, delete existing thresholds for this user
+    db.run('DELETE FROM user_alert_thresholds WHERE user_id = ?', [userId], (err) => {
+      if (err) {
+        console.error('Error deleting existing thresholds:', err);
+        reject(err);
+        return;
+      }
+
+      // Then insert new thresholds
+      const stmt = db.prepare(
+        'INSERT INTO user_alert_thresholds (user_id, threshold_id, name, description, metric, condition, value, unit, enabled, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      );
+
+      const timestamp = new Date().toISOString();
+      thresholds.forEach(threshold => {
+        stmt.run([
+          userId,
+          threshold.id,
+          threshold.name,
+          threshold.description,
+          threshold.metric,
+          threshold.condition,
+          threshold.value,
+          threshold.unit,
+          threshold.enabled ? 1 : 0,
+          timestamp
+        ]);
+      });
+
+      stmt.finalize((err) => {
+        if (err) {
+          console.error('Error saving thresholds:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  });
+};
+
+const getUniqueAlerts = (limit = 10) => {
+  return new Promise((resolve, reject) => {
+    // Get unique alerts by type and metric, prioritizing the most recent ones
+    db.all(
+      `SELECT DISTINCT a.* 
+       FROM alerts a
+       INNER JOIN (
+         SELECT type, metric, MAX(timestamp) as max_timestamp
+         FROM alerts
+         GROUP BY type, metric
+       ) b ON a.type = b.type AND a.metric = b.metric AND a.timestamp = b.max_timestamp
+       ORDER BY a.timestamp DESC 
+       LIMIT ?`,
       [limit],
       (err, rows) => {
         if (err) reject(err);
@@ -1079,6 +1295,147 @@ const acknowledgeAlert = (alertId) => {
   });
 };
 
+// Push subscription functions
+const insertPushSubscription = (userId, endpoint, p256dh, auth) => {
+  return new Promise((resolve, reject) => {
+
+    
+    db.run(
+      'INSERT OR REPLACE INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?, ?, ?, ?)',
+      [userId, endpoint, p256dh, auth],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      }
+    );
+  });
+};
+
+const getPushSubscriptions = (userId = null) => {
+  return new Promise((resolve, reject) => {
+    const query = userId 
+      ? 'SELECT * FROM push_subscriptions WHERE user_id = ?'
+      : 'SELECT * FROM push_subscriptions';
+    const params = userId ? [userId] : [];
+    
+    db.all(query, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+};
+
+const deletePushSubscription = (userId, endpoint) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?',
+      [userId, endpoint],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
+// Notification preference functions
+const updateNotificationPreferences = (userId, preferences) => {
+  return new Promise((resolve, reject) => {
+    const { emailNotifications, pushNotifications, telegramNotifications, notificationPreferences } = preferences;
+    
+    db.run(
+      `UPDATE users SET 
+        email_notifications = ?, 
+        push_notifications = ?, 
+        telegram_notifications = ?,
+        notification_preferences = ?
+       WHERE id = ?`,
+      [
+        emailNotifications ? 1 : 0,
+        pushNotifications ? 1 : 0,
+        telegramNotifications ? 1 : 0,
+        JSON.stringify(notificationPreferences || {}),
+        userId
+      ],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
+const getNotificationPreferences = (userId) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT email_notifications, push_notifications, telegram_notifications, notification_preferences FROM users WHERE id = ?',
+      [userId],
+      (err, row) => {
+        if (err) reject(err);
+        else {
+          if (row) {
+            resolve({
+              emailNotifications: Boolean(row.email_notifications),
+              pushNotifications: Boolean(row.push_notifications),
+              telegramNotifications: Boolean(row.telegram_notifications),
+              notificationPreferences: JSON.parse(row.notification_preferences || '{}')
+            });
+          } else {
+            resolve(null);
+          }
+        }
+      }
+    );
+  });
+};
+
+const getUsersWithNotifications = () => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      `SELECT u.id, u.email, u.email_notifications, u.push_notifications, u.telegram_notifications,
+              ps.endpoint, ps.p256dh, ps.auth
+       FROM users u
+       LEFT JOIN push_subscriptions ps ON u.id = ps.user_id
+       WHERE (u.email_notifications = 1 OR u.push_notifications = 1 OR u.telegram_notifications = 1)
+       AND u.email IS NOT NULL AND u.email != ''`,
+      (err, rows) => {
+        if (err) reject(err);
+        else {
+          // Group by user and combine push subscriptions
+          const users = {};
+          rows.forEach(row => {
+            if (!users[row.id]) {
+              users[row.id] = {
+                id: row.id,
+                email: row.email,
+                emailNotifications: Boolean(row.email_notifications),
+                pushNotifications: Boolean(row.push_notifications),
+                telegramNotifications: Boolean(row.telegram_notifications),
+                pushSubscriptions: []
+              };
+            }
+            
+            if (row.endpoint) {
+              users[row.id].pushSubscriptions.push({
+                endpoint: row.endpoint,
+                keys: {
+                  p256dh: row.p256dh,
+                  auth: row.auth
+                }
+              });
+            }
+          });
+          
+          resolve(Object.values(users));
+        }
+      }
+    );
+  });
+};
+
 const cleanupOldAlerts = (daysToKeep = 7) => {
   return new Promise((resolve, reject) => {
     const cutoffDate = new Date(Date.now() - (daysToKeep * 24 * 60 * 60 * 1000)).toISOString();
@@ -1088,6 +1445,29 @@ const cleanupOldAlerts = (daysToKeep = 7) => {
       function(err) {
         if (err) reject(err);
         else resolve(this.changes);
+      }
+    );
+  });
+};
+
+const cleanupDuplicateAlerts = () => {
+  return new Promise((resolve, reject) => {
+    // Delete duplicate alerts, keeping only the most recent one for each type/metric combination
+    db.run(
+      `DELETE FROM alerts 
+       WHERE id NOT IN (
+         SELECT MAX(id) 
+         FROM alerts 
+         GROUP BY type, metric
+       )`,
+      function(err) {
+        if (err) {
+          console.error('Error cleaning up duplicate alerts:', err);
+          reject(err);
+        } else {
+          console.log(`Cleaned up ${this.changes} duplicate alerts`);
+          resolve(this.changes);
+        }
       }
     );
   });
@@ -1123,8 +1503,32 @@ const getUpcomingEvents = (limit = 20) => {
 // Admin functions for getting table data
 const getTableData = (tableName, limit = 100) => {
   return new Promise((resolve, reject) => {
-    // All tables use timestamp column for ordering
-    const query = `SELECT * FROM ${tableName} ORDER BY timestamp DESC LIMIT ?`;
+    // Different tables use different timestamp columns
+    let orderByColumn;
+    switch (tableName) {
+      case 'users':
+        orderByColumn = 'created_at';
+        break;
+      case 'subscriptions':
+        orderByColumn = 'created_at';
+        break;
+      case 'api_keys':
+        orderByColumn = 'created_at';
+        break;
+      case 'alerts':
+        orderByColumn = 'created_at';
+        break;
+      case 'push_subscriptions':
+        orderByColumn = 'created_at';
+        break;
+      case 'contact_messages':
+        orderByColumn = 'created_at';
+        break;
+      default:
+        orderByColumn = 'timestamp';
+    }
+    
+    const query = `SELECT * FROM ${tableName} ORDER BY ${orderByColumn} DESC LIMIT ?`;
     db.all(query, [limit], (err, rows) => {
       if (err) {
         console.error(`Error fetching from ${tableName}:`, err);
@@ -1133,6 +1537,92 @@ const getTableData = (tableName, limit = 100) => {
         resolve(rows || []);
       }
     });
+  });
+};
+
+// API Key management functions
+const generateApiKey = () => {
+  const crypto = require('crypto');
+  return 'sk_' + crypto.randomBytes(32).toString('hex');
+};
+
+const createApiKey = (userId, name = 'Default') => {
+  return new Promise((resolve, reject) => {
+    const apiKey = generateApiKey();
+    db.run(
+      'INSERT INTO api_keys (user_id, api_key, name) VALUES (?, ?, ?)',
+      [userId, apiKey, name],
+      function(err) {
+        if (err) reject(err);
+        else resolve({ id: this.lastID, apiKey, name });
+      }
+    );
+  });
+};
+
+const getUserApiKeys = (userId) => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT id, api_key, name, is_active, created_at, last_used, usage_count FROM api_keys WHERE user_id = ? ORDER BY created_at DESC',
+      [userId],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      }
+    );
+  });
+};
+
+const getApiKeyByKey = (apiKey) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM api_keys WHERE api_key = ? AND is_active = 1',
+      [apiKey],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
+const updateApiKeyUsage = (apiKeyId) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE api_keys SET last_used = CURRENT_TIMESTAMP, usage_count = usage_count + 1 WHERE id = ?',
+      [apiKeyId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
+const deactivateApiKey = (userId, apiKeyId) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE api_keys SET is_active = 0 WHERE id = ? AND user_id = ?',
+      [apiKeyId, userId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      }
+    );
+  });
+};
+
+const regenerateApiKey = (userId, apiKeyId) => {
+  return new Promise((resolve, reject) => {
+    const newApiKey = generateApiKey();
+    db.run(
+      'UPDATE api_keys SET api_key = ?, last_used = NULL, usage_count = 0 WHERE id = ? AND user_id = ?',
+      [newApiKey, apiKeyId, userId],
+      function(err) {
+        if (err) reject(err);
+        else resolve({ apiKey: newApiKey });
+      }
+    );
   });
 };
 
@@ -1160,6 +1650,7 @@ module.exports = {
   getErrorLogs,
   // User management
   insertUser,
+  insertUserWithConfirmation,
   getUserById,
   getUserByEmail,
   updateUser,
@@ -1185,11 +1676,28 @@ module.exports = {
   insertAlert,
   checkAlertExists,
   getAlerts,
+  getUniqueAlerts,
   acknowledgeAlert,
   cleanupOldAlerts,
+  cleanupDuplicateAlerts,
+  getUserAlertThresholds,
+  saveUserAlertThresholds,
+  insertPushSubscription,
+  getPushSubscriptions,
+  deletePushSubscription,
+  updateNotificationPreferences,
+  getNotificationPreferences,
+  getUsersWithNotifications,
   // Admin functions
   getTableData,
   // Upcoming Events
   insertUpcomingEvent,
-  getUpcomingEvents
+  getUpcomingEvents,
+  // API Key management
+  createApiKey,
+  getUserApiKeys,
+  getApiKeyByKey,
+  updateApiKeyUsage,
+  deactivateApiKey,
+  regenerateApiKey
 };

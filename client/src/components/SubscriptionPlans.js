@@ -69,14 +69,17 @@ const SubscriptionPlans = () => {
       description: 'Basic access to crypto market data',
       features: [
         'Basic dashboard access',
-        'Limited historical data',
-        'Basic market insights',
+        'Real-time crypto prices',
+        'Basic market metrics',
+        'Fear & Greed Index',
         'Community support'
       ],
       limitations: [
+        'No AI market analysis',
+        'No market alerts',
         'No data exports',
         'No API access',
-        'Limited data history'
+        'No notifications'
       ],
       popular: false,
       icon: BarChart3,
@@ -90,15 +93,21 @@ const SubscriptionPlans = () => {
       description: 'Advanced features for serious traders',
       features: [
         'All Free features',
-        'AI market analysis',
-        'Advanced metrics',
+        'AI market analysis (short, medium, long-term)',
+        'Real-time market alerts',
+        'Email notifications',
+        'Push notifications',
+        'Telegram bot alerts',
+        'Advanced metrics (VIX, DXY, Treasury yields)',
+        'Exchange flow data',
+        'Stablecoin metrics (SSR)',
         'Data exports (CSV, JSON)',
         'API access (1,000 calls/day)',
-        'Extended data history',
-        'Custom alerts (Coming Soon)'
+        'Upcoming market events tracking'
       ],
       limitations: [
-        'Limited API calls'
+        'Limited API calls (1,000/day)',
+        'No white-label options (can\'t rebrand as your own product)'
       ],
       popular: true,
       icon: Zap,
@@ -114,10 +123,11 @@ const SubscriptionPlans = () => {
         'All Pro features',
         'Unlimited API calls',
         'White-label options',
-        'Dedicated support',
         'Advanced analytics',
-        'Custom integrations',
-        'SLA guarantee'
+        'Priority notification delivery',
+        'Custom alert thresholds',
+        'Advanced data exports',
+        'Webhook integrations'
       ],
       limitations: [],
       popular: false,

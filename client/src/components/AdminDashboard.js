@@ -11,11 +11,14 @@ import {
   EyeOff,
   Filter,
   Search,
-  CheckCircle
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
-import AlertCard from './AlertCard';
+import ToastNotification from './ToastNotification';
 
-const AdminDashboard = () => {
+import { Link } from 'react-router-dom';
+
+const AdminDashboard = ({ isAuthenticated, userData }) => {
   const [activeTab, setActiveTab] = useState('collections');
   const [collectionsData, setCollectionsData] = useState([]);
   const [aiAnalysisData, setAiAnalysisData] = useState([]);
@@ -25,13 +28,18 @@ const AdminDashboard = () => {
   const [showRawData, setShowRawData] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState('all');
   const [alerts, setAlerts] = useState([]);
+  const [exporting, setExporting] = useState({});
+  const [alert, setAlert] = useState(null);
 
   const tabs = [
     { id: 'collections', name: 'Database Collections', icon: Database },
     { id: 'ai-analysis', name: 'AI Analysis', icon: Brain },
-    { id: 'alerts', name: 'Alerts', icon: TrendingUp },
     { id: 'overview', name: 'Overview', icon: BarChart3 }
   ];
+
+  const showAlert = (message, type = 'success') => {
+    setAlert({ message, type });
+  };
 
   const collections = [
     { id: 'market_data', name: 'Market Data', description: 'Real-time cryptocurrency market data' },
@@ -100,47 +108,99 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAcknowledgeAlert = async (alertId) => {
+
+
+  const exportData = async (collectionName) => {
+    console.log('🚀 exportData function called with:', collectionName);
     try {
-      const response = await fetch(`/api/alerts/${alertId}/acknowledge`, {
-        method: 'POST',
+      setExporting(prev => ({ ...prev, [collectionName]: true }));
+      console.log('🔄 Starting export for collection:', collectionName);
+      
+      const authToken = localStorage.getItem('authToken');
+      console.log('🔑 Auth token exists:', !!authToken);
+      console.log('🔑 Auth token length:', authToken ? authToken.length : 0);
+      console.log('🔑 User data:', userData);
+      console.log('🔑 Is authenticated:', isAuthenticated);
+      
+      const response = await fetch(`/api/admin/export/${collectionName}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${authToken}`
         }
       });
 
-      if (response.ok) {
-        setAlerts(prev => prev.filter(alert => alert.id !== alertId));
-      }
-    } catch (error) {
-      console.error('Error acknowledging alert:', error);
-    }
-  };
-
-  const exportData = async (collectionName) => {
-    try {
-          const response = await fetch(`/api/admin/export/${collectionName}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-      }
-    });
+      console.log('📡 Export response status:', response.status);
+      console.log('📡 Export response headers:', response.headers);
+      console.log('📡 Export response ok:', response.ok);
+      console.log('📡 Export response type:', response.type);
 
       if (!response.ok) {
-        throw new Error('Failed to export data');
+        const errorText = await response.text();
+        console.error('❌ Export failed with status:', response.status, 'Error:', errorText);
+        throw new Error(`Failed to export data: ${response.status} - ${errorText}`);
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${collectionName}_export.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      console.log('✅ Export successful, processing response...');
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      console.log('📄 Content-Type:', contentType);
+      
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        console.log('📄 Received JSON data, records:', data.length);
+        console.log('📄 Sample data:', data.slice(0, 2));
+        
+        // Create JSON blob with proper formatting
+        const jsonString = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        console.log('📦 Blob created, size:', blob.size, 'bytes');
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${collectionName}_export.json`;
+        a.style.display = 'none';
+        console.log('🔗 Download link created:', {
+          href: a.href,
+          download: a.download,
+          display: a.style.display
+        });
+        
+        // Add to DOM and trigger download
+        document.body.appendChild(a);
+        console.log('🔗 Download link created, triggering click...');
+        
+        // Use setTimeout to ensure DOM is ready
+        setTimeout(() => {
+          console.log('🔗 About to trigger download click...');
+          a.click();
+          console.log('✅ Click triggered');
+          
+          // Cleanup
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            console.log('🧹 Cleanup completed');
+          }, 1000);
+        }, 100);
+        
+        console.log('✅ Download process initiated for:', collectionName);
+        
+        // Show success message
+        setTimeout(() => {
+          console.log('🎉 Export completed successfully!');
+          showAlert(`✅ Export successful! Downloading ${collectionName}_export.json`, 'success');
+        }, 500);
+      } else {
+        console.error('❌ Unexpected content type:', contentType);
+        throw new Error('Unexpected response format');
+      }
     } catch (err) {
-      console.error('Error exporting data:', err);
-      alert('Failed to export data');
+      console.error('❌ Error exporting data:', err);
+      showAlert(`Failed to export data: ${err.message}`, 'error');
+    } finally {
+      setExporting(prev => ({ ...prev, [collectionName]: false }));
     }
   };
 
@@ -214,10 +274,26 @@ const AdminDashboard = () => {
                   {item.count} records
                 </span>
                 <button
-                  onClick={() => exportData(item.collection)}
-                  className="p-2 bg-crypto-blue hover:bg-blue-600 rounded-lg transition-colors"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🖱️ Export button clicked for:', item.collection);
+                    exportData(item.collection);
+                  }}
+                  disabled={exporting[item.collection]}
+                  className={`p-2 rounded-lg transition-colors ${
+                    exporting[item.collection] 
+                      ? 'bg-gray-600 cursor-not-allowed' 
+                      : 'bg-crypto-blue hover:bg-blue-600'
+                  }`}
+                  title={`Export ${item.collection} data`}
                 >
-                  <Download className="w-4 h-4" />
+                  {exporting[item.collection] ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -415,75 +491,6 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderAlertsTab = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-2">Market Alerts</h3>
-          <p className="text-gray-400 text-sm">Monitor and manage system-generated market alerts</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs bg-red-500 px-2 py-1 rounded text-white">
-            {alerts.filter(a => a.severity === 'high').length} High
-          </span>
-          <span className="text-xs bg-yellow-500 px-2 py-1 rounded text-white">
-            {alerts.filter(a => a.severity === 'medium').length} Medium
-          </span>
-        </div>
-      </div>
-
-      <div className="grid gap-4">
-        {alerts.length === 0 ? (
-          <div className="bg-gray-800 rounded-lg p-8 text-center">
-            <div className="text-gray-400 mb-2">No alerts found</div>
-            <div className="text-sm text-gray-500">Market conditions are stable</div>
-          </div>
-        ) : (
-          alerts.map((alert) => (
-            <div
-              key={alert.id}
-              className={`bg-gray-800 rounded-lg p-6 border-l-4 ${
-                alert.severity === 'high' ? 'border-red-500' :
-                alert.severity === 'medium' ? 'border-yellow-500' :
-                'border-blue-500'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      alert.severity === 'high' ? 'bg-red-500 text-white' :
-                      alert.severity === 'medium' ? 'bg-yellow-500 text-white' :
-                      'bg-blue-500 text-white'
-                    }`}>
-                      {alert.severity.toUpperCase()}
-                    </span>
-                    <span className="text-xs text-gray-400">{alert.type}</span>
-                  </div>
-                  <p className="text-white mb-2">{alert.message}</p>
-                  <div className="flex items-center gap-4 text-xs text-gray-400">
-                    <span>Metric: {alert.metric}</span>
-                    {alert.value && (
-                      <span>Value: {typeof alert.value === 'number' ? alert.value.toFixed(2) : alert.value}</span>
-                    )}
-                    <span>{new Date(alert.timestamp).toLocaleString()}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleAcknowledgeAlert(alert.id)}
-                  className="ml-4 p-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                  title="Acknowledge alert"
-                >
-                  <CheckCircle className="w-4 h-4 text-white" />
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-
   const renderOverviewTab = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <div className="bg-gray-800 p-6 rounded-lg">
@@ -529,6 +536,53 @@ const AdminDashboard = () => {
           <Users className="w-8 h-8 text-crypto-blue" />
         </div>
       </div>
+
+             <div className="bg-gray-800 p-6 rounded-lg col-span-1 md:col-span-2 lg:col-span-1">
+         <div className="flex items-center justify-between mb-4">
+           <h3 className="text-lg font-semibold text-white">Market Alerts</h3>
+           <Link 
+             to="/alerts" 
+             className="text-crypto-blue hover:text-blue-400 transition-colors text-sm flex items-center gap-1"
+           >
+             View All
+             <AlertTriangle className="w-4 h-4" />
+           </Link>
+         </div>
+         
+         <div className="space-y-3">
+           <div className="flex items-center justify-between">
+             <span className="text-sm text-gray-400">High Severity</span>
+             <span className="text-xs bg-red-500 px-2 py-1 rounded text-white">
+               {alerts.filter(a => a.severity === 'high').length}
+             </span>
+           </div>
+           <div className="flex items-center justify-between">
+             <span className="text-sm text-gray-400">Medium Severity</span>
+             <span className="text-xs bg-yellow-500 px-2 py-1 rounded text-white">
+               {alerts.filter(a => a.severity === 'medium').length}
+             </span>
+           </div>
+           <div className="flex items-center justify-between">
+             <span className="text-sm text-gray-400">Low Severity</span>
+             <span className="text-xs bg-blue-500 px-2 py-1 rounded text-white">
+               {alerts.filter(a => a.severity === 'low').length}
+             </span>
+           </div>
+           
+           {alerts.length > 0 && (
+             <div className="mt-4 pt-3 border-t border-gray-700">
+               <div className="text-xs text-gray-400 mb-2">Recent Alerts:</div>
+               <div className="space-y-2">
+                 {alerts.slice(0, 3).map(alert => (
+                   <div key={alert.id} className="text-xs text-gray-300 truncate">
+                     {alert.message}
+                   </div>
+                 ))}
+               </div>
+             </div>
+           )}
+         </div>
+       </div>
     </div>
   );
 
@@ -567,10 +621,7 @@ const AdminDashboard = () => {
           <p className="text-gray-400">Manage and monitor database collections and AI analysis</p>
         </div>
 
-        {/* Alert Card for Admin */}
-        <div className="mb-6">
-          <AlertCard alerts={alerts} onAcknowledge={handleAcknowledgeAlert} />
-        </div>
+
 
         {/* Tabs */}
         <div className="border-b border-gray-700 mb-6">
@@ -599,10 +650,10 @@ const AdminDashboard = () => {
         <div className="space-y-6">
           {activeTab === 'collections' && renderCollectionsTab()}
           {activeTab === 'ai-analysis' && renderAiAnalysisTab()}
-          {activeTab === 'alerts' && renderAlertsTab()}
           {activeTab === 'overview' && renderOverviewTab()}
         </div>
       </div>
+      {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
     </div>
   );
 };

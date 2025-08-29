@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Download, FileText, AlertCircle, ExternalLink } from 'lucide-react';
+import { Download, FileText, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import ToastNotification from './ToastNotification';
 
 const DataExport = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -8,6 +9,17 @@ const DataExport = () => {
   const [authError, setAuthError] = useState(null);
   const [exportHistory, setExportHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [alert, setAlert] = useState(null);
+  const [formData, setFormData] = useState({
+    dataType: 'crypto_prices',
+    dateRange: '7d',
+    format: 'json'
+  });
+
+  const showAlert = (message, type = 'success') => {
+    setAlert({ message, type });
+  };
 
   const checkAuthAndSubscription = useCallback(async () => {
     try {
@@ -51,6 +63,66 @@ const DataExport = () => {
       console.error('Error fetching export history:', error);
       setExportHistory([]);
     }
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    console.log('📝 Form submitted with data:', formData);
+    
+    if (exporting) {
+      console.log('⏳ Export already in progress, ignoring submission');
+      return;
+    }
+    
+    try {
+      setExporting(true);
+      console.log('🚀 Creating export with data:', formData);
+      
+      const response = await axios.post('/api/exports/create', formData, {
+        responseType: 'blob',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      console.log('✅ Export created successfully');
+      
+      // Create download link
+      const url = window.URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `crypto-data-${formData.dataType}-${formData.dateRange}.${formData.format}`;
+      a.style.display = 'none';
+      
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 1000);
+      
+      // Refresh export history
+      await fetchExportHistory();
+      
+      // Show success message
+      showAlert(`✅ Export created successfully! Downloading crypto-data-${formData.dataType}-${formData.dateRange}.${formData.format}`, 'success');
+      
+    } catch (error) {
+      console.error('❌ Export failed:', error);
+      showAlert(`Export failed: ${error.response?.data?.error || error.message}`, 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   if (loading) {
@@ -130,12 +202,17 @@ const DataExport = () => {
           {/* Export Creation */}
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4">Create Export</h2>
-            <form className="space-y-4">
+            <form onSubmit={handleFormSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Data Type
                 </label>
-                <select className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                <select
+                  name="dataType"
+                  value={formData.dataType}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                >
                   <option value="crypto_prices">Crypto Prices</option>
                   <option value="market_data">Market Data</option>
                   <option value="fear_greed">Fear & Greed Index</option>
@@ -149,7 +226,12 @@ const DataExport = () => {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Date Range
                 </label>
-                <select className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                <select
+                  name="dateRange"
+                  value={formData.dateRange}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                >
                   <option value="1d">Last 24 Hours</option>
                   <option value="7d">Last 7 Days</option>
                   <option value="30d">Last 30 Days</option>
@@ -163,7 +245,12 @@ const DataExport = () => {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Format
                 </label>
-                <select className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                <select
+                  name="format"
+                  value={formData.format}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                >
                   <option value="csv">CSV</option>
                   <option value="json">JSON</option>
                   <option value="xlsx">Excel</option>
@@ -172,17 +259,36 @@ const DataExport = () => {
 
               <button
                 type="submit"
-                className="w-full bg-crypto-blue hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                disabled={exporting}
+                className="w-full bg-crypto-blue hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Download className="w-4 h-4" />
-                <span>Create Export</span>
+                {exporting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    <span>Create Export</span>
+                  </>
+                )}
               </button>
             </form>
           </div>
 
           {/* Export History */}
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Export History</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Export History</h2>
+              <button
+                onClick={fetchExportHistory}
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                title="Refresh export history"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
             {!Array.isArray(exportHistory) || exportHistory.length === 0 ? (
               <div className="text-center py-8">
                 <FileText className="w-12 h-12 text-gray-500 mx-auto mb-4" />
@@ -208,6 +314,7 @@ const DataExport = () => {
           </div>
         </div>
       </div>
+      {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
     </div>
   );
 };

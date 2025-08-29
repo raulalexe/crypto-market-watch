@@ -34,10 +34,10 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
       switch (paymentMethod) {
         case 'stripe':
           // For Stripe, you'd typically use Stripe Elements
-          // This is a simplified version
+          // This is a simplified version - in production, you'd collect payment method from Stripe Elements
           result = await axios.post('/api/subscribe/stripe', {
             planId,
-            paymentMethodId: 'pm_test_123' // This would come from Stripe Elements
+            paymentMethodId: null // Would be collected from Stripe Elements in production
           });
           break;
           
@@ -123,7 +123,6 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
         '100,000 API calls per day',
         'Real-time data streaming',
         'Webhook support',
-        'Dedicated support',
         'Custom data endpoints',
         'Bulk data export',
         'Advanced analytics',

@@ -162,12 +162,8 @@ const PrivacyPolicy = () => {
         <div className="bg-slate-800 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Contact Us</h2>
           <p className="text-gray-300 mb-4">
-            If you have questions about this Privacy Policy or our data practices, please contact us:
+            If you have questions about this Privacy Policy or our data practices, please use our contact form.
           </p>
-          <div className="space-y-2 text-gray-300">
-            <p>Email: privacy@cryptowatch.com</p>
-            <p>Support: support@cryptowatch.com</p>
-          </div>
         </div>
 
         {/* Updates */}

@@ -1,275 +1,331 @@
 # Manual Testing Checklist
 
-## 🚀 Quick Start Testing
+## 🧪 Test Environment Setup
+- [ ] Server running on port 3001
+- [ ] Client running on port 3000
+- [ ] Database initialized and populated with test data
+- [ ] All dependencies installed (`npm install` in root and client directories)
 
-### Prerequisites
-- [ ] Server running on localhost:3001
-- [ ] Client running on localhost:3000
-- [ ] Database initialized with test data
-- [ ] Admin user created (admin@example.com)
+## 🔐 Authentication & User Management
 
----
+### Registration Flow
+- [ ] **New User Registration**
+  - [ ] Navigate to homepage
+  - [ ] Click "Sign Up" button
+  - [ ] Fill email and password fields
+  - [ ] Submit registration form
+  - [ ] Verify email confirmation modal appears
+  - [ ] Check console for confirmation link (development mode)
+  - [ ] Click confirmation link in console
+  - [ ] Verify account activation and auto-login
 
-## 🔐 Authentication Tests
+- [ ] **Duplicate Email Registration**
+  - [ ] Try to register with existing email
+  - [ ] Verify "User already exists" error message
+
+- [ ] **Invalid Registration Data**
+  - [ ] Submit empty form
+  - [ ] Submit with invalid email format
+  - [ ] Submit with short password
+  - [ ] Verify appropriate error messages
 
 ### Login Flow
-- [ ] **Admin Login**
-  - Navigate to login page
-  - Enter admin@example.com / admin123
-  - Verify successful login
-  - Check admin privileges
+- [ ] **Valid Login**
+  - [ ] Click "Sign In" button
+  - [ ] Enter valid credentials
+  - [ ] Verify successful login and redirect to dashboard
+  - [ ] Check that auth token is stored in localStorage
 
 - [ ] **Invalid Login**
-  - Try wrong password
-  - Try non-existent email
-  - Verify error messages display
+  - [ ] Enter incorrect email/password
+  - [ ] Verify error message display
+  - [ ] Verify no token is stored
 
----
+- [ ] **Logout**
+  - [ ] Click logout button in profile
+  - [ ] Verify token removal from localStorage
+  - [ ] Verify redirect to homepage
 
-## 📊 Dashboard Tests
+### Profile Management
+- [ ] **Profile Page Access**
+  - [ ] Navigate to `/profile` while logged in
+  - [ ] Verify profile information display
+  - [ ] Test edit functionality
+  - [ ] Save changes and verify updates
 
-### Page Load
-- [ ] **Initial Load**
-  - Dashboard loads without errors
-  - All cards display data
-  - No console errors
-  - Responsive design works
+- [ ] **Unauthenticated Access**
+  - [ ] Navigate to `/profile` while logged out
+  - [ ] Verify redirect to auth-required page
 
-### Data Cards
-- [ ] **Crypto Prices Card**
-  - Prices display correctly
-  - Percentage changes show
-  - Volume and market cap visible
-  - Grid layout responsive
+## 📊 Dashboard & Market Data
 
-- [ ] **Trending Narratives Card**
-  - Narratives list displays
-  - No raw JSON visible
-  - Expandable coin details work
-  - Market insights show
+### Market Dashboard
+- [ ] **Data Display**
+  - [ ] Verify crypto prices are displayed
+  - [ ] Check Fear & Greed Index
+  - [ ] Verify AI analysis sections (short/medium/long term)
+  - [ ] Test data refresh functionality
 
-- [ ] **Layer 1 Blockchains Card**
-  - Blockchain data displays
-  - Individual metrics show
-  - Expandable details work
+- [ ] **Loading States**
+  - [ ] Check loading indicators during data fetch
+  - [ ] Verify error handling for failed requests
 
-- [ ] **Advanced Metrics Card**
-  - Stablecoin metrics display
-  - Exchange flows show
-  - Fear & Greed index visible
-  - Market dominance metrics
+- [ ] **Responsive Design**
+  - [ ] Test on desktop (1280px+)
+  - [ ] Test on tablet (768px-1279px)
+  - [ ] Test on mobile (<768px)
+  - [ ] Verify sidebar collapse/expand on mobile
 
-- [ ] **AI Analysis Card**
-  - Multi-timeframe predictions show
-  - Short, medium, long-term analysis
-  - Expandable sections work
-  - Confidence scores display
+### Historical Data
+- [ ] **Data Visualization**
+  - [ ] Navigate to `/history`
+  - [ ] Verify chart displays correctly
+  - [ ] Test date range selection
+  - [ ] Test symbol selection
+  - [ ] Verify data export functionality
 
-- [ ] **Data Collection Card**
-  - Last collection time shows
-  - Manual collection button works
-  - Collection status updates
+## 🔔 Alert System
 
----
+### Alert Display
+- [ ] **Header Alert Icon**
+  - [ ] Verify alert icon appears in header
+  - [ ] Check unread count display
+  - [ ] Test alert popup on click
+  - [ ] Verify alert acknowledgment
 
-## 📈 Historical Data Tests
+- [ ] **Alert Page**
+  - [ ] Navigate to `/alerts`
+  - [ ] Verify all alerts are listed
+  - [ ] Test alert filtering
+  - [ ] Check alert details
 
-### Page Navigation
-- [ ] **Access Historical Data**
-  - Click "Historical Data" in sidebar
-  - Page loads without errors
-  - Data type selector works
+### Alert Creation (Premium+)
+- [ ] **Custom Alert Thresholds**
+  - [ ] Navigate to `/custom-alerts`
+  - [ ] Create new alert threshold
+  - [ ] Set conditions (price, SSR, dominance)
+  - [ ] Save and verify creation
+  - [ ] Test alert triggering
 
-### Data Display
-- [ ] **Data Types**
-  - Crypto Prices: BTC, ETH, SOL, SUI, XRP
-  - Market Data: Equity, DXY, Treasury, VIX, Energy
-  - Fear & Greed Index
-  - Trending Narratives
-  - AI Analysis
+## 💰 Subscription & Access Control
 
-### Sorting
-- [ ] **Column Sorting**
-  - Click timestamp column header
-  - Click symbol column header
-  - Click value column header
-  - Click change column header
-  - Click source column header
-  - Sort indicators display correctly
+### Free Plan Features
+- [ ] **Accessible Features**
+  - [ ] Market dashboard
+  - [ ] Basic historical data
+  - [ ] Limited data export
 
-### Export
-- [ ] **Export Functionality**
-  - Click export dropdown
-  - Select CSV format
-  - Select JSON format
-  - Select Excel format
-  - Files download correctly
-  - No dummy data in exports
+- [ ] **Restricted Features**
+  - [ ] Try to access `/alerts` - should show upgrade prompt
+  - [ ] Try to access `/settings` - should show upgrade prompt
+  - [ ] Try to access `/advanced-analytics` - should redirect to auth-required
 
----
+### Pro Plan Features
+- [ ] **Accessible Features**
+  - [ ] All Free features
+  - [ ] Real-time alerts
+  - [ ] Email & push notifications
+  - [ ] Historical data
+  - [ ] Data export
 
-## 📤 Data Export Page Tests
+- [ ] **Restricted Features**
+  - [ ] Try to access `/advanced-analytics` - should show premium upgrade prompt
+  - [ ] Try to access `/advanced-export` - should show premium upgrade prompt
+  - [ ] Try to access `/custom-alerts` - should show premium upgrade prompt
+
+### Premium+ Plan Features
+- [ ] **Accessible Features**
+  - [ ] All Pro features
+  - [ ] Advanced Analytics (`/advanced-analytics`)
+  - [ ] Advanced Data Export (`/advanced-export`)
+  - [ ] Custom Alert Thresholds (`/custom-alerts`)
+  - [ ] Priority notification delivery
 
 ### Admin Access
-- [ ] **Admin User**
-  - Navigate to "Data Export" page
-  - Verify full access granted
-  - All export options available
-  - Export history accessible
+- [ ] **Admin Dashboard**
+  - [ ] Navigate to `/admin`
+  - [ ] Verify admin-only access
+  - [ ] Check data collections display
+  - [ ] Test data export functionality
+  - [ ] Verify error logs access
 
-### Export Features
-- [ ] **Export Options**
-  - Select data type (crypto_prices, market_data, etc.)
-  - Select date range (1d, 7d, 30d, 90d, 1y, all)
-  - Select format (JSON, CSV, Excel)
-  - Click "Create Export"
-  - File downloads with real data
+## 📈 Advanced Features
 
----
+### Advanced Analytics
+- [ ] **Portfolio Metrics**
+  - [ ] Navigate to `/advanced-analytics`
+  - [ ] Verify portfolio value calculation
+  - [ ] Check volatility metrics
+  - [ ] Test Sharpe ratio display
 
-## 🔄 Data Collection Tests
+- [ ] **Risk Analysis**
+  - [ ] Verify VaR calculations
+  - [ ] Check drawdown analysis
+  - [ ] Test correlation matrix
 
-### Manual Collection
-- [ ] **Trigger Collection**
-  - Click "Collect Data" button
-  - Verify collection starts
-  - Check status updates
-  - Verify data appears in dashboard
+- [ ] **Interactive Charts**
+  - [ ] Test chart interactions
+  - [ ] Verify data point tooltips
+  - [ ] Check chart type switching
 
-### Automated Collection
-- [ ] **Cron Job**
-  - Wait for scheduled collection (30 min)
-  - Check server logs for collection
-  - Verify new data appears
-  - Check AI analysis runs
+### Advanced Data Export
+- [ ] **Export Formats**
+  - [ ] Test CSV export
+  - [ ] Test JSON export
+  - [ ] Test XLSX export
+  - [ ] Test PDF export
+  - [ ] Test XML export
 
----
+- [ ] **Scheduled Exports**
+  - [ ] Set up daily export
+  - [ ] Set up weekly export
+  - [ ] Set up monthly export
+  - [ ] Verify export history
 
-## 🎨 UI/UX Tests
+- [ ] **Custom Date Ranges**
+  - [ ] Select custom start date
+  - [ ] Select custom end date
+  - [ ] Verify data filtering
 
-### Responsive Design
-- [ ] **Desktop (1920x1080)**
-  - All cards display in grid
-  - Navigation works
-  - Tables display properly
+## 🔧 Settings & Configuration
 
-- [ ] **Tablet (768x1024)**
-  - Cards stack appropriately
-  - Navigation adapts
-  - Tables scroll horizontally
+### Notification Settings
+- [ ] **Email Notifications**
+  - [ ] Enable/disable email notifications
+  - [ ] Test email delivery (if configured)
 
-- [ ] **Mobile (375x667)**
-  - Cards stack vertically
-  - Navigation collapses
-  - Tables scroll properly
-  - Touch interactions work
+- [ ] **Push Notifications**
+  - [ ] Enable push notifications
+  - [ ] Test notification permission
+  - [ ] Verify notification delivery
 
-### Loading States
-- [ ] **Loading Indicators**
-  - Dashboard loading spinner
-  - Data collection progress
-  - Export generation progress
-  - Error state handling
+- [ ] **Telegram Notifications**
+  - [ ] Add Telegram chat ID
+  - [ ] Test Telegram bot connection
+  - [ ] Verify message delivery
 
----
+### User Preferences
+- [ ] **Theme Settings**
+  - [ ] Test dark/light mode toggle (if implemented)
+  - [ ] Verify theme persistence
 
-## 🔧 Error Handling Tests
+- [ ] **Language Settings**
+  - [ ] Test language selection (if implemented)
+  - [ ] Verify translation display
 
-### Network Errors
-- [ ] **API Failures**
-  - Disconnect internet
-  - Try to load dashboard
-  - Check error messages
-  - Reconnect and verify recovery
+## 🚀 Performance & Error Handling
 
-### Rate Limiting
-- [ ] **API Rate Limits**
-  - Trigger multiple data collections
-  - Check rate limit handling
-  - Verify retry logic
-  - Check user feedback
+### Performance Testing
+- [ ] **Page Load Times**
+  - [ ] Measure dashboard load time
+  - [ ] Check data fetch performance
+  - [ ] Test with large datasets
 
----
+- [ ] **Memory Usage**
+  - [ ] Monitor memory consumption
+  - [ ] Check for memory leaks
+  - [ ] Test long-running sessions
 
-## 🧪 Quick Smoke Tests
+### Error Handling
+- [ ] **Network Errors**
+  - [ ] Disconnect internet and test
+  - [ ] Verify error messages
+  - [ ] Test retry functionality
 
-### Critical Paths
-- [ ] **Login → Dashboard → Historical Data → Export**
-  - Complete user journey works
-  - No errors in console
-  - All data displays correctly
+- [ ] **Server Errors**
+  - [ ] Stop server and test client
+  - [ ] Verify graceful error handling
+  - [ ] Check error logging
 
-- [ ] **Admin Full Access**
-  - Admin can access all features
-  - Export functionality works
-  - No subscription restrictions
+- [ ] **Invalid Data**
+  - [ ] Test with malformed API responses
+  - [ ] Verify data validation
+  - [ ] Check fallback behavior
 
-- [ ] **Data Freshness**
-  - Data is recent (not stale)
-  - Timestamps are accurate
-  - Collection times update
+## 🔒 Security Testing
 
----
+### Authentication Security
+- [ ] **Token Validation**
+  - [ ] Test with invalid tokens
+  - [ ] Test with expired tokens
+  - [ ] Verify token refresh (if implemented)
 
-## 🐛 Common Issues to Check
+- [ ] **Route Protection**
+  - [ ] Try to access protected routes without auth
+  - [ ] Verify proper redirects
+  - [ ] Test admin-only routes
 
-### Known Problems
-- [ ] **Alpha Vantage Rate Limits**
-  - Check for rate limit errors in console
-  - Verify fallback behavior
-  - Check user feedback
+### Data Security
+- [ ] **Input Validation**
+  - [ ] Test SQL injection attempts
+  - [ ] Test XSS attempts
+  - [ ] Verify input sanitization
 
-- [ ] **CoinGecko Rate Limits**
-  - Check for 429 errors
-  - Verify retry logic
-  - Check caching behavior
+- [ ] **API Security**
+  - [ ] Test unauthorized API access
+  - [ ] Verify rate limiting
+  - [ ] Check CORS configuration
 
-- [ ] **Export Format Issues**
-  - Excel files open in Numbers/Excel
-  - CSV files have proper formatting
-  - JSON files are valid
+## 📱 Cross-Browser Testing
 
-- [ ] **Admin Access Issues**
-  - Admin bypass works for all endpoints
-  - No 403 errors for admin users
-  - Subscription checks bypassed
+### Browser Compatibility
+- [ ] **Chrome** (Latest)
+  - [ ] All features working
+  - [ ] No console errors
+  - [ ] Responsive design
 
----
+- [ ] **Firefox** (Latest)
+  - [ ] All features working
+  - [ ] No console errors
+  - [ ] Responsive design
 
-## 📝 Test Results
+- [ ] **Safari** (Latest)
+  - [ ] All features working
+  - [ ] No console errors
+  - [ ] Responsive design
 
-### Test Date: _______________
-### Tester: _______________
+- [ ] **Edge** (Latest)
+  - [ ] All features working
+  - [ ] No console errors
+  - [ ] Responsive design
 
-### Pass/Fail Summary
-- [ ] Authentication: ___/___ tests passed
-- [ ] Dashboard: ___/___ tests passed
-- [ ] Historical Data: ___/___ tests passed
-- [ ] Data Export: ___/___ tests passed
-- [ ] Data Collection: ___/___ tests passed
-- [ ] UI/UX: ___/___ tests passed
-- [ ] Error Handling: ___/___ tests passed
+## 🧹 Cleanup & Maintenance
+
+### Data Cleanup
+- [ ] **Test Data Removal**
+  - [ ] Remove test users
+  - [ ] Clear test alerts
+  - [ ] Reset database to clean state
+
+- [ ] **Log Cleanup**
+  - [ ] Clear error logs
+  - [ ] Remove test files
+  - [ ] Clean up temporary data
+
+## 📋 Test Results Summary
+
+### Passed Tests
+- [ ] List all passed test scenarios
+
+### Failed Tests
+- [ ] Document failed test scenarios
+- [ ] Note error messages
+- [ ] Record browser/device information
+
+### Performance Metrics
+- [ ] Average page load time: _____ ms
+- [ ] Memory usage: _____ MB
+- [ ] API response time: _____ ms
 
 ### Issues Found
-1. _________________________________
-2. _________________________________
-3. _________________________________
-
-### Notes
-- _________________________________
-- _________________________________
-- _________________________________
+- [ ] List all discovered issues
+- [ ] Priority level (High/Medium/Low)
+- [ ] Steps to reproduce
+- [ ] Expected vs actual behavior
 
 ---
 
-## 🚀 Next Steps
-
-After completing manual tests:
-1. Fix any issues found
-2. Run automated tests: `npm test`
-3. Update test documentation
-4. Deploy if all tests pass
-
----
-
-*Use this checklist for quick testing during development and before releases.*
+**Test Date:** ___________  
+**Tester:** ___________  
+**Environment:** ___________  
+**Version:** ___________
