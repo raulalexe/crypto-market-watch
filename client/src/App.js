@@ -25,6 +25,7 @@ import TermsAndConditions from './components/TermsAndConditions';
 import Profile from './components/Profile';
 import ContactForm from './components/ContactForm';
 import UpcomingEventsPage from './components/UpcomingEventsPage';
+import ReleaseSchedulePage from './components/ReleaseSchedulePage';
 import MarketingPage from './components/MarketingPage';
 
 function App() {
@@ -196,6 +197,10 @@ function App() {
                     <Route 
                       path="events" 
                       element={<UpcomingEventsPage />} 
+                    />
+                    <Route 
+                      path="releases" 
+                      element={<ReleaseSchedulePage />} 
                     />
                     <Route 
                       path="advanced-analytics" 

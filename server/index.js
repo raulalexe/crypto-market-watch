@@ -550,6 +550,168 @@ app.delete('/api/admin/events/:id', authenticateToken, requireAdmin, async (req,
   }
 });
 
+// Release Schedule Endpoints
+const ReleaseScheduleService = require('./services/releaseScheduleService');
+const StrategyAdvisorService = require('./services/strategyAdvisorService');
+
+const releaseScheduleService = new ReleaseScheduleService();
+const strategyAdvisorService = new StrategyAdvisorService();
+
+// Get upcoming economic releases
+app.get('/api/releases', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const releases = await releaseScheduleService.getUpcomingReleases(limit);
+    res.json(releases);
+  } catch (error) {
+    console.error('Error fetching releases:', error);
+    res.status(500).json({ error: 'Failed to fetch releases' });
+  }
+});
+
+// Get next high-impact release
+app.get('/api/releases/next-high-impact', async (req, res) => {
+  try {
+    const nextRelease = await releaseScheduleService.getNextHighImpactRelease();
+    res.json(nextRelease);
+  } catch (error) {
+    console.error('Error fetching next high-impact release:', error);
+    res.status(500).json({ error: 'Failed to fetch next high-impact release' });
+  }
+});
+
+// Get release statistics
+app.get('/api/releases/stats', async (req, res) => {
+  try {
+    const stats = await releaseScheduleService.getReleaseStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching release stats:', error);
+    res.status(500).json({ error: 'Failed to fetch release stats' });
+  }
+});
+
+// Get strategy recommendations for upcoming releases
+app.get('/api/releases/strategy', async (req, res) => {
+  try {
+    const minutesUntil = req.query.minutes ? parseInt(req.query.minutes) : null;
+    const recommendations = await strategyAdvisorService.getStrategyRecommendations(minutesUntil);
+    res.json(recommendations);
+  } catch (error) {
+    console.error('Error fetching strategy recommendations:', error);
+    res.status(500).json({ error: 'Failed to fetch strategy recommendations' });
+  }
+});
+
+// Get position sizing recommendations
+app.get('/api/releases/position-sizing', async (req, res) => {
+  try {
+    const { currentExposure, minutesUntil } = req.query;
+    if (!currentExposure || !minutesUntil) {
+      return res.status(400).json({ error: 'currentExposure and minutesUntil are required' });
+    }
+    
+    const recommendations = await strategyAdvisorService.getPositionSizingRecommendations(
+      parseFloat(currentExposure),
+      parseInt(minutesUntil)
+    );
+    res.json(recommendations);
+  } catch (error) {
+    console.error('Error fetching position sizing recommendations:', error);
+    res.status(500).json({ error: 'Failed to fetch position sizing recommendations' });
+  }
+});
+
+// Get stop-loss recommendations
+app.get('/api/releases/stop-loss', async (req, res) => {
+  try {
+    const { currentStopLoss, minutesUntil } = req.query;
+    if (!currentStopLoss || !minutesUntil) {
+      return res.status(400).json({ error: 'currentStopLoss and minutesUntil are required' });
+    }
+    
+    const recommendations = await strategyAdvisorService.getStopLossRecommendations(
+      parseFloat(currentStopLoss),
+      parseInt(minutesUntil)
+    );
+    res.json(recommendations);
+  } catch (error) {
+    console.error('Error fetching stop-loss recommendations:', error);
+    res.status(500).json({ error: 'Failed to fetch stop-loss recommendations' });
+  }
+});
+
+// Get leverage recommendations
+app.get('/api/releases/leverage', async (req, res) => {
+  try {
+    const { currentLeverage, minutesUntil } = req.query;
+    if (!currentLeverage || !minutesUntil) {
+      return res.status(400).json({ error: 'currentLeverage and minutesUntil are required' });
+    }
+    
+    const recommendations = await strategyAdvisorService.getLeverageRecommendations(
+      parseFloat(currentLeverage),
+      parseInt(minutesUntil)
+    );
+    res.json(recommendations);
+  } catch (error) {
+    console.error('Error fetching leverage recommendations:', error);
+    res.status(500).json({ error: 'Failed to fetch leverage recommendations' });
+  }
+});
+
+// Admin: Add custom release
+app.post('/api/admin/releases', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const releaseData = req.body;
+    const success = await releaseScheduleService.addCustomRelease(releaseData);
+    
+    if (success) {
+      res.json({ success: true, message: 'Custom release added successfully' });
+    } else {
+      res.status(500).json({ error: 'Failed to add custom release' });
+    }
+  } catch (error) {
+    console.error('Error adding custom release:', error);
+    res.status(500).json({ error: 'Failed to add custom release' });
+  }
+});
+
+// Admin: Update release
+app.put('/api/admin/releases/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const releaseId = req.params.id;
+    const updates = req.body;
+    const success = await releaseScheduleService.updateRelease(releaseId, updates);
+    
+    if (success) {
+      res.json({ success: true, message: 'Release updated successfully' });
+    } else {
+      res.status(404).json({ error: 'Release not found' });
+    }
+  } catch (error) {
+    console.error('Error updating release:', error);
+    res.status(500).json({ error: 'Failed to update release' });
+  }
+});
+
+// Admin: Delete release
+app.delete('/api/admin/releases/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const releaseId = req.params.id;
+    const success = await releaseScheduleService.deleteRelease(releaseId);
+    
+    if (success) {
+      res.json({ success: true, message: 'Release deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'Release not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting release:', error);
+    res.status(500).json({ error: 'Failed to delete release' });
+  }
+});
+
 // Get trending narratives
 app.get('/api/trending-narratives', async (req, res) => {
   try {
@@ -2978,7 +3140,7 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
@@ -2986,6 +3148,15 @@ const server = app.listen(PORT, () => {
   // Log Railway-specific info
   if (process.env.RAILWAY_STATIC_URL) {
     console.log(`🚂 Railway URL: ${process.env.RAILWAY_STATIC_URL}`);
+  }
+  
+  // Initialize release schedule service
+  try {
+    await releaseScheduleService.initializeCalendar();
+    releaseScheduleService.startNotificationChecker();
+    console.log('📅 Release schedule service initialized and notification checker started');
+  } catch (error) {
+    console.error('❌ Failed to initialize release schedule service:', error);
   }
 });
 

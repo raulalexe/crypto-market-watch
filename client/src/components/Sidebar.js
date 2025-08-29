@@ -11,7 +11,8 @@ import {
   Settings,
   User,
   Calendar,
-  Mail
+  Mail,
+  Clock
 } from 'lucide-react';
 import { isAdmin as isAdminUser, isAuthenticated, hasProAccess, hasPremiumAccess } from '../utils/authUtils';
 
@@ -28,6 +29,11 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
       path: '/app/events',
       name: 'Upcoming Events',
       icon: Calendar
+    },
+    {
+      path: '/app/releases',
+      name: 'Release Schedule',
+      icon: Clock
     },
     {
       path: '/app/history',
