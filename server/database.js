@@ -579,6 +579,18 @@ const initDatabase = () => {
           )
         `);
 
+        // Create economic_predictions table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS economic_predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            release_date TEXT NOT NULL,
+            prediction_data TEXT NOT NULL,
+            accuracy INTEGER DEFAULT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
         console.log('✅ SQLite database initialized successfully');
         
         // Add stripe_customer_id column if it doesn't exist (migration)
@@ -1782,6 +1794,71 @@ const getMarketDataBeforeTime = (timestamp) => {
   });
 };
 
+// Economic prediction functions
+const insertEconomicPrediction = (predictionData) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO economic_predictions (type, release_date, prediction_data, timestamp) VALUES (?, ?, ?, ?)',
+      [
+        predictionData.type,
+        predictionData.release_date,
+        predictionData.prediction_data,
+        predictionData.timestamp
+      ],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getEconomicPrediction = (type, releaseDate) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM economic_predictions WHERE type = ? AND release_date = ? ORDER BY timestamp DESC LIMIT 1',
+      [type, releaseDate],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
+const getPredictionAccuracy = (type) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT COUNT(*) as total, SUM(CASE WHEN accuracy = 1 THEN 1 ELSE 0 END) as correct FROM economic_predictions WHERE type = ?',
+      [type],
+      (err, row) => {
+        if (err) reject(err);
+        else {
+          const accuracy = row.total > 0 ? (row.correct / row.total) * 100 : 0;
+          resolve({
+            correct: row.correct || 0,
+            total: row.total || 0,
+            accuracy: Math.round(accuracy * 100) / 100
+          });
+        }
+      }
+    );
+  });
+};
+
+const getEconomicPredictions = (type, limit = 10) => {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM economic_predictions WHERE type = ? ORDER BY timestamp DESC LIMIT ?',
+      [type, limit],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+};
+
 module.exports = {
   db,
   initDatabase,
@@ -1863,5 +1940,10 @@ module.exports = {
   // Post-release analysis
   insertPostReleaseAnalysis,
   getPostReleaseAnalysis,
-  getMarketDataBeforeTime
+  getMarketDataBeforeTime,
+  // Economic predictions
+  insertEconomicPrediction,
+  getEconomicPrediction,
+  getPredictionAccuracy,
+  getEconomicPredictions
 };

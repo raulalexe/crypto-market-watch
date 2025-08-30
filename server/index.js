@@ -712,6 +712,63 @@ app.delete('/api/admin/releases/:id', authenticateToken, requireAdmin, async (re
   }
 });
 
+// Economic Data Prediction Endpoints
+const EconomicDataPredictor = require('./services/economicDataPredictor');
+const economicPredictor = new EconomicDataPredictor();
+
+// Get prediction for upcoming release
+app.get('/api/releases/prediction/:type', async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { releaseDate } = req.query;
+    
+    if (!releaseDate) {
+      return res.status(400).json({ error: 'releaseDate parameter is required' });
+    }
+    
+    let prediction;
+    if (type === 'CPI') {
+      prediction = await economicPredictor.predictCPIRelease(releaseDate);
+    } else if (type === 'PCE') {
+      prediction = await economicPredictor.predictPCERelease(releaseDate);
+    } else {
+      return res.status(400).json({ error: 'Invalid release type. Use CPI or PCE' });
+    }
+    
+    res.json(prediction);
+  } catch (error) {
+    console.error('Error getting prediction:', error);
+    res.status(500).json({ error: 'Failed to get prediction' });
+  }
+});
+
+// Get prediction accuracy statistics
+app.get('/api/releases/prediction-accuracy/:type', async (req, res) => {
+  try {
+    const { type } = req.params;
+    const accuracy = await economicPredictor.getPredictionAccuracy(type);
+    res.json(accuracy);
+  } catch (error) {
+    console.error('Error getting prediction accuracy:', error);
+    res.status(500).json({ error: 'Failed to get prediction accuracy' });
+  }
+});
+
+// Get historical predictions
+app.get('/api/releases/predictions/:type', async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { limit = 10 } = req.query;
+    
+    const { getEconomicPredictions } = require('./database');
+    const predictions = await getEconomicPredictions(type, parseInt(limit));
+    res.json(predictions);
+  } catch (error) {
+    console.error('Error getting historical predictions:', error);
+    res.status(500).json({ error: 'Failed to get historical predictions' });
+  }
+});
+
 // Get trending narratives
 app.get('/api/trending-narratives', async (req, res) => {
   try {

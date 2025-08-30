@@ -89,15 +89,33 @@ async function testReleaseSchedule() {
     console.log('📊 Post-release analysis:', postReleaseResponse.data.hasUpcomingRelease ? 'Scheduled' : 'No recent releases');
     console.log('');
 
+    // Test 10: Test economic data prediction
+    console.log('🔟 Testing: Economic data prediction system');
+    const predictionResponse = await axios.get(`${BASE_URL}/api/releases/prediction/CPI?releaseDate=2024-01-15`);
+    console.log('✅ Success: Economic prediction system working');
+    console.log('🔮 Prediction:', predictionResponse.data.direction);
+    console.log('📈 Confidence:', predictionResponse.data.confidence + '%');
+    console.log('💼 Recommendation:', predictionResponse.data.tradingRecommendation);
+    console.log('');
+
+    // Test 11: Test prediction accuracy
+    console.log('1️⃣1️⃣ Testing: Prediction accuracy tracking');
+    const accuracyResponse = await axios.get(`${BASE_URL}/api/releases/prediction-accuracy/CPI`);
+    console.log('✅ Success: Prediction accuracy tracking working');
+    console.log('📊 Accuracy:', accuracyResponse.data.accuracy + '%');
+    console.log('📈 Total predictions:', accuracyResponse.data.total);
+    console.log('');
+
     console.log('🎉 All tests completed successfully!');
     console.log('\n📋 Summary:');
     console.log('✅ Release schedule service is working');
     console.log('✅ Strategy advisor is providing recommendations');
-    console.log('✅ Position management tools are functional');
     console.log('✅ API endpoints are responding correctly');
     console.log('✅ Pre-release warnings (24h) are configured');
     console.log('✅ Post-release data collection (1min) is configured');
     console.log('✅ AI analysis integration is ready');
+    console.log('✅ Economic data prediction system is active');
+    console.log('✅ Prediction accuracy tracking is functional');
 
   } catch (error) {
     console.error('❌ Test failed:', error.message);

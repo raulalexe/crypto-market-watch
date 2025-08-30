@@ -6,6 +6,7 @@ const TelegramService = require('./telegramService');
 const EmailService = require('./emailService');
 const DataCollector = require('./dataCollector');
 const AIAnalyzer = require('./aiAnalyzer');
+const EconomicDataPredictor = require('./economicDataPredictor');
 
 class ReleaseScheduleService {
   constructor() {
@@ -14,6 +15,7 @@ class ReleaseScheduleService {
     this.emailService = new EmailService();
     this.dataCollector = new DataCollector();
     this.aiAnalyzer = new AIAnalyzer();
+    this.economicPredictor = new EconomicDataPredictor();
     
     // Calendar file path
     this.calendarPath = path.join(__dirname, '../data/release_calendar.json');
@@ -262,37 +264,65 @@ class ReleaseScheduleService {
 
   async sendPreReleaseWarning(release) {
     try {
-      const message = this.formatPreReleaseWarning(release);
+      // Generate prediction for the release
+      let prediction = null;
+      if (release.type === 'CPI') {
+        prediction = await this.economicPredictor.predictCPIRelease(release.date);
+      } else if (release.type === 'PCE') {
+        prediction = await this.economicPredictor.predictPCERelease(release.date);
+      }
+      
+      const message = this.formatPreReleaseWarning(release, prediction);
       
       // Send to all notification channels
       await Promise.allSettled([
         this.telegramService.sendMessage(message),
-        this.emailService.sendReleaseAlert(release, 1440, 'pre_warning'),
+        this.emailService.sendReleaseAlert(release, 1440, 'pre_warning', prediction),
         this.alertService.createAlert({
           type: 'RELEASE_WARNING',
           title: `Economic Data Release Tomorrow: ${release.title}`,
           message: message,
           severity: 'medium',
-          data: release
+          data: { release, prediction }
         })
       ]);
       
-      console.log(`Sent pre-release warning for ${release.type} (24h before)`);
+      console.log(`Sent pre-release warning with prediction for ${release.type} (24h before)`);
     } catch (error) {
       console.error('Error sending pre-release warning:', error);
     }
   }
 
-  formatPreReleaseWarning(release) {
+  formatPreReleaseWarning(release, prediction = null) {
     const releaseTime = moment(`${release.date} ${release.time}`, 'YYYY-MM-DD HH:mm');
     
-    return `⚠️ ECONOMIC DATA RELEASE WARNING ⚠️
+    let warningMessage = `⚠️ ECONOMIC DATA RELEASE WARNING ⚠️
 
 ${release.title}
 📅 Date: ${releaseTime.format('dddd, MMMM Do YYYY')}
 ⏰ Time: ${releaseTime.format('h:mm A')} (24 hours from now)
 📊 Impact: ${release.impact.toUpperCase()}
-📝 Description: ${release.description}
+📝 Description: ${release.description}`;
+
+    // Add prediction if available
+    if (prediction && prediction.confidence >= 50) {
+      const confidenceLevel = prediction.confidence >= 70 ? 'HIGH' : 
+                             prediction.confidence >= 60 ? 'MEDIUM' : 'LOW';
+      
+      warningMessage += `
+
+🔮 PREDICTION (${confidenceLevel} CONFIDENCE):
+🎯 Expected Direction: ${prediction.direction.toUpperCase()}
+📈 Confidence: ${prediction.confidence}%
+💼 Trading Recommendation: ${prediction.tradingRecommendation.toUpperCase()}
+
+📝 Reasoning:
+${prediction.reasoning.map(reason => `• ${reason}`).join('\n')}
+
+⚠️ Expected Market Impact: ${prediction.expectedImpact.toUpperCase()}`;
+    }
+
+    warningMessage += `
 
 🛡️ PREPARATION STRATEGY (24 HOURS BEFORE):
 • Review all open long positions
@@ -300,7 +330,26 @@ ${release.title}
 • Set wider stop-loss buffers (1.5-2x normal)
 • Prepare hedging instruments (BTC perpetuals, VIX futures)
 • Monitor market sentiment and positioning
-• Plan partial profit-taking strategy
+• Plan partial profit-taking strategy`;
+
+    // Add prediction-specific strategy
+    if (prediction && prediction.tradingRecommendation !== 'neutral') {
+      if (prediction.tradingRecommendation === 'bearish') {
+        warningMessage += `
+• Consider short positions on BTC/ETH
+• Hedge long positions with inverse ETFs
+• Increase cash allocation
+• Set tighter stop-losses on long positions`;
+      } else if (prediction.tradingRecommendation === 'bullish') {
+        warningMessage += `
+• Look for long entry opportunities
+• Reduce hedge positions
+• Consider adding to long positions
+• Monitor for breakout signals`;
+      }
+    }
+
+    warningMessage += `
 
 📈 MARKET PREPARATION:
 • Check current market volatility levels
@@ -309,6 +358,8 @@ ${release.title}
 • Prepare for potential gap moves
 
 🔗 More info: ${release.url}`;
+
+    return warningMessage;
   }
 
   async collectAndAnalyzePostReleaseData(release) {
