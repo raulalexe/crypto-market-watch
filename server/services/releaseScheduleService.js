@@ -4,18 +4,28 @@ const path = require('path');
 const AlertService = require('./alertService');
 const TelegramService = require('./telegramService');
 const EmailService = require('./emailService');
+const DataCollector = require('./dataCollector');
+const AIAnalyzer = require('./aiAnalyzer');
 
 class ReleaseScheduleService {
   constructor() {
     this.alertService = new AlertService();
     this.telegramService = new TelegramService();
     this.emailService = new EmailService();
+    this.dataCollector = new DataCollector();
+    this.aiAnalyzer = new AIAnalyzer();
     
     // Calendar file path
     this.calendarPath = path.join(__dirname, '../data/release_calendar.json');
     
     // Notification settings
     this.notificationIntervals = [60, 30, 15, 5]; // minutes before release
+    
+    // Post-release data collection delay (in minutes)
+    this.postReleaseDataDelay = 1;
+    
+    // Pre-release warning (in minutes - 24 hours = 1440 minutes)
+    this.preReleaseWarningTime = 1440;
     
     // Initialize calendar
     this.initializeCalendar();
@@ -186,6 +196,16 @@ class ReleaseScheduleService {
         const releaseDateTime = moment(`${release.date} ${release.time}`, 'YYYY-MM-DD HH:mm');
         const minutesUntilRelease = releaseDateTime.diff(now, 'minutes');
         
+        // Check pre-release warning (24 hours before)
+        if (minutesUntilRelease <= this.preReleaseWarningTime && minutesUntilRelease > this.preReleaseWarningTime - 5) {
+          const warningKey = '24h_warning';
+          if (!release.notificationsSent.includes(warningKey)) {
+            await this.sendPreReleaseWarning(release);
+            release.notificationsSent.push(warningKey);
+            await this.saveCalendar(calendar);
+          }
+        }
+        
         // Check each notification interval
         for (const interval of calendar.settings.notificationIntervals) {
           if (minutesUntilRelease <= interval && minutesUntilRelease > interval - 5) {
@@ -198,6 +218,17 @@ class ReleaseScheduleService {
               release.notificationsSent.push(notificationKey);
               await this.saveCalendar(calendar);
             }
+          }
+        }
+        
+        // Check for post-release data collection
+        const minutesSinceRelease = -minutesUntilRelease;
+        if (minutesSinceRelease >= this.postReleaseDataDelay && minutesSinceRelease < this.postReleaseDataDelay + 5) {
+          const dataCollectionKey = 'data_collected';
+          if (!release.notificationsSent.includes(dataCollectionKey)) {
+            await this.collectAndAnalyzePostReleaseData(release);
+            release.notificationsSent.push(dataCollectionKey);
+            await this.saveCalendar(calendar);
           }
         }
       }
@@ -227,6 +258,138 @@ class ReleaseScheduleService {
     } catch (error) {
       console.error('Error sending release notification:', error);
     }
+  }
+
+  async sendPreReleaseWarning(release) {
+    try {
+      const message = this.formatPreReleaseWarning(release);
+      
+      // Send to all notification channels
+      await Promise.allSettled([
+        this.telegramService.sendMessage(message),
+        this.emailService.sendReleaseAlert(release, 1440, 'pre_warning'),
+        this.alertService.createAlert({
+          type: 'RELEASE_WARNING',
+          title: `Economic Data Release Tomorrow: ${release.title}`,
+          message: message,
+          severity: 'medium',
+          data: release
+        })
+      ]);
+      
+      console.log(`Sent pre-release warning for ${release.type} (24h before)`);
+    } catch (error) {
+      console.error('Error sending pre-release warning:', error);
+    }
+  }
+
+  formatPreReleaseWarning(release) {
+    const releaseTime = moment(`${release.date} ${release.time}`, 'YYYY-MM-DD HH:mm');
+    
+    return `⚠️ ECONOMIC DATA RELEASE WARNING ⚠️
+
+${release.title}
+📅 Date: ${releaseTime.format('dddd, MMMM Do YYYY')}
+⏰ Time: ${releaseTime.format('h:mm A')} (24 hours from now)
+📊 Impact: ${release.impact.toUpperCase()}
+📝 Description: ${release.description}
+
+🛡️ PREPARATION STRATEGY (24 HOURS BEFORE):
+• Review all open long positions
+• Consider reducing exposure by 20-30%
+• Set wider stop-loss buffers (1.5-2x normal)
+• Prepare hedging instruments (BTC perpetuals, VIX futures)
+• Monitor market sentiment and positioning
+• Plan partial profit-taking strategy
+
+📈 MARKET PREPARATION:
+• Check current market volatility levels
+• Review recent price action and support/resistance
+• Monitor institutional flow data
+• Prepare for potential gap moves
+
+🔗 More info: ${release.url}`;
+  }
+
+  async collectAndAnalyzePostReleaseData(release) {
+    try {
+      console.log(`Starting post-release data collection for ${release.type}`);
+      
+      // Collect fresh market data
+      const dataCollectionSuccess = await this.dataCollector.collectAllData();
+      
+      if (dataCollectionSuccess) {
+        console.log(`Data collection completed for ${release.type}`);
+        
+        // Trigger AI analysis with release context
+        const analysisResult = await this.aiAnalyzer.analyzeMarketDataWithReleaseContext(release);
+        
+        // Send post-release analysis notification
+        await this.sendPostReleaseAnalysis(release, analysisResult);
+        
+        console.log(`Post-release analysis completed for ${release.type}`);
+      } else {
+        console.error(`Failed to collect data after ${release.type} release`);
+      }
+    } catch (error) {
+      console.error(`Error in post-release data collection for ${release.type}:`, error);
+    }
+  }
+
+  async sendPostReleaseAnalysis(release, analysisResult) {
+    try {
+      const message = this.formatPostReleaseAnalysis(release, analysisResult);
+      
+      // Send to all notification channels
+      await Promise.allSettled([
+        this.telegramService.sendMessage(message),
+        this.emailService.sendReleaseAlert(release, 0, 'post_analysis', analysisResult),
+        this.alertService.createAlert({
+          type: 'POST_RELEASE_ANALYSIS',
+          title: `Post-Release Analysis: ${release.title}`,
+          message: message,
+          severity: 'high',
+          data: { release, analysis: analysisResult }
+        })
+      ]);
+      
+      console.log(`Sent post-release analysis for ${release.type}`);
+    } catch (error) {
+      console.error('Error sending post-release analysis:', error);
+    }
+  }
+
+  formatPostReleaseAnalysis(release, analysisResult) {
+    const releaseTime = moment(`${release.date} ${release.time}`, 'YYYY-MM-DD HH:mm');
+    
+    return `📊 POST-RELEASE ANALYSIS 📊
+
+${release.title}
+📅 Released: ${releaseTime.format('dddd, MMMM Do YYYY h:mm A')}
+📊 Impact: ${release.impact.toUpperCase()}
+
+🎯 MARKET REACTION:
+• Market Direction: ${analysisResult.marketDirection || 'N/A'}
+• Volatility Level: ${analysisResult.volatilityLevel || 'N/A'}
+• Key Price Levels: ${analysisResult.keyLevels || 'N/A'}
+
+💡 TRADING OPPORTUNITIES:
+• Short-term outlook: ${analysisResult.shortTermOutlook || 'N/A'}
+• Medium-term outlook: ${analysisResult.mediumTermOutlook || 'N/A'}
+• Risk assessment: ${analysisResult.riskAssessment || 'N/A'}
+
+🛡️ POSITION MANAGEMENT:
+• Recommended actions: ${analysisResult.recommendedActions || 'N/A'}
+• Risk levels: ${analysisResult.riskLevels || 'N/A'}
+• Entry/exit points: ${analysisResult.entryExitPoints || 'N/A'}
+
+📈 NEXT STEPS:
+• Monitor follow-through moves
+• Adjust positions based on new data
+• Watch for Fed policy implications
+• Track institutional flow changes
+
+🔗 More info: ${release.url}`;
   }
 
   formatReleaseNotification(release, minutesUntil) {

@@ -567,6 +567,18 @@ const initDatabase = () => {
           )
         `);
 
+        // Create post_release_analysis table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS post_release_analysis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            release_id TEXT NOT NULL,
+            release_type TEXT NOT NULL,
+            release_date TEXT NOT NULL,
+            analysis_data TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
         console.log('✅ SQLite database initialized successfully');
         
         // Add stripe_customer_id column if it doesn't exist (migration)
@@ -1724,6 +1736,52 @@ const regenerateApiKey = (userId, apiKeyId) => {
   });
 };
 
+// Post-release analysis functions
+const insertPostReleaseAnalysis = (analysisData) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO post_release_analysis (release_id, release_type, release_date, analysis_data, timestamp) VALUES (?, ?, ?, ?, ?)',
+      [
+        analysisData.release_id,
+        analysisData.release_type,
+        analysisData.release_date,
+        analysisData.analysis_data,
+        analysisData.timestamp
+      ],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      }
+    );
+  });
+};
+
+const getPostReleaseAnalysis = (releaseId) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM post_release_analysis WHERE release_id = ? ORDER BY timestamp DESC LIMIT 1',
+      [releaseId],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
+const getMarketDataBeforeTime = (timestamp) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      'SELECT * FROM crypto_prices WHERE timestamp < ? ORDER BY timestamp DESC LIMIT 1',
+      [timestamp],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+};
+
 module.exports = {
   db,
   initDatabase,
@@ -1801,5 +1859,9 @@ module.exports = {
   getApiKeyByKey,
   updateApiKeyUsage,
   deactivateApiKey,
-  regenerateApiKey
+  regenerateApiKey,
+  // Post-release analysis
+  insertPostReleaseAnalysis,
+  getPostReleaseAnalysis,
+  getMarketDataBeforeTime
 };

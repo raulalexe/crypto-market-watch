@@ -652,6 +652,215 @@ class AIAnalyzer {
     }
   }
 
+  // Analyze market data with release context for post-release analysis
+  async analyzeMarketDataWithReleaseContext(release) {
+    try {
+      console.log(`Starting post-release analysis for ${release.type}`);
+      
+      // Get latest market data
+      const { getLatestMarketData, getLatestCryptoPrices, getLatestExchangeFlows } = require('../database');
+      
+      const [marketData, cryptoPrices, exchangeFlows] = await Promise.all([
+        getLatestMarketData(),
+        getLatestCryptoPrices(),
+        getLatestExchangeFlows()
+      ]);
+
+      if (!marketData || !cryptoPrices) {
+        throw new Error('No market data available for post-release analysis');
+      }
+
+      // Get previous data for comparison (before release)
+      const { getMarketDataBeforeTime } = require('../database');
+      const releaseTime = moment(`${release.date} ${release.time}`, 'YYYY-MM-DD HH:mm');
+      const beforeReleaseData = await getMarketDataBeforeTime(releaseTime.toDate());
+
+      // Analyze market reaction to the release
+      const analysisResult = await this.analyzeReleaseImpact(release, marketData, cryptoPrices, exchangeFlows, beforeReleaseData);
+
+      // Store the post-release analysis
+      await this.storePostReleaseAnalysis(release, analysisResult);
+
+      return analysisResult;
+    } catch (error) {
+      console.error('Error in post-release analysis:', error);
+      return {
+        marketDirection: 'UNKNOWN',
+        volatilityLevel: 'UNKNOWN',
+        keyLevels: 'Unable to determine',
+        shortTermOutlook: 'Analysis failed',
+        mediumTermOutlook: 'Analysis failed',
+        riskAssessment: 'High - analysis unavailable',
+        recommendedActions: 'Monitor market closely',
+        riskLevels: 'Unknown',
+        entryExitPoints: 'Wait for clearer signals'
+      };
+    }
+  }
+
+  async analyzeReleaseImpact(release, currentData, cryptoPrices, exchangeFlows, beforeData) {
+    try {
+      // Calculate price changes since release
+      const btcCurrent = cryptoPrices.find(p => p.symbol === 'BTC')?.price || 0;
+      const btcBefore = beforeData?.find(p => p.symbol === 'BTC')?.price || btcCurrent;
+      const btcChange = btcBefore > 0 ? ((btcCurrent - btcBefore) / btcBefore) * 100 : 0;
+
+      const ethCurrent = cryptoPrices.find(p => p.symbol === 'ETH')?.price || 0;
+      const ethBefore = beforeData?.find(p => p.symbol === 'ETH')?.price || ethCurrent;
+      const ethChange = ethBefore > 0 ? ((ethCurrent - ethBefore) / ethBefore) * 100 : 0;
+
+      // Analyze market direction
+      let marketDirection = 'NEUTRAL';
+      if (btcChange > 2 || ethChange > 2) marketDirection = 'BULLISH';
+      else if (btcChange < -2 || ethChange < -2) marketDirection = 'BEARISH';
+
+      // Analyze volatility
+      const volatilityLevel = Math.abs(btcChange) > 5 || Math.abs(ethChange) > 5 ? 'HIGH' : 
+                             Math.abs(btcChange) > 2 || Math.abs(ethChange) > 2 ? 'MEDIUM' : 'LOW';
+
+      // Determine key levels
+      const keyLevels = this.determineKeyLevels(btcCurrent, ethCurrent, btcChange, ethChange);
+
+      // Generate outlooks
+      const shortTermOutlook = this.generateShortTermOutlook(release, marketDirection, volatilityLevel);
+      const mediumTermOutlook = this.generateMediumTermOutlook(release, marketDirection, btcChange, ethChange);
+
+      // Risk assessment
+      const riskAssessment = this.assessRiskLevel(release, volatilityLevel, marketDirection);
+
+      // Recommended actions
+      const recommendedActions = this.generateRecommendedActions(release, marketDirection, volatilityLevel);
+
+      return {
+        marketDirection,
+        volatilityLevel,
+        keyLevels,
+        shortTermOutlook,
+        mediumTermOutlook,
+        riskAssessment,
+        recommendedActions,
+        riskLevels: this.determineRiskLevels(volatilityLevel),
+        entryExitPoints: this.generateEntryExitPoints(marketDirection, btcCurrent, ethCurrent),
+        priceChanges: {
+          btc: btcChange,
+          eth: ethChange
+        },
+        releaseType: release.type,
+        analysisTime: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error analyzing release impact:', error);
+      throw error;
+    }
+  }
+
+  determineKeyLevels(btcPrice, ethPrice, btcChange, ethChange) {
+    const levels = [];
+    
+    if (btcPrice > 0) {
+      levels.push(`BTC: $${btcPrice.toLocaleString()} (${btcChange > 0 ? '+' : ''}${btcChange.toFixed(2)}%)`);
+    }
+    if (ethPrice > 0) {
+      levels.push(`ETH: $${ethPrice.toLocaleString()} (${ethChange > 0 ? '+' : ''}${ethChange.toFixed(2)}%)`);
+    }
+    
+    return levels.join(', ') || 'Unable to determine';
+  }
+
+  generateShortTermOutlook(release, marketDirection, volatilityLevel) {
+    const outlooks = {
+      CPI: {
+        BULLISH: 'Inflation data may be cooling, supporting risk assets',
+        BEARISH: 'Higher inflation could pressure risk assets and crypto',
+        NEUTRAL: 'Inflation data in line with expectations'
+      },
+      PCE: {
+        BULLISH: 'Fed\'s preferred measure shows controlled inflation',
+        BEARISH: 'PCE data suggests persistent inflation pressure',
+        NEUTRAL: 'PCE data aligns with Fed\'s inflation targets'
+      }
+    };
+
+    const baseOutlook = outlooks[release.type]?.[marketDirection] || 'Market reaction unclear';
+    const volatilityNote = volatilityLevel === 'HIGH' ? ' High volatility expected to continue.' : '';
+    
+    return baseOutlook + volatilityNote;
+  }
+
+  generateMediumTermOutlook(release, marketDirection, btcChange, ethChange) {
+    const avgChange = (btcChange + ethChange) / 2;
+    
+    if (Math.abs(avgChange) > 5) {
+      return `Strong ${marketDirection.toLowerCase()} momentum likely to continue for 1-2 weeks`;
+    } else if (Math.abs(avgChange) > 2) {
+      return `Moderate ${marketDirection.toLowerCase()} bias expected in coming days`;
+    } else {
+      return 'Sideways consolidation likely as market digests data';
+    }
+  }
+
+  assessRiskLevel(release, volatilityLevel, marketDirection) {
+    if (volatilityLevel === 'HIGH') {
+      return 'HIGH - Extreme volatility requires careful position management';
+    } else if (volatilityLevel === 'MEDIUM') {
+      return 'MEDIUM - Moderate risk with potential for significant moves';
+    } else {
+      return 'LOW - Stable conditions, normal trading can resume';
+    }
+  }
+
+  generateRecommendedActions(release, marketDirection, volatilityLevel) {
+    const actions = [];
+    
+    if (volatilityLevel === 'HIGH') {
+      actions.push('Reduce position sizes', 'Use wider stop-losses', 'Consider hedging');
+    }
+    
+    if (marketDirection === 'BULLISH') {
+      actions.push('Look for pullback entries', 'Add to long positions gradually');
+    } else if (marketDirection === 'BEARISH') {
+      actions.push('Wait for stabilization', 'Consider short positions on rallies');
+    } else {
+      actions.push('Monitor for breakout signals', 'Maintain current positions');
+    }
+    
+    return actions.join(', ');
+  }
+
+  determineRiskLevels(volatilityLevel) {
+    const levels = {
+      HIGH: 'Extreme - 5-10% position sizing recommended',
+      MEDIUM: 'Moderate - 10-20% position sizing recommended',
+      LOW: 'Normal - Standard position sizing acceptable'
+    };
+    return levels[volatilityLevel] || 'Unknown';
+  }
+
+  generateEntryExitPoints(marketDirection, btcPrice, ethPrice) {
+    if (marketDirection === 'BULLISH') {
+      return `BTC: $${(btcPrice * 0.98).toLocaleString()} support, $${(btcPrice * 1.05).toLocaleString()} resistance | ETH: $${(ethPrice * 0.98).toLocaleString()} support, $${(ethPrice * 1.05).toLocaleString()} resistance`;
+    } else if (marketDirection === 'BEARISH') {
+      return `BTC: $${(btcPrice * 0.95).toLocaleString()} support, $${(btcPrice * 1.02).toLocaleString()} resistance | ETH: $${(ethPrice * 0.95).toLocaleString()} support, $${(ethPrice * 1.02).toLocaleString()} resistance`;
+    } else {
+      return `BTC: $${(btcPrice * 0.97).toLocaleString()} - $${(btcPrice * 1.03).toLocaleString()} | ETH: $${(ethPrice * 0.97).toLocaleString()} - $${(ethPrice * 1.03).toLocaleString()}`;
+    }
+  }
+
+  async storePostReleaseAnalysis(release, analysisResult) {
+    try {
+      const { insertPostReleaseAnalysis } = require('../database');
+      await insertPostReleaseAnalysis({
+        release_id: release.id,
+        release_type: release.type,
+        release_date: release.date,
+        analysis_data: JSON.stringify(analysisResult),
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Error storing post-release analysis:', error);
+    }
+  }
+
   // Get backtest performance metrics
   async getBacktestMetrics() {
     try {

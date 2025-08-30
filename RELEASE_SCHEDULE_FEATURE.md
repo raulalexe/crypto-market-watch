@@ -28,10 +28,12 @@ This feature provides comprehensive tracking of BLS CPI and BEA PCE economic dat
 ### 2️⃣ Pre-Release Notifications
 
 #### Notification Intervals
+- **24 hours before release** - Pre-release warning with preparation strategy
 - 60 minutes before release
 - 30 minutes before release
 - 15 minutes before release
 - 5 minutes before release
+- **1 minute after release** - Post-release data collection and AI analysis
 
 #### Notification Channels
 - Telegram messages
@@ -45,6 +47,19 @@ This feature provides comprehensive tracking of BLS CPI and BEA PCE economic dat
 - Impact level and urgency
 - Strategy tips and recommendations
 - Links to official sources
+
+#### Pre-Release Warning (24h before)
+- Comprehensive preparation strategy
+- Position derisking recommendations
+- Market preparation checklist
+- Hedging instrument preparation
+
+#### Post-Release Analysis (1min after)
+- Market reaction analysis
+- Price change calculations
+- Volatility assessment
+- Trading opportunities
+- Risk management recommendations
 
 ### 3️⃣ Strategy Recommendations
 
@@ -115,6 +130,28 @@ This feature provides comprehensive tracking of BLS CPI and BEA PCE economic dat
 - Wider buffers for pre-release periods
 - Dynamic stop-loss adjustments
 - Emergency stop-loss settings
+
+### 6️⃣ Post-Release Data Collection & Analysis
+
+#### Automatic Data Collection
+- Triggers 1 minute after release
+- Collects fresh market data
+- Compares with pre-release data
+- Calculates price changes and volatility
+
+#### AI Analysis Integration
+- Analyzes market reaction to release
+- Provides trading opportunities
+- Assesses risk levels
+- Generates entry/exit points
+- Stores analysis results in database
+
+#### Analysis Components
+- Market direction assessment
+- Volatility level calculation
+- Key price level identification
+- Short and medium-term outlooks
+- Risk assessment and recommendations
 
 ## API Endpoints
 
