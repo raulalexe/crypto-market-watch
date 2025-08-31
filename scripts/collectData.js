@@ -4,8 +4,9 @@ const EventNotificationService = require('../server/services/eventNotificationSe
 const { initDatabase } = require('../server/database');
 require('dotenv').config();
 
-async function runDataCollection() {
-  console.log('Starting scheduled data collection...');
+async function runDataCollection(analysisOnly = false) {
+  const mode = analysisOnly ? 'AI Analysis Only' : 'Full Data Collection';
+  console.log(`Starting ${mode}...`);
   const timestamp = new Date().toISOString();
   
   try {
@@ -18,48 +19,51 @@ async function runDataCollection() {
     const aiAnalyzer = new AIAnalyzer();
     const eventNotificationService = new EventNotificationService();
     
-    // Collect all market data
-    console.log('Collecting market data...');
-    const dataSuccess = await dataCollector.collectAllData();
-    
-    if (dataSuccess) {
+    if (!analysisOnly) {
+      // Collect all market data
+      console.log('Collecting market data...');
+      const dataSuccess = await dataCollector.collectAllData();
+      
+      if (!dataSuccess) {
+        console.error('Data collection failed');
+        return false;
+      }
+      
       console.log('Market data collection completed successfully');
-      
-      // Get market data summary for AI analysis
-      console.log('Preparing data for AI analysis...');
-      const marketData = await dataCollector.getMarketDataSummary();
-      
-      if (marketData) {
-        // Run AI analysis
-        console.log('Running AI analysis...');
-        const analysis = await aiAnalyzer.analyzeMarketDirection(marketData);
-        
-        if (analysis) {
-          console.log(`AI Analysis completed: ${analysis.market_direction} (${analysis.confidence}% confidence)`);
-          
-          // Run backtest
-          console.log('Running backtest analysis...');
-          const backtestResults = await aiAnalyzer.backtestPredictions();
-          
-          if (backtestResults) {
-            console.log(`Backtest completed for ${backtestResults.length} assets`);
-          }
-        }
-      }
-      
-      // Check for upcoming event notifications
-      console.log('Checking for upcoming event notifications...');
-      const eventNotifications = await eventNotificationService.checkUpcomingEventNotifications();
-      if (eventNotifications.length > 0) {
-        console.log(`Created ${eventNotifications.length} event notifications`);
-      }
-      
-      console.log(`Data collection and analysis completed at ${timestamp}`);
-      return true;
     } else {
-      console.error('Data collection failed');
-      return false;
+      console.log('Skipping data collection - using existing data for analysis only');
     }
+    
+    // Get latest AI analysis from database (no new AI call)
+    console.log('Retrieving latest AI analysis from database...');
+    const { getLatestAIAnalysis } = require('../server/database');
+    const analysis = await getLatestAIAnalysis();
+    
+    if (analysis) {
+      const direction = analysis.overall_direction || analysis.market_direction || 'UNKNOWN';
+      const confidence = analysis.overall_confidence || analysis.confidence || 'UNKNOWN';
+      console.log(`✅ Latest AI Analysis: ${direction} (${confidence}% confidence)`);
+      
+      // Run backtest if needed
+      console.log('Running backtest analysis...');
+      const backtestResults = await aiAnalyzer.backtestPredictions();
+      
+      if (backtestResults) {
+        console.log(`Backtest completed for ${backtestResults.length} assets`);
+      }
+    } else {
+      console.log('No AI analysis found in database');
+    }
+    
+    // Check for upcoming event notifications
+    console.log('Checking for upcoming event notifications...');
+    const eventNotifications = await eventNotificationService.checkUpcomingEventNotifications();
+    if (eventNotifications.length > 0) {
+      console.log(`Created ${eventNotifications.length} event notifications`);
+    }
+    
+    console.log(`Data collection and analysis completed at ${timestamp}`);
+    return true;
   } catch (error) {
     console.error('Error in data collection script:', error);
     return false;
@@ -68,7 +72,10 @@ async function runDataCollection() {
 
 // Run if called directly
 if (require.main === module) {
-  runDataCollection()
+  // Check for analysis-only flag
+  const analysisOnly = process.argv.includes('--analysis-only') || process.argv.includes('-a');
+  
+  runDataCollection(analysisOnly)
     .then(success => {
       if (success) {
         console.log('Script completed successfully');

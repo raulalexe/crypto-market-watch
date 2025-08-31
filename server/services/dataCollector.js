@@ -29,6 +29,15 @@ class DataCollector {
     // Cache for CoinGecko data to reduce API calls
     this.coingeckoCache = new Map();
     this.cacheExpiry = 5 * 60 * 1000; // 5 minutes
+    
+    // Cache for Alpha Vantage data to reduce API calls
+    this.alphaVantageCache = new Map();
+    this.alphaVantageCacheExpiry = 15 * 60 * 1000; // 15 minutes (Alpha Vantage data doesn't change as frequently)
+    
+    // Track Alpha Vantage API usage
+    this.alphaVantageCallCount = 0;
+    this.alphaVantageLastReset = Date.now();
+    this.alphaVantageDailyLimit = 500; // Free tier limit
   }
 
   // Rate-limited CoinGecko API call
@@ -77,22 +86,72 @@ class DataCollector {
     return data;
   }
 
-  // Collect DXY Index (US Dollar Index)
+  // Get cached Alpha Vantage data or fetch new data
+  async getCachedAlphaVantageData(cacheKey, fetchFunction) {
+    const cached = this.alphaVantageCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.alphaVantageCacheExpiry) {
+      console.log(`Using cached Alpha Vantage data for: ${cacheKey}`);
+      return cached.data;
+    }
+    
+    // Check daily limit
+    if (this.alphaVantageCallCount >= this.alphaVantageDailyLimit) {
+      console.log('⚠️ Alpha Vantage daily limit reached, using cached data');
+      return cached?.data || null;
+    }
+    
+    const data = await fetchFunction();
+    this.alphaVantageCache.set(cacheKey, {
+      data,
+      timestamp: Date.now()
+    });
+    this.alphaVantageCallCount++;
+    return data;
+  }
+
+  // Check if we should use Alpha Vantage or alternative sources
+  shouldUseAlphaVantage() {
+    // Reset counter daily
+    const now = Date.now();
+    if (now - this.alphaVantageLastReset > 24 * 60 * 60 * 1000) {
+      this.alphaVantageCallCount = 0;
+      this.alphaVantageLastReset = now;
+    }
+    
+    return this.alphaVantageCallCount < this.alphaVantageDailyLimit;
+  }
+
+  // Collect DXY Index (US Dollar Index) - OPTIMIZED
   async collectDXY() {
     try {
-      const response = await axios.get(
-        `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=USD&to_symbol=JPY&apikey=${this.alphaVantageKey}`
-      );
-      
-      // Check for rate limit error
-      if (response.data.Information && response.data.Information.includes('rate limit')) {
-        console.log('Alpha Vantage rate limit reached for DXY data');
-        await this.errorLogger.logApiFailure('Alpha Vantage', 'DXY', new Error('Rate limit reached'), response.data);
+      // Try to get from cache first
+      const cacheKey = 'DXY_USD_INDEX';
+      const cachedData = await this.getCachedAlphaVantageData(cacheKey, async () => {
+        // Only use Alpha Vantage if we haven't hit the limit
+        if (this.shouldUseAlphaVantage()) {
+          try {
+            const response = await axios.get(
+              `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=USD&to_symbol=JPY&apikey=${this.alphaVantageKey}`
+            );
+            
+            // Check for rate limit error
+            if (response.data.Information && response.data.Information.includes('rate limit')) {
+              console.log('Alpha Vantage rate limit reached for DXY data');
+              await this.errorLogger.logApiFailure('Alpha Vantage', 'DXY', new Error('Rate limit reached'), response.data);
+              return null;
+            }
+            
+            return response.data;
+          } catch (error) {
+            console.error('Alpha Vantage DXY failed:', error.message);
+            return null;
+          }
+        }
         return null;
-      }
-      
-      if (response.data['Time Series FX (Daily)']) {
-        const latestData = Object.values(response.data['Time Series FX (Daily)'])[0];
+      });
+
+      if (cachedData && cachedData['Time Series FX (Daily)']) {
+        const latestData = Object.values(cachedData['Time Series FX (Daily)'])[0];
         const dxyValue = parseFloat(latestData['4. close']);
         
         await insertMarketData('DXY', 'USD_INDEX', dxyValue, {
@@ -100,64 +159,115 @@ class DataCollector {
           high: parseFloat(latestData['2. high']),
           low: parseFloat(latestData['3. low']),
           volume: parseFloat(latestData['5. volume'])
-        }, 'Alpha Vantage');
+        }, 'Alpha Vantage (Cached)');
         
         return dxyValue;
-      } else {
-        console.log('No DXY data available from Alpha Vantage');
-        return null;
       }
+
+      // Fallback to Yahoo Finance (free, no API key required)
+      console.log('Using Yahoo Finance fallback for DXY data...');
+      try {
+        const yahooResponse = await axios.get(
+          'https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?interval=1d&range=1d'
+        );
+        
+        if (yahooResponse.data.chart.result && yahooResponse.data.chart.result[0]) {
+          const result = yahooResponse.data.chart.result[0];
+          const timestamps = result.timestamp;
+          const quotes = result.indicators.quote[0];
+          const latestIndex = timestamps.length - 1;
+          
+          const dxyValue = quotes.close[latestIndex];
+          await insertMarketData('DXY', 'USD_INDEX', dxyValue, {
+            open: quotes.open[latestIndex],
+            high: quotes.high[latestIndex],
+            low: quotes.low[latestIndex],
+            volume: quotes.volume[latestIndex]
+          }, 'Yahoo Finance');
+          
+          console.log(`Collected DXY from Yahoo Finance: ${dxyValue}`);
+          return dxyValue;
+        }
+      } catch (error) {
+        console.error('Yahoo Finance DXY failed:', error.message);
+      }
+
+      console.log('No DXY data available from any source');
+      return null;
     } catch (error) {
       console.error('Error collecting DXY data:', error.message);
-      await this.errorLogger.logApiFailure('Alpha Vantage', 'DXY', error);
+      await this.errorLogger.logApiFailure('Alpha Vantage + Yahoo', 'DXY', error);
       return null;
     }
   }
 
-  // Collect US Treasury Yields
+  // Collect US Treasury Yields - OPTIMIZED
   async collectTreasuryYields() {
     try {
-      // Try Alpha Vantage first
       let yield2Y = null;
       let yield10Y = null;
       
-      try {
-        // 2Y Treasury Yield
-        const response2Y = await axios.get(
-          `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=daily&maturity=2year&apikey=${this.alphaVantageKey}`
-        );
-        
-        // Check for rate limit error
-        if (response2Y.data.Information && response2Y.data.Information.includes('rate limit')) {
-          console.log('Alpha Vantage rate limit reached for 2Y Treasury data');
-          await this.errorLogger.logApiFailure('Alpha Vantage', 'TREASURY_2Y', new Error('Rate limit reached'), response2Y.data);
-        } else if (response2Y.data.data && response2Y.data.data.length > 0) {
-          yield2Y = parseFloat(response2Y.data.data[0].value);
-          await insertMarketData('TREASURY_YIELD', '2Y', yield2Y, {}, 'Alpha Vantage');
+      // Try to get from cache first
+      const cacheKey2Y = 'TREASURY_2Y';
+      const cacheKey10Y = 'TREASURY_10Y';
+      
+      // Get 2Y Treasury Yield
+      const cachedData2Y = await this.getCachedAlphaVantageData(cacheKey2Y, async () => {
+        if (this.shouldUseAlphaVantage()) {
+          try {
+            const response = await axios.get(
+              `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=daily&maturity=2year&apikey=${this.alphaVantageKey}`
+            );
+            
+            if (response.data.Information && response.data.Information.includes('rate limit')) {
+              console.log('Alpha Vantage rate limit reached for 2Y Treasury data');
+              await this.errorLogger.logApiFailure('Alpha Vantage', 'TREASURY_2Y', new Error('Rate limit reached'), response.data);
+              return null;
+            }
+            
+            return response.data;
+          } catch (error) {
+            console.log('Alpha Vantage 2Y failed:', error.message);
+            return null;
+          }
         }
-      } catch (error) {
-        console.log('Alpha Vantage 2Y failed:', error.message);
+        return null;
+      });
+
+      if (cachedData2Y && cachedData2Y.data && cachedData2Y.data.length > 0) {
+        yield2Y = parseFloat(cachedData2Y.data[0].value);
+        await insertMarketData('TREASURY_YIELD', '2Y', yield2Y, {}, 'Alpha Vantage (Cached)');
       }
 
-      try {
-        // 10Y Treasury Yield
-        const response10Y = await axios.get(
-          `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=daily&maturity=10year&apikey=${this.alphaVantageKey}`
-        );
-        
-        // Check for rate limit error
-        if (response10Y.data.Information && response10Y.data.Information.includes('rate limit')) {
-          console.log('Alpha Vantage rate limit reached for 10Y Treasury data');
-          await this.errorLogger.logApiFailure('Alpha Vantage', 'TREASURY_10Y', new Error('Rate limit reached'), response10Y.data);
-        } else if (response10Y.data.data && response10Y.data.data.length > 0) {
-          yield10Y = parseFloat(response10Y.data.data[0].value);
-          await insertMarketData('TREASURY_YIELD', '10Y', yield10Y, {}, 'Alpha Vantage');
+      // Get 10Y Treasury Yield
+      const cachedData10Y = await this.getCachedAlphaVantageData(cacheKey10Y, async () => {
+        if (this.shouldUseAlphaVantage()) {
+          try {
+            const response = await axios.get(
+              `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=daily&maturity=10year&apikey=${this.alphaVantageKey}`
+            );
+            
+            if (response.data.Information && response.data.Information.includes('rate limit')) {
+              console.log('Alpha Vantage rate limit reached for 10Y Treasury data');
+              await this.errorLogger.logApiFailure('Alpha Vantage', 'TREASURY_10Y', new Error('Rate limit reached'), response.data);
+              return null;
+            }
+            
+            return response.data;
+          } catch (error) {
+            console.log('Alpha Vantage 10Y failed:', error.message);
+            return null;
+          }
         }
-      } catch (error) {
-        console.log('Alpha Vantage 10Y failed:', error.message);
+        return null;
+      });
+
+      if (cachedData10Y && cachedData10Y.data && cachedData10Y.data.length > 0) {
+        yield10Y = parseFloat(cachedData10Y.data[0].value);
+        await insertMarketData('TREASURY_YIELD', '10Y', yield10Y, {}, 'Alpha Vantage (Cached)');
       }
 
-      // FRED API fallback for Treasury Yields
+      // FRED API fallback for Treasury Yields (free tier: 120 requests per minute)
       if (!yield2Y && this.fredApiKey) {
         try {
           const fredResponse2Y = await axios.get(
@@ -190,16 +300,59 @@ class DataCollector {
         }
       }
 
+      // Yahoo Finance fallback (free, no API key required)
+      if (!yield2Y) {
+        try {
+          const yahooResponse = await axios.get(
+            'https://query1.finance.yahoo.com/v8/finance/chart/^UST2YR?interval=1d&range=1d'
+          );
+          
+          if (yahooResponse.data.chart.result && yahooResponse.data.chart.result[0]) {
+            const result = yahooResponse.data.chart.result[0];
+            const timestamps = result.timestamp;
+            const quotes = result.indicators.quote[0];
+            const latestIndex = timestamps.length - 1;
+            
+            yield2Y = quotes.close[latestIndex];
+            await insertMarketData('TREASURY_YIELD', '2Y', yield2Y, {}, 'Yahoo Finance');
+            console.log(`Collected 2Y Treasury Yield from Yahoo Finance: ${yield2Y}%`);
+          }
+        } catch (error) {
+          console.error('Yahoo Finance 2Y Treasury failed:', error.message);
+        }
+      }
+
+      if (!yield10Y) {
+        try {
+          const yahooResponse = await axios.get(
+            'https://query1.finance.yahoo.com/v8/finance/chart/^TNX?interval=1d&range=1d'
+          );
+          
+          if (yahooResponse.data.chart.result && yahooResponse.data.chart.result[0]) {
+            const result = yahooResponse.data.chart.result[0];
+            const timestamps = result.timestamp;
+            const quotes = result.indicators.quote[0];
+            const latestIndex = timestamps.length - 1;
+            
+            yield10Y = quotes.close[latestIndex];
+            await insertMarketData('TREASURY_YIELD', '10Y', yield10Y, {}, 'Yahoo Finance');
+            console.log(`Collected 10Y Treasury Yield from Yahoo Finance: ${yield10Y}%`);
+          }
+        } catch (error) {
+          console.error('Yahoo Finance 10Y Treasury failed:', error.message);
+        }
+      }
+
       // If still no data, log the failure
       if (!yield2Y) {
-        await this.errorLogger.logApiFailure('Alpha Vantage + FRED', 'TREASURY_YIELD 2Y', new Error('No data available from any source'));
+        await this.errorLogger.logApiFailure('Alpha Vantage + FRED + Yahoo', 'TREASURY_YIELD 2Y', new Error('No data available from any source'));
       }
       if (!yield10Y) {
-        await this.errorLogger.logApiFailure('Alpha Vantage + FRED', 'TREASURY_YIELD 10Y', new Error('No data available from any source'));
+        await this.errorLogger.logApiFailure('Alpha Vantage + FRED + Yahoo', 'TREASURY_YIELD 10Y', new Error('No data available from any source'));
       }
 
     } catch (error) {
-      await this.errorLogger.logApiFailure('Alpha Vantage + FRED', 'TREASURY_YIELD', error);
+      await this.errorLogger.logApiFailure('Alpha Vantage + FRED + Yahoo', 'TREASURY_YIELD', error);
     }
   }
 
@@ -976,65 +1129,61 @@ class DataCollector {
     }
   }
 
-  // Run AI analysis with collected data
+  // Run AI analysis with collected data - SINGLE AI CALL ENTRY POINT
   async runAIAnalysis() {
     try {
       const AIAnalyzer = require('./aiAnalyzer');
       const aiAnalyzer = new AIAnalyzer();
       
+      console.log('🤖 Starting single AI analysis call...');
+      
       // Get market data summary for AI analysis
       const marketDataSummary = await this.getMarketDataSummary();
       if (!marketDataSummary) {
         console.log('No market data available for AI analysis');
-        return;
+        return null;
       }
 
       // Get advanced metrics for comprehensive analysis
       const advancedMetrics = await this.getAdvancedMetricsSummary();
-      if (advancedMetrics) {
-        // Merge market data with advanced metrics
-        // Get upcoming events for AI analysis
-        const EventCollector = require('./eventCollector');
-        const eventCollector = new EventCollector();
-        const upcomingEvents = await eventCollector.getUpcomingEvents(10);
+      
+      // Get upcoming events for AI analysis
+      const EventCollector = require('./eventCollector');
+      const eventCollector = new EventCollector();
+      const upcomingEvents = await eventCollector.getUpcomingEvents(10);
 
-        // Get Fear & Greed Index
-        const { getLatestFearGreedIndex } = require('../database');
-        const fearGreed = await getLatestFearGreedIndex();
+      // Get Fear & Greed Index
+      const { getLatestFearGreedIndex } = require('../database');
+      const fearGreed = await getLatestFearGreedIndex();
 
-        // Add regulatory news (only if we have real data)
-        const regulatoryNews = null; // We'll get this from real sources when available
+      // Prepare comprehensive data for AI analysis
+      const comprehensiveData = {
+        ...marketDataSummary,
+        bitcoin_dominance: advancedMetrics?.bitcoinDominance?.value,
+        stablecoin_metrics: advancedMetrics?.stablecoinMetrics,
+        exchange_flows: advancedMetrics?.exchangeFlows,
+        market_sentiment: advancedMetrics?.marketSentiment,
+        derivatives: advancedMetrics?.derivatives,
+        onchain: advancedMetrics?.onchain,
+        upcoming_events: upcomingEvents,
+        fear_greed: fearGreed,
+        regulatory_news: null // We'll get this from real sources when available
+      };
 
-        const comprehensiveData = {
-          ...marketDataSummary,
-          bitcoin_dominance: advancedMetrics.bitcoinDominance?.value,
-          stablecoin_metrics: advancedMetrics.stablecoinMetrics,
-          exchange_flows: advancedMetrics.exchangeFlows,
-          market_sentiment: advancedMetrics.marketSentiment,
-          derivatives: advancedMetrics.derivatives,
-          onchain: advancedMetrics.onchain,
-          upcoming_events: upcomingEvents,
-          fear_greed: fearGreed,
-          regulatory_news: regulatoryNews
-        };
-
-        // Run AI analysis
-        const analysis = await aiAnalyzer.analyzeMarketDirection(comprehensiveData);
-        if (analysis) {
-          console.log('AI analysis completed successfully');
-          console.log(`Overall direction: ${analysis.overall_direction}, Confidence: ${analysis.overall_confidence}%`);
-        } else {
-          console.log('AI analysis failed');
-        }
+      // SINGLE AI CALL - This is the only place where AI is called during data collection
+      const analysis = await aiAnalyzer.analyzeMarketDirection(comprehensiveData);
+      
+      if (analysis) {
+        console.log('✅ AI analysis completed successfully');
+        console.log(`📈 Overall direction: ${analysis.overall_direction}, Confidence: ${analysis.overall_confidence}%`);
+        return analysis;
       } else {
-        // Fallback to basic market data
-        const analysis = await aiAnalyzer.analyzeMarketDirection(marketDataSummary);
-        if (analysis) {
-          console.log('AI analysis completed with basic data');
-        }
+        console.log('❌ AI analysis failed');
+        return null;
       }
     } catch (error) {
-      console.error('Error running AI analysis:', error.message);
+      console.error('❌ Error running AI analysis:', error.message);
+      return null;
     }
   }
 
@@ -1208,303 +1357,6 @@ class DataCollector {
       console.error('Error collecting stablecoin metrics:', error.message);
       console.error('Full error:', error);
       await this.errorLogger.logApiFailure('CoinGecko', 'Stablecoin Metrics', error);
-    }
-  }
-
-  // Run AI analysis with collected data
-  async runAIAnalysis() {
-    try {
-      const AIAnalyzer = require('./aiAnalyzer');
-      const aiAnalyzer = new AIAnalyzer();
-      
-      // Get market data summary for AI analysis
-      const marketDataSummary = await this.getMarketDataSummary();
-      if (!marketDataSummary) {
-        console.log('No market data available for AI analysis');
-        return;
-      }
-
-      // Get advanced metrics for comprehensive analysis
-      const advancedMetrics = await this.getAdvancedMetricsSummary();
-      if (advancedMetrics) {
-        // Merge market data with advanced metrics
-        // Get upcoming events for AI analysis
-        const EventCollector = require('./eventCollector');
-        const eventCollector = new EventCollector();
-        const upcomingEvents = await eventCollector.getUpcomingEvents(10);
-
-        // Get Fear & Greed Index
-        const { getLatestFearGreedIndex } = require('../database');
-        const fearGreed = await getLatestFearGreedIndex();
-
-        // Add regulatory news (only if we have real data)
-        const regulatoryNews = null; // We'll get this from real sources when available
-
-        const comprehensiveData = {
-          ...marketDataSummary,
-          bitcoin_dominance: advancedMetrics.bitcoinDominance?.value,
-          stablecoin_metrics: advancedMetrics.stablecoinMetrics,
-          exchange_flows: advancedMetrics.exchangeFlows,
-          market_sentiment: advancedMetrics.marketSentiment,
-          derivatives: advancedMetrics.derivatives,
-          onchain: advancedMetrics.onchain,
-          upcoming_events: upcomingEvents,
-          fear_greed: fearGreed,
-          regulatory_news: regulatoryNews
-        };
-
-        // Run AI analysis
-        const analysis = await aiAnalyzer.analyzeMarketDirection(comprehensiveData);
-        if (analysis) {
-          console.log('AI analysis completed successfully');
-          console.log(`Overall direction: ${analysis.overall_direction}, Confidence: ${analysis.overall_confidence}%`);
-        } else {
-          console.log('AI analysis failed');
-        }
-      } else {
-        // Fallback to basic market data
-        const analysis = await aiAnalyzer.analyzeMarketDirection(marketDataSummary);
-        if (analysis) {
-          console.log('AI analysis completed with basic data');
-        }
-      }
-    } catch (error) {
-      console.error('Error running AI analysis:', error.message);
-    }
-  }
-
-  // Get market data summary for AI analysis
-  async getMarketDataSummary() {
-    try {
-      const { getLatestMarketData } = require('../database');
-      
-      // Get latest data for each market indicator
-      const dxy = await getLatestMarketData('DXY', 'USD_INDEX');
-      const treasury2Y = await getLatestMarketData('TREASURY_YIELD', '2Y');
-      const treasury10Y = await getLatestMarketData('TREASURY_YIELD', '10Y');
-      const sp500 = await getLatestMarketData('EQUITY', 'SP500');
-      const nasdaq = await getLatestMarketData('EQUITY', 'NASDAQ');
-      const vix = await getLatestMarketData('VOLATILITY', 'VIX');
-      const oil = await getLatestMarketData('COMMODITY', 'OIL');
-      
-      // Get latest crypto prices with 24h changes
-      const cryptoPrices = {};
-      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-      for (const symbol of cryptoSymbols) {
-        const price = await this.getLatestCryptoPrice(symbol);
-        if (price) {
-          cryptoPrices[symbol] = {
-            price: price.price,
-            change_24h: price.change_24h || 0,
-            volume_24h: price.volume_24h || 0
-          };
-        }
-      }
-      
-      // Determine the most recent timestamp
-      const timestamps = [
-        dxy?.timestamp,
-        treasury2Y?.timestamp,
-        treasury10Y?.timestamp,
-        sp500?.timestamp,
-        nasdaq?.timestamp,
-        vix?.timestamp,
-        oil?.timestamp
-      ].filter(Boolean);
-      
-      const latestTimestamp = timestamps.length > 0 
-        ? timestamps.reduce((latest, current) => 
-            new Date(current) > new Date(latest) ? current : latest
-          )
-        : new Date().toISOString();
-      
-      return {
-        timestamp: latestTimestamp,
-        dxy: dxy?.value,
-        treasury_2y: treasury2Y?.value,
-        treasury_10y: treasury10Y?.value,
-        sp500: sp500?.value,
-        nasdaq: nasdaq?.value,
-        vix: vix?.value || 25, // Default VIX value if not available
-        oil: oil?.value,
-        crypto_prices: cryptoPrices
-      };
-    } catch (error) {
-      console.error('Error getting market data summary:', error.message);
-      return null;
-    }
-  }
-
-  // Get latest crypto price for a symbol
-  async getLatestCryptoPrice(symbol) {
-    try {
-      const { getLatestCryptoPrice } = require('../database');
-      return await getLatestCryptoPrice(symbol);
-    } catch (error) {
-      console.error(`Error getting latest crypto price for ${symbol}:`, error.message);
-      return null;
-    }
-  }
-
-  // Get advanced metrics summary for AI analysis
-  async getAdvancedMetricsSummary() {
-    try {
-      const { getLatestBitcoinDominance, getLatestStablecoinMetrics, getLatestExchangeFlows } = require('../database');
-      
-      // Get latest advanced metrics
-      const bitcoinDominance = await getLatestBitcoinDominance();
-      const stablecoinMetrics = await getLatestStablecoinMetrics();
-      const exchangeFlows = await getLatestExchangeFlows();
-      
-      // Get market sentiment (only if we have real data)
-      const marketSentiment = null; // We'll get this from real sources when available
-      
-      // Get derivatives data (only if we have real data)
-      const derivatives = null; // We'll get this from real sources when available
-      
-      // Get on-chain data (only if we have real data)
-      const onchain = null; // We'll get this from real sources when available
-      
-      return {
-        bitcoinDominance,
-        stablecoinMetrics,
-        exchangeFlows,
-        marketSentiment,
-        derivatives,
-        onchain
-      };
-    } catch (error) {
-      console.error('Error getting advanced metrics summary:', error.message);
-      return null;
-    }
-  }
-
-  // Collect Stablecoin Metrics
-  async collectStablecoinMetrics() {
-    try {
-      console.log('Starting stablecoin metrics collection...');
-      const stablecoins = ['tether', 'usd-coin', 'dai', 'binance-usd', 'true-usd'];
-      const stablecoinIds = stablecoins.join(',');
-      
-      console.log(`Fetching stablecoin data for: ${stablecoinIds}`);
-      
-      // Get stablecoin data using rate-limited API call
-      const response = await this.makeCoinGeckoRequest('simple/price', {
-        ids: stablecoinIds,
-        vs_currencies: 'usd',
-        include_market_cap: true
-      });
-      
-      console.log('Stablecoin API response received:', response.status);
-      
-      if (response.data) {
-        let totalStablecoinMarketCap = 0;
-        const stablecoinData = {};
-        
-        // Calculate total stablecoin market cap
-        for (const [id, data] of Object.entries(response.data)) {
-          if (data.usd_market_cap) {
-            totalStablecoinMarketCap += data.usd_market_cap;
-            stablecoinData[id] = data.usd_market_cap;
-          }
-        }
-        
-        console.log(`Total stablecoin market cap: $${(totalStablecoinMarketCap / 1e9).toFixed(2)}B`);
-        
-        // Get BTC market cap for SSR calculation using rate-limited call
-        console.log('Fetching Bitcoin market cap for SSR calculation...');
-        const btcResponse = await this.makeCoinGeckoRequest('simple/price', {
-          ids: 'bitcoin',
-          vs_currencies: 'usd',
-          include_market_cap: true
-        });
-        
-        if (btcResponse.data && btcResponse.data.bitcoin) {
-          const btcMarketCap = btcResponse.data.bitcoin.usd_market_cap;
-          
-          // Calculate Stablecoin Supply Ratio (SSR)
-          const ssr = btcMarketCap / totalStablecoinMarketCap;
-          
-          // Store metrics
-          const { insertStablecoinMetric } = require('../database');
-          await insertStablecoinMetric('total_market_cap', totalStablecoinMarketCap, stablecoinData, 'CoinGecko');
-          await insertStablecoinMetric('ssr', ssr, { btc_market_cap: btcMarketCap }, 'CoinGecko');
-          
-          console.log(`Collected Stablecoin Metrics: Total MC $${(totalStablecoinMarketCap / 1e9).toFixed(2)}B, SSR: ${ssr.toFixed(2)}`);
-          
-          return { totalMarketCap: totalStablecoinMarketCap, ssr };
-        } else {
-          console.log('No Bitcoin data received for SSR calculation');
-        }
-      } else {
-        console.log('No stablecoin data received from API');
-      }
-    } catch (error) {
-      console.error('Error collecting stablecoin metrics:', error.message);
-      console.error('Full error:', error);
-      await this.errorLogger.logApiFailure('CoinGecko', 'Stablecoin Metrics', error);
-    }
-  }
-
-  // Run AI analysis with collected data
-  async runAIAnalysis() {
-    try {
-      const AIAnalyzer = require('./aiAnalyzer');
-      const aiAnalyzer = new AIAnalyzer();
-      
-      // Get market data summary for AI analysis
-      const marketDataSummary = await this.getMarketDataSummary();
-      if (!marketDataSummary) {
-        console.log('No market data available for AI analysis');
-        return;
-      }
-
-      // Get advanced metrics for comprehensive analysis
-      const advancedMetrics = await this.getAdvancedMetricsSummary();
-      if (advancedMetrics) {
-        // Merge market data with advanced metrics
-        // Get upcoming events for AI analysis
-        const EventCollector = require('./eventCollector');
-        const eventCollector = new EventCollector();
-        const upcomingEvents = await eventCollector.getUpcomingEvents(10);
-
-        // Get Fear & Greed Index
-        const { getLatestFearGreedIndex } = require('../database');
-        const fearGreed = await getLatestFearGreedIndex();
-
-        // Add regulatory news (only if we have real data)
-        const regulatoryNews = null; // We'll get this from real sources when available
-
-        const comprehensiveData = {
-          ...marketDataSummary,
-          bitcoin_dominance: advancedMetrics.bitcoinDominance?.value,
-          stablecoin_metrics: advancedMetrics.stablecoinMetrics,
-          exchange_flows: advancedMetrics.exchangeFlows,
-          market_sentiment: advancedMetrics.marketSentiment,
-          derivatives: advancedMetrics.derivatives,
-          onchain: advancedMetrics.onchain,
-          upcoming_events: upcomingEvents,
-          fear_greed: fearGreed,
-          regulatory_news: regulatoryNews
-        };
-
-        // Run AI analysis
-        const analysis = await aiAnalyzer.analyzeMarketDirection(comprehensiveData);
-        if (analysis) {
-          console.log('AI analysis completed successfully');
-          console.log(`Overall direction: ${analysis.overall_direction}, Confidence: ${analysis.overall_confidence}%`);
-        } else {
-          console.log('AI analysis failed');
-        }
-      } else {
-        // Fallback to basic market data
-        const analysis = await aiAnalyzer.analyzeMarketDirection(marketDataSummary);
-        if (analysis) {
-          console.log('AI analysis completed with basic data');
-        }
-      }
-    } catch (error) {
-      console.error('Error running AI analysis:', error.message);
     }
   }
 
@@ -1517,13 +1369,35 @@ class DataCollector {
       // First, collect crypto prices (this will store comprehensive data for other functions)
       await this.collectCryptoPrices();
       
-      // Collect all other data in parallel (excluding functions that now use crypto data)
+      // Use bulk Alpha Vantage collection to reduce API calls
+      console.log('Using bulk Alpha Vantage collection to minimize API calls...');
+      const alphaVantageData = await this.collectBulkAlphaVantageData();
+      
+      // Process bulk Alpha Vantage data
+      if (alphaVantageData.DXY) {
+        await this.processDXYData(alphaVantageData.DXY);
+      }
+      if (alphaVantageData.Treasury2Y) {
+        await this.processTreasuryData(alphaVantageData.Treasury2Y, '2Y');
+      }
+      if (alphaVantageData.Treasury10Y) {
+        await this.processTreasuryData(alphaVantageData.Treasury10Y, '10Y');
+      }
+      if (alphaVantageData.SP500) {
+        await this.processEquityData(alphaVantageData.SP500, 'SP500');
+      }
+      if (alphaVantageData.NASDAQ) {
+        await this.processEquityData(alphaVantageData.NASDAQ, 'NASDAQ');
+      }
+      if (alphaVantageData.VIX) {
+        await this.processVIXData(alphaVantageData.VIX);
+      }
+      if (alphaVantageData.Oil) {
+        await this.processOilData(alphaVantageData.Oil);
+      }
+      
+      // Collect remaining data that doesn't use Alpha Vantage
       await Promise.all([
-        this.collectDXY(),
-        this.collectTreasuryYields(),
-        this.collectEquityIndices(),
-        this.collectVIX(),
-        this.collectEnergyPrices(),
         this.collectFearGreedIndex(),
         this.collectTrendingNarratives(),
         this.collectStablecoinMetricsOptimized(), // Uses data from collectCryptoPrices
@@ -1731,6 +1605,12 @@ class DataCollector {
   // Bulk Alpha Vantage requests to reduce API calls
   async collectBulkAlphaVantageData() {
     try {
+      // Check if we should use Alpha Vantage
+      if (!this.shouldUseAlphaVantage()) {
+        console.log('⚠️ Alpha Vantage daily limit reached, using cached data only');
+        return {};
+      }
+
       // Combine multiple Alpha Vantage requests into a single function
       const requests = [
         { name: 'DXY', url: `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=USD&to_symbol=JPY&apikey=${this.alphaVantageKey}` },
@@ -1746,7 +1626,7 @@ class DataCollector {
       const results = {};
       for (const request of requests) {
         try {
-          console.log(`Fetching ${request.name} data...`);
+          console.log(`Fetching ${request.name} data (${this.alphaVantageCallCount + 1}/${this.alphaVantageDailyLimit})...`);
           const response = await axios.get(request.url);
           
           // Check for rate limit
@@ -1757,6 +1637,7 @@ class DataCollector {
           }
           
           results[request.name] = response.data;
+          this.alphaVantageCallCount++;
           
           // Add delay between requests to respect rate limits
           await new Promise(resolve => setTimeout(resolve, 12000)); // 12 second delay (5 calls per minute)
@@ -1770,6 +1651,78 @@ class DataCollector {
     } catch (error) {
       console.error('Error in bulk Alpha Vantage collection:', error.message);
       return {};
+    }
+  }
+
+  // Helper methods to process bulk Alpha Vantage data
+  async processDXYData(data) {
+    if (data['Time Series FX (Daily)']) {
+      const latestData = Object.values(data['Time Series FX (Daily)'])[0];
+      const dxyValue = parseFloat(latestData['4. close']);
+      
+      await insertMarketData('DXY', 'USD_INDEX', dxyValue, {
+        open: parseFloat(latestData['1. open']),
+        high: parseFloat(latestData['2. high']),
+        low: parseFloat(latestData['3. low']),
+        volume: parseFloat(latestData['5. volume'])
+      }, 'Alpha Vantage (Bulk)');
+      
+      console.log(`Processed DXY data: ${dxyValue}`);
+    }
+  }
+
+  async processTreasuryData(data, maturity) {
+    if (data.data && data.data.length > 0) {
+      const yieldValue = parseFloat(data.data[0].value);
+      await insertMarketData('TREASURY_YIELD', maturity, yieldValue, {}, 'Alpha Vantage (Bulk)');
+      console.log(`Processed ${maturity} Treasury data: ${yieldValue}%`);
+    }
+  }
+
+  async processEquityData(data, symbol) {
+    if (data['Time Series (Daily)']) {
+      const latestData = Object.values(data['Time Series (Daily)'])[0];
+      const value = parseFloat(latestData['4. close']);
+      
+      await insertMarketData('EQUITY_INDEX', symbol, value, {
+        open: parseFloat(latestData['1. open']),
+        high: parseFloat(latestData['2. high']),
+        low: parseFloat(latestData['3. low']),
+        volume: parseFloat(latestData['5. volume'])
+      }, 'Alpha Vantage (Bulk)');
+      
+      console.log(`Processed ${symbol} data: $${value}`);
+    }
+  }
+
+  async processVIXData(data) {
+    if (data['Time Series (Daily)']) {
+      const latestData = Object.values(data['Time Series (Daily)'])[0];
+      const vixValue = parseFloat(latestData['4. close']);
+      
+      await insertMarketData('VOLATILITY_INDEX', 'VIX', vixValue, {
+        open: parseFloat(latestData['1. open']),
+        high: parseFloat(latestData['2. high']),
+        low: parseFloat(latestData['3. low'])
+      }, 'Alpha Vantage (Bulk)');
+      
+      console.log(`Processed VIX data: ${vixValue}`);
+    }
+  }
+
+  async processOilData(data) {
+    if (data['Time Series (Daily)']) {
+      const latestData = Object.values(data['Time Series (Daily)'])[0];
+      const oilValue = parseFloat(latestData['4. close']);
+      
+      await insertMarketData('ENERGY_PRICE', 'OIL_WTI', oilValue, {
+        open: parseFloat(latestData['1. open']),
+        high: parseFloat(latestData['2. high']),
+        low: parseFloat(latestData['3. low']),
+        volume: parseFloat(latestData['5. volume'])
+      }, 'Alpha Vantage (Bulk)');
+      
+      console.log(`Processed Oil data: $${oilValue}`);
     }
   }
 }

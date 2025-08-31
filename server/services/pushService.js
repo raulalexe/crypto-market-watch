@@ -63,7 +63,7 @@ class PushService {
           alertType: alert.type,
           severity: alert.severity,
           timestamp: alert.timestamp,
-          url: '/alerts'
+          url: '/app/alerts'
         },
         actions: [
           {

@@ -10,6 +10,7 @@ import DataCollectionCard from './DataCollectionCard';
 import BacktestCard from './BacktestCard';
 import UpcomingEventsCard from './UpcomingEventsCard';
 import AlertCard from './AlertCard';
+import InflationDataCard from './InflationDataCard';
 
 const Dashboard = ({ isAuthenticated, userData }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -40,7 +41,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch('/api/dashboard', {
+      const response = await fetch(`/api/dashboard?t=${Date.now()}`, {
         headers
       });
       
@@ -49,6 +50,11 @@ const Dashboard = ({ isAuthenticated, userData }) => {
       }
       
       const data = await response.json();
+      
+      // Debug logging to see what we received
+      console.log('🔍 Dashboard received data:', data);
+      console.log('🔍 AI Analysis data:', data.aiAnalysis);
+      console.log('🔍 Short term factors:', data.aiAnalysis?.short_term?.factors_analyzed);
       
       // Always use the response, but log what we got
       if (data.subscriptionStatus) {
@@ -213,6 +219,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         
         {/* Other Cards */}
         <CryptoPricesCard data={dashboardData?.cryptoPrices} />
+        <InflationDataCard userData={userData} />
         <UpcomingEventsCard events={dashboardData?.upcomingEvents} />
         <NarrativesCard data={dashboardData?.trendingNarratives} />
         <AdvancedMetricsCard data={dashboardData?.advancedMetrics} />

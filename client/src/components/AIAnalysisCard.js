@@ -4,15 +4,15 @@ import { Brain, TrendingUp, TrendingDown, Minus, Target, ChevronDown, ChevronRig
 const AIAnalysisCard = ({ data }) => {
   const [expandedTimeframes, setExpandedTimeframes] = useState({});
 
-  // Debug logging
-  console.log('AIAnalysisCard received data:', data);
-
   const toggleTimeframe = (timeframe) => {
     setExpandedTimeframes(prev => ({
       ...prev,
       [timeframe]: !prev[timeframe]
     }));
   };
+
+  // Debug logging
+  console.log('AIAnalysisCard received data:', data);
 
   const getDirectionIcon = (direction) => {
     switch (direction) {
@@ -87,6 +87,11 @@ const AIAnalysisCard = ({ data }) => {
   if (data?.short_term) availableTimeframes.push({ key: 'short', timeframeData: data.short_term, label: 'Short Term' });
   if (data?.medium_term) availableTimeframes.push({ key: 'medium', timeframeData: data.medium_term, label: 'Medium Term' });
   if (data?.long_term) availableTimeframes.push({ key: 'long', timeframeData: data.long_term, label: 'Long Term' });
+
+  // Debug logging (after variables are defined)
+  console.log('AIAnalysisCard hasMultiTimeframe:', hasMultiTimeframe);
+  console.log('AIAnalysisCard availableTimeframes:', availableTimeframes);
+  console.log('AIAnalysisCard short_term factors:', data?.short_term?.factors_analyzed);
 
   // Early return if no analysis data
   if (!data) {
@@ -185,10 +190,19 @@ const AIAnalysisCard = ({ data }) => {
                         <div>
                           <h4 className="text-sm font-medium text-slate-400 mb-2">Key Factors:</h4>
                           <ul className="space-y-1">
-                            {timeframeData.factors_analyzed.slice(0, 3).map((factor, index) => (
+                            {timeframeData.factors_analyzed.slice(0, 6).map((factor, index) => (
                               <li key={index} className="text-sm text-slate-300 flex items-center">
                                 <span className="w-1.5 h-1.5 bg-crypto-blue rounded-full mr-2"></span>
-                                {factor}
+                                {factor.includes('VERY_BEARISH') ? 
+                                  factor.replace('VERY_BEARISH', 'Very Bearish').replace('(strong negative)', '(strong negative impact)') :
+                                  factor.includes('VERY_BULLISH') ? 
+                                    factor.replace('VERY_BULLISH', 'Very Bullish').replace('(strong positive)', '(strong positive impact)') :
+                                    factor.includes('BEARISH') ? 
+                                      factor.replace('BEARISH', 'Bearish').replace('(negative)', '(negative impact)') :
+                                      factor.includes('BULLISH') ? 
+                                        factor.replace('BULLISH', 'Bullish').replace('(positive)', '(positive impact)') :
+                                        factor
+                                }
                               </li>
                             ))}
                           </ul>
@@ -259,10 +273,19 @@ const AIAnalysisCard = ({ data }) => {
             <div>
               <h4 className="text-sm font-medium text-slate-400 mb-2">Key Factors:</h4>
               <ul className="space-y-1">
-                {data.factors_analyzed.slice(0, 3).map((factor, index) => (
+                {data.factors_analyzed.slice(0, 6).map((factor, index) => (
                   <li key={index} className="text-sm text-slate-300 flex items-center">
                     <span className="w-1.5 h-1.5 bg-crypto-blue rounded-full mr-2"></span>
-                    {factor}
+                    {factor.includes('VERY_BEARISH') ? 
+                      factor.replace('VERY_BEARISH', 'Very Bearish').replace('(strong negative)', '(strong negative impact)') :
+                      factor.includes('VERY_BULLISH') ? 
+                        factor.replace('VERY_BULLISH', 'Very Bullish').replace('(strong positive)', '(strong positive impact)') :
+                        factor.includes('BEARISH') ? 
+                          factor.replace('BEARISH', 'Bearish').replace('(negative)', '(negative impact)') :
+                          factor.includes('BULLISH') ? 
+                            factor.replace('BULLISH', 'Bullish').replace('(positive)', '(positive impact)') :
+                            factor
+                    }
                   </li>
                 ))}
               </ul>

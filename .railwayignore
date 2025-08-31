@@ -1,0 +1,52 @@
+# Development files
+.env
+.env.local
+.env.development
+.env.test
+
+# Test files
+tests/
+cypress/
+*.test.js
+*.spec.js
+
+# Documentation
+*.md
+docs/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# Database files (will use PostgreSQL in production)
+data/*.db
+data/*.sqlite
+
+# Node modules (will be installed during build)
+node_modules/
+client/node_modules/
+
+# Build artifacts
+client/build/
+build/
+dist/
+
+# Git
+.git/
+.gitignore
+
+# Deployment scripts
+deploy.sh
+deploy-railway.sh

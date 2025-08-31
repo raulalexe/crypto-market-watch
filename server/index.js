@@ -1949,12 +1949,8 @@ app.post('/api/collect-data', async (req, res) => {
     const success = await dataCollector.collectAllData();
     
     if (success) {
-      // Trigger AI analysis
-      const marketData = await dataCollector.getMarketDataSummary();
-      if (marketData) {
-        await aiAnalyzer.analyzeMarketDirection(marketData);
-        await aiAnalyzer.backtestPredictions();
-      }
+      // AI analysis is already done during data collection - no need for additional calls
+      console.log('✅ Data collection completed with AI analysis');
       
       // Collect upcoming events
       await eventCollector.collectUpcomingEvents();
@@ -2053,6 +2049,216 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
+});
+
+// ===== INFLATION DATA ENDPOINTS =====
+
+// Get latest inflation data
+app.get('/api/inflation/latest', async (req, res) => {
+  try {
+    const { getLatestInflationData } = require('./database');
+    
+    const [cpiData, pceData] = await Promise.all([
+      getLatestInflationData('CPI'),
+      getLatestInflationData('PCE')
+    ]);
+    
+    res.json({
+      cpi: cpiData,
+      pce: pceData,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching latest inflation data:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get inflation data history
+app.get('/api/inflation/history/:type', async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { months = 12 } = req.query;
+    const { getInflationDataHistory } = require('./database');
+    
+    const data = await getInflationDataHistory(type, parseInt(months));
+    
+    res.json({
+      type,
+      data,
+      count: data.length
+    });
+  } catch (error) {
+    console.error('Error fetching inflation history:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get upcoming inflation releases
+app.get('/api/inflation/releases', async (req, res) => {
+  try {
+    const { getInflationReleases } = require('./database');
+    const { days = 30 } = req.query;
+    
+    const releases = [];
+    const today = new Date();
+    
+    for (let i = 0; i < parseInt(days); i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const dayReleases = await getInflationReleases(dateStr);
+      releases.push(...dayReleases);
+    }
+    
+    res.json({
+      releases,
+      count: releases.length
+    });
+  } catch (error) {
+    console.error('Error fetching inflation releases:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get inflation forecasts
+app.get('/api/inflation/forecasts', async (req, res) => {
+  try {
+    const { getLatestInflationForecast } = require('./database');
+    
+    const [cpiForecast, pceForecast] = await Promise.all([
+      getLatestInflationForecast('CPI'),
+      getLatestInflationForecast('PCE')
+    ]);
+    
+    res.json({
+      cpi: cpiForecast,
+      pce: pceForecast,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching inflation forecasts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Manual trigger for inflation data fetch
+app.post('/api/inflation/fetch', authenticateToken, requireSubscription('pro'), async (req, res) => {
+  try {
+    const inflationService = require('./services/inflationDataService');
+    
+    const data = await inflationService.fetchLatestData();
+    
+    res.json({
+      success: true,
+      data,
+      message: 'Inflation data fetched successfully'
+    });
+  } catch (error) {
+    console.error('Error fetching inflation data:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update release schedule manually
+app.post('/api/inflation/update-schedule', authenticateToken, requireSubscription('pro'), async (req, res) => {
+  try {
+    const inflationService = require('./services/inflationDataService');
+    
+    await inflationService.updateReleaseSchedule();
+    
+    res.json({
+      success: true,
+      message: 'Inflation release schedule updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating release schedule:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Generate forecasts manually
+app.post('/api/inflation/generate-forecasts', authenticateToken, requireSubscription('pro'), async (req, res) => {
+  try {
+    const inflationService = require('./services/inflationDataService');
+    
+    await inflationService.generateForecasts();
+    
+    res.json({
+      success: true,
+      message: 'Inflation forecasts generated successfully'
+    });
+  } catch (error) {
+    console.error('Error generating forecasts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get inflation data with market expectations and analysis
+app.get('/api/inflation/analysis', async (req, res) => {
+  try {
+    const inflationService = require('./services/inflationDataService');
+    const result = await inflationService.fetchLatestDataWithAnalysis();
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error fetching inflation analysis:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch inflation analysis',
+      message: error.message
+    });
+  }
+});
+
+// Get market expectations only
+app.get('/api/inflation/expectations', async (req, res) => {
+  try {
+    const inflationService = require('./services/inflationDataService');
+    const expectations = await inflationService.fetchMarketExpectations();
+    
+    res.json({
+      success: true,
+      data: expectations
+    });
+  } catch (error) {
+    console.error('Error fetching market expectations:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch market expectations',
+      message: error.message
+    });
+  }
+});
+
+// Get inflation sentiment analysis
+app.get('/api/inflation/sentiment', async (req, res) => {
+  try {
+    const inflationService = require('./services/inflationDataService');
+    const data = await inflationService.fetchLatestData();
+    const analysis = await inflationService.analyzeInflationData(data);
+    
+    res.json({
+      success: true,
+      data: {
+        sentiment: analysis.overallSentiment,
+        marketImpact: analysis.marketImpact,
+        details: analysis,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching inflation sentiment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch inflation sentiment',
+      message: error.message
+    });
+  }
 });
 
 // ===== PAYMENT & SUBSCRIPTION ROUTES =====

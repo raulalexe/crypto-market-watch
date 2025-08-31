@@ -92,7 +92,7 @@ self.addEventListener('notificationclick', (event) => {
   if (event.action === 'view') {
     // Open the alerts page
     event.waitUntil(
-      clients.openWindow('/alerts')
+      clients.openWindow('/app/alerts')
     );
   } else if (event.action === 'acknowledge') {
     // Acknowledge the alert

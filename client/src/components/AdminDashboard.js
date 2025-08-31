@@ -541,7 +541,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
          <div className="flex items-center justify-between mb-4">
            <h3 className="text-lg font-semibold text-white">Market Alerts</h3>
            <Link 
-             to="/alerts" 
+             to="/app/alerts" 
              className="text-crypto-blue hover:text-blue-400 transition-colors text-sm flex items-center gap-1"
            >
              View All

@@ -261,6 +261,46 @@ const initDatabase = () => {
               usage_count INTEGER DEFAULT 0
             )
           `);
+
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS inflation_data (
+              id SERIAL PRIMARY KEY,
+              type VARCHAR(10) NOT NULL,
+              date DATE NOT NULL,
+              value DECIMAL,
+              core_value DECIMAL,
+              yoy_change DECIMAL,
+              core_yoy_change DECIMAL,
+              source VARCHAR(10),
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS inflation_releases (
+              id SERIAL PRIMARY KEY,
+              type VARCHAR(10) NOT NULL,
+              date DATE NOT NULL,
+              time TIME,
+              timezone VARCHAR(50),
+              source VARCHAR(10),
+              status VARCHAR(20) DEFAULT 'scheduled',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(type, date)
+            )
+          `);
+
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS inflation_forecasts (
+              id SERIAL PRIMARY KEY,
+              type VARCHAR(10) NOT NULL,
+              forecast_data JSONB,
+              confidence DECIMAL,
+              factors JSONB,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
           
           // Add stripe_customer_id column if it doesn't exist (migration)
           try {
@@ -517,6 +557,49 @@ const initDatabase = () => {
             last_used DATETIME,
             usage_count INTEGER DEFAULT 0,
             FOREIGN KEY (user_id) REFERENCES users (id)
+          )
+        `);
+
+        // Inflation data table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS inflation_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            date TEXT NOT NULL,
+            value REAL,
+            core_value REAL,
+            yoy_change REAL,
+            core_yoy_change REAL,
+            source TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
+        // Inflation releases table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS inflation_releases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            date TEXT NOT NULL,
+            time TEXT,
+            timezone TEXT,
+            source TEXT,
+            status TEXT DEFAULT 'scheduled',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(type, date)
+          )
+        `);
+
+        // Inflation forecasts table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS inflation_forecasts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            forecast_data TEXT,
+            confidence REAL,
+            factors TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )
         `);
 
@@ -1724,6 +1807,340 @@ const regenerateApiKey = (userId, apiKeyId) => {
   });
 };
 
+// Inflation data functions
+const insertInflationData = (data) => {
+  return new Promise((resolve, reject) => {
+    if (usePostgreSQL) {
+      // PostgreSQL implementation
+      const client = new Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      
+      client.connect()
+        .then(() => {
+          return client.query(`
+            INSERT INTO inflation_data (
+              type, date, value, core_value, yoy_change, core_yoy_change, source, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+            RETURNING id
+          `, [data.type, data.date, data.value, data.coreValue, data.yoyChange, data.coreYoYChange, data.source]);
+        })
+        .then(result => {
+          client.end();
+          resolve(result.rows[0].id);
+        })
+        .catch(err => {
+          client.end();
+          reject(err);
+        });
+    } else {
+      // SQLite implementation
+      db.run(`
+        INSERT INTO inflation_data (
+          type, date, value, core_value, yoy_change, core_yoy_change, source, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `, [data.type, data.date, data.value, data.coreValue, data.yoyChange, data.coreYoYChange, data.source], function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      });
+    }
+  });
+};
+
+const getLatestInflationData = (type) => {
+  return new Promise((resolve, reject) => {
+    if (usePostgreSQL) {
+      // PostgreSQL implementation
+      const client = new Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      
+      client.connect()
+        .then(() => {
+          return client.query(`
+            SELECT * FROM inflation_data 
+            WHERE type = $1 
+            ORDER BY date DESC 
+            LIMIT 1
+          `, [type]);
+        })
+        .then(result => {
+          client.end();
+          resolve(result.rows[0] || null);
+        })
+        .catch(err => {
+          client.end();
+          reject(err);
+        });
+    } else {
+      // SQLite implementation
+      db.get(`
+        SELECT * FROM inflation_data 
+        WHERE type = ? 
+        ORDER BY date DESC 
+        LIMIT 1
+      `, [type], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    }
+  });
+};
+
+const getInflationDataHistory = (type, months = 12) => {
+  return new Promise((resolve, reject) => {
+    if (usePostgreSQL) {
+      // PostgreSQL implementation
+      const client = new Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      
+      client.connect()
+        .then(() => {
+          return client.query(`
+            SELECT * FROM inflation_data 
+            WHERE type = $1 
+            AND date >= CURRENT_DATE - INTERVAL '${months} months'
+            ORDER BY date DESC
+          `, [type]);
+        })
+        .then(result => {
+          client.end();
+          resolve(result.rows);
+        })
+        .catch(err => {
+          client.end();
+          reject(err);
+        });
+    } else {
+      // SQLite implementation
+      const cutoffDate = new Date();
+      cutoffDate.setMonth(cutoffDate.getMonth() - months);
+      const cutoffStr = cutoffDate.toISOString().split('T')[0];
+      
+      db.all(`
+        SELECT * FROM inflation_data 
+        WHERE type = ? 
+        AND date >= ?
+        ORDER BY date DESC
+      `, [type, cutoffStr], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    }
+  });
+};
+
+// Inflation release schedule functions
+const insertInflationRelease = (release) => {
+  return new Promise((resolve, reject) => {
+    if (usePostgreSQL) {
+      // PostgreSQL implementation
+      const client = new Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      
+      client.connect()
+        .then(() => {
+          return client.query(`
+            INSERT INTO inflation_releases (
+              type, date, time, timezone, source, status, created_at
+            ) VALUES ($1, $2, $3, $4, $5, 'scheduled', CURRENT_TIMESTAMP)
+            ON CONFLICT (type, date) DO UPDATE SET
+              time = EXCLUDED.time,
+              timezone = EXCLUDED.timezone,
+              source = EXCLUDED.source
+            RETURNING id
+          `, [release.type, release.date, release.time, release.timezone, release.source]);
+        })
+        .then(result => {
+          client.end();
+          resolve(result.rows[0].id);
+        })
+        .catch(err => {
+          client.end();
+          reject(err);
+        });
+    } else {
+      // SQLite implementation
+      db.run(`
+        INSERT OR REPLACE INTO inflation_releases (
+          type, date, time, timezone, source, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, 'scheduled', CURRENT_TIMESTAMP)
+      `, [release.type, release.date, release.time, release.timezone, release.source], function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      });
+    }
+  });
+};
+
+const getInflationReleases = (date) => {
+  return new Promise((resolve, reject) => {
+    if (usePostgreSQL) {
+      // PostgreSQL implementation
+      const client = new Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      
+      client.connect()
+        .then(() => {
+          return client.query(`
+            SELECT * FROM inflation_releases 
+            WHERE date = $1 AND status = 'scheduled'
+            ORDER BY time
+          `, [date]);
+        })
+        .then(result => {
+          client.end();
+          resolve(result.rows);
+        })
+        .catch(err => {
+          client.end();
+          reject(err);
+        });
+    } else {
+      // SQLite implementation
+      db.all(`
+        SELECT * FROM inflation_releases 
+        WHERE date = ? AND status = 'scheduled'
+        ORDER BY time
+      `, [date], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    }
+  });
+};
+
+const updateInflationRelease = (type, date, status) => {
+  return new Promise((resolve, reject) => {
+    if (usePostgreSQL) {
+      // PostgreSQL implementation
+      const client = new Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      
+      client.connect()
+        .then(() => {
+          return client.query(`
+            UPDATE inflation_releases 
+            SET status = $1, updated_at = CURRENT_TIMESTAMP
+            WHERE type = $2 AND date = $3
+          `, [status, type, date]);
+        })
+        .then(result => {
+          client.end();
+          resolve(result.rowCount);
+        })
+        .catch(err => {
+          client.end();
+          reject(err);
+        });
+    } else {
+      // SQLite implementation
+      db.run(`
+        UPDATE inflation_releases 
+        SET status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE type = ? AND date = ?
+      `, [status, type, date], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      });
+    }
+  });
+};
+
+// Inflation forecasts functions
+const insertInflationForecast = (forecast) => {
+  return new Promise((resolve, reject) => {
+    if (usePostgreSQL) {
+      // PostgreSQL implementation
+      const client = new Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      
+      client.connect()
+        .then(() => {
+          return client.query(`
+            INSERT INTO inflation_forecasts (
+              type, forecast_data, confidence, factors, created_at
+            ) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+            RETURNING id
+          `, [forecast.type, JSON.stringify(forecast.forecast), forecast.confidence, JSON.stringify(forecast.factors)]);
+        })
+        .then(result => {
+          client.end();
+          resolve(result.rows[0].id);
+        })
+        .catch(err => {
+          client.end();
+          reject(err);
+        });
+    } else {
+      // SQLite implementation
+      db.run(`
+        INSERT INTO inflation_forecasts (
+          type, forecast_data, confidence, factors, created_at
+        ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `, [forecast.type, JSON.stringify(forecast.forecast), forecast.confidence, JSON.stringify(forecast.factors)], function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      });
+    }
+  });
+};
+
+const getLatestInflationForecast = (type) => {
+  return new Promise((resolve, reject) => {
+    if (usePostgreSQL) {
+      // PostgreSQL implementation
+      const client = new Client({
+        connectionString: process.env.DATABASE_URL,
+      });
+      
+      client.connect()
+        .then(() => {
+          return client.query(`
+            SELECT * FROM inflation_forecasts 
+            WHERE type = $1 
+            ORDER BY created_at DESC 
+            LIMIT 1
+          `, [type]);
+        })
+        .then(result => {
+          client.end();
+          if (result.rows[0]) {
+            result.rows[0].forecast_data = JSON.parse(result.rows[0].forecast_data);
+            result.rows[0].factors = JSON.parse(result.rows[0].factors);
+          }
+          resolve(result.rows[0] || null);
+        })
+        .catch(err => {
+          client.end();
+          reject(err);
+        });
+    } else {
+      // SQLite implementation
+      db.get(`
+        SELECT * FROM inflation_forecasts 
+        WHERE type = ? 
+        ORDER BY created_at DESC 
+        LIMIT 1
+      `, [type], (err, row) => {
+        if (err) reject(err);
+        else {
+          if (row) {
+            row.forecast_data = JSON.parse(row.forecast_data);
+            row.factors = JSON.parse(row.factors);
+          }
+          resolve(row);
+        }
+      });
+    }
+  });
+};
+
 module.exports = {
   db,
   initDatabase,
@@ -1801,5 +2218,19 @@ module.exports = {
   getApiKeyByKey,
   updateApiKeyUsage,
   deactivateApiKey,
-  regenerateApiKey
+  regenerateApiKey,
+  
+  // Inflation data functions
+  insertInflationData,
+  getLatestInflationData,
+  getInflationDataHistory,
+  
+  // Inflation release functions
+  insertInflationRelease,
+  getInflationReleases,
+  updateInflationRelease,
+  
+  // Inflation forecast functions
+  insertInflationForecast,
+  getLatestInflationForecast
 };
