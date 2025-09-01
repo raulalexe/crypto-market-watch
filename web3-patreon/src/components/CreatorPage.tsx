@@ -99,7 +99,7 @@ export function CreatorPage({ creatorAddress }: CreatorPageProps) {
           This creator hasn't set up their profile yet or the address is invalid.
         </p>
         <a
-          href="/creators"
+          href="/app/creators"
           className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
         >
           Browse Other Creators

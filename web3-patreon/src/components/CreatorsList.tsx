@@ -51,7 +51,7 @@ export function CreatorsList() {
           Be the first to create a profile and start receiving support!
         </p>
         <a
-          href="/"
+          href="/app"
           className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
         >
           Become a Creator
@@ -140,7 +140,7 @@ export function CreatorsList() {
               {new Date(creator.createdAt).toLocaleDateString()}
             </span>
             <a
-              href={`/creator/${creator.walletAddress}`}
+              href={`/app/creator/${creator.walletAddress}`}
               className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
             >
               View Profile

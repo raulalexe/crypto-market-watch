@@ -1,15 +1,23 @@
-import { Header } from '@/components/Header';
+import { MarketingHeader } from '@/components/MarketingHeader';
 import { HeroSection } from '@/components/HeroSection';
-import { CreatorOnboarding } from '@/components/CreatorOnboarding';
+import { ValuePropositions } from '@/components/ValuePropositions';
+import { FeaturesSection } from '@/components/FeaturesSection';
+import { HowItWorks } from '@/components/HowItWorks';
+import { CTA } from '@/components/CTA';
+import { Footer } from '@/components/Footer';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
+    <div className="min-h-screen bg-white">
+      <MarketingHeader />
       <main>
         <HeroSection />
-        <CreatorOnboarding />
+        <ValuePropositions />
+        <FeaturesSection />
+        <HowItWorks />
+        <CTA />
       </main>
+      <Footer />
     </div>
   );
 }

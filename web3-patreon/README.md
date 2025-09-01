@@ -90,18 +90,33 @@ npm run dev
 ```
 src/
 ├── app/                    # Next.js app router pages
-│   ├── dashboard/         # Creator dashboard
-│   ├── creators/          # Creators listing page
+│   ├── app/               # Main application routes
+│   │   ├── dashboard/     # Creator dashboard
+│   │   ├── creators/      # Creators listing page
+│   │   ├── creator/       # Individual creator pages
+│   │   └── page.tsx       # App landing page
+│   ├── page.tsx           # Marketing homepage
 │   └── layout.tsx         # Root layout with Web3 providers
 ├── components/            # React components
-│   ├── Header.tsx         # Navigation header
+│   ├── MarketingHeader.tsx # Marketing page header
+│   ├── Header.tsx         # App navigation header
 │   ├── HeroSection.tsx    # Landing page hero
+│   ├── ValuePropositions.tsx # Value proposition sections
+│   ├── FeaturesSection.tsx # Features showcase
+│   ├── HowItWorks.tsx     # How it works section
+│   ├── CTA.tsx           # Call to action
+│   ├── Footer.tsx        # Footer component
 │   ├── CreatorOnboarding.tsx # Creator signup flow
 │   ├── CreatorProfileForm.tsx # Profile creation form
 │   ├── CreatorDashboard.tsx   # Creator dashboard
-│   └── CreatorsList.tsx   # Creators listing
+│   ├── CreatorPage.tsx    # Individual creator page
+│   ├── CreatorsList.tsx   # Creators listing
+│   ├── SupportTierManager.tsx # Support tier management
+│   └── SupportModal.tsx   # Support/tip modal
 ├── lib/                   # Utility libraries
-│   └── wagmi.ts          # Wagmi configuration
+│   ├── wagmi.ts          # Wagmi configuration
+│   ├── contracts.ts      # Smart contract ABI and addresses
+│   └── smartContract.ts  # Smart contract interface
 └── providers/            # React context providers
     └── Web3Provider.tsx  # Web3 providers wrapper
 ```
@@ -109,13 +124,15 @@ src/
 ## Usage
 
 ### For Creators
-1. Connect your wallet using the "Connect Wallet" button
-2. Click "Create Your Creator Profile" to start onboarding
-3. Fill out your profile information (name, bio, category, social links)
-4. Access your dashboard to manage your creator profile
+1. Visit the marketing page at `/` to learn about the platform
+2. Go to `/app` to access the application
+3. Connect your wallet using the "Connect Wallet" button
+4. Click "Create Your Creator Profile" to start onboarding
+5. Fill out your profile information (name, bio, category, social links)
+6. Access your dashboard at `/app/dashboard` to manage your creator profile
 
 ### For Fans
-1. Browse creators on the creators page
+1. Browse creators on the marketing page or go to `/app/creators`
 2. Click "View Profile" to visit a creator's page
 3. Connect your wallet to support creators
 4. Send one-time tips or subscribe to support tiers

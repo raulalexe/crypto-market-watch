@@ -51,7 +51,7 @@ export function CreatorDashboard() {
           You need to create a creator profile first.
         </p>
         <a
-          href="/"
+          href="/app"
           className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
         >
           Create Profile
@@ -199,7 +199,7 @@ export function CreatorDashboard() {
           </button>
 
           <a
-            href={`/creator/${address}`}
+            href={`/app/creator/${address}`}
             className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
           >
             <div className="text-center">
