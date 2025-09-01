@@ -90,62 +90,17 @@ app.use((req, res, next) => {
 initDatabase().then(async () => {
   console.log('Database initialized successfully');
   
-  // Wipe all users if WIPE_USERS environment variable is set
-  if (process.env.WIPE_USERS === 'true' && process.env.DATABASE_URL?.startsWith('postgresql://')) {
-    try {
-      console.log('🗑️  Wiping all users from database...');
-      const { Pool } = require('pg');
-      const pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-      });
-      
-      const client = await pool.connect();
-      
-      // Delete in order to respect foreign key constraints
-      // Only delete from tables that exist
-      const tablesToClean = [
-        'api_usage',
-        'api_keys', 
-        'push_subscriptions',
-        'user_alert_thresholds',
-        'subscriptions',
-        'alerts'
-      ];
-      
-      for (const table of tablesToClean) {
-        try {
-          const result = await client.query(`DELETE FROM ${table}`);
-          console.log(`   Deleted ${result.rowCount} records from ${table}`);
-        } catch (error) {
-          if (error.message.includes('does not exist')) {
-            console.log(`   Table ${table} does not exist, skipping`);
-          } else {
-            console.log(`   Error deleting from ${table}: ${error.message}`);
-          }
-        }
-      }
-      
-      const usersResult = await client.query('DELETE FROM users');
-      
-      console.log(`✅ Wiped ${usersResult.rowCount} users and all related data`);
-      
-      client.release();
-      await pool.end();
-      
-      // Unset the environment variable so it doesn't run again
-      delete process.env.WIPE_USERS;
-    } catch (error) {
-      console.log('⚠️  User wipe failed:', error.message);
-    }
-  }
+  // Database wiping functionality removed for security reasons
+  // Use manual database management scripts if needed
   
   // Create admin user on deploy if environment variables are set
-  try {
-    const { createAdminOnDeploy } = require('../scripts/createAdminOnDeploy');
-    await createAdminOnDeploy();
-  } catch (error) {
-    console.log('⚠️  Admin creation skipped:', error.message);
+  if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+    try {
+      const { createAdminOnDeploy } = require('../scripts/createAdminOnDeploy');
+      await createAdminOnDeploy();
+    } catch (error) {
+      console.log('⚠️  Admin creation failed:', error.message);
+    }
   }
 }).catch(err => {
   console.error('Database initialization failed:', err);
@@ -2163,8 +2118,6 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
     let subscriptionStatus = null;
     if (req.user) {
       subscriptionStatus = await paymentService.getSubscriptionStatus(req.user.id);
-    } else {
-      console.log('🔍 API Debug - No user authenticated');
     }
 
     // Get the actual last collection time from the most recent data

@@ -126,5 +126,10 @@ async function createAdminOnDeploy() {
   }
 }
 
-// Run the admin creation
-createAdminOnDeploy().catch(console.error);
+// Export for use in server/index.js
+module.exports = { createAdminOnDeploy };
+
+// Run the admin creation if called directly
+if (require.main === module) {
+  createAdminOnDeploy().catch(console.error);
+}
