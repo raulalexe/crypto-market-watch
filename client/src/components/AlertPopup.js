@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Bell, CheckCircle, X, TrendingUp, TrendingDown, Activity, DollarSign } from 'lucide-react';
 import { shouldShowUpgradePrompt } from '../utils/authUtils';

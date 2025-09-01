@@ -9,9 +9,7 @@ import {
   Download,
   Eye,
   EyeOff,
-  Filter,
   Search,
-  CheckCircle,
   AlertTriangle,
   MessageCircle
 } from 'lucide-react';

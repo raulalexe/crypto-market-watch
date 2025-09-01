@@ -25,13 +25,6 @@ const Dashboard = ({ isAuthenticated, userData }) => {
     fetchAlerts();
   }, []);
 
-  // Force re-render when subscription status changes
-  useEffect(() => {
-    if (dashboardData?.subscriptionStatus) {
-      console.log('🔍 Frontend Debug - Subscription status changed');
-    }
-  }, [dashboardData?.subscriptionStatus]);
-
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem('authToken');
@@ -50,18 +43,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
       }
       
       const data = await response.json();
-      
-      // Debug logging to see what we received
-      console.log('🔍 Dashboard received data:', data);
-      console.log('🔍 AI Analysis data:', data.aiAnalysis);
-      console.log('🔍 Short term factors:', data.aiAnalysis?.short_term?.factors_analyzed);
-      
-      // Always use the response, but log what we got
-      if (data.subscriptionStatus) {
-        setDashboardData(data);
-      } else {
-        setDashboardData(data);
-      }
+      setDashboardData(data);
     } catch (err) {
       setError(err.message);
     } finally {

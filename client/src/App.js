@@ -32,7 +32,7 @@ function App() {
   const [dashboardData, setDashboardData] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -69,23 +69,24 @@ function App() {
     }
   };
 
-  const triggerDataCollection = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('authToken');
-      await axios.post('/api/collect-data', {}, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      await fetchDashboardData();
-    } catch (err) {
-      console.error('Error triggering data collection:', err);
-      setError('Failed to trigger data collection');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Unused data collection function - commented out
+  // const handleDataCollection = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const token = localStorage.getItem('authToken');
+  //     await axios.post('/api/collect-data', {}, {
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //       },
+  //     });
+  //     await fetchDashboardData();
+  //   } catch (err) {
+  //     console.error('Error triggering data collection:', err);
+  //     setError('Failed to trigger data collection');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   useEffect(() => {
     // Check for existing auth token
