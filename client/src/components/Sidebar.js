@@ -274,20 +274,23 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Account</span>
               </div>
             </li>
-            <li>
-              <Link
-                to={profileItem.path}
-                onClick={handleNavClick}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
-                  location.pathname === profileItem.path
-                    ? 'bg-crypto-blue text-white'
-                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
-                <profileItem.icon className="w-5 h-5" />
-                <span>{profileItem.name}</span>
-              </Link>
-            </li>
+            {/* Only show profile link if user is authenticated */}
+            {isAuthenticated(userData) && (
+              <li>
+                <Link
+                  to={profileItem.path}
+                  onClick={handleNavClick}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+                    location.pathname === profileItem.path
+                      ? 'bg-crypto-blue text-white'
+                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  <profileItem.icon className="w-5 h-5" />
+                  <span>{profileItem.name}</span>
+                </Link>
+              </li>
+            )}
             <li>
               <Link
                 to={contactItem.path}

@@ -197,7 +197,7 @@ const About = () => {
             <h3 className="text-lg font-medium text-white mb-2">Backend</h3>
             <ul className="space-y-1 text-slate-400">
               <li>• Node.js & Express</li>
-              <li>• SQLite Database</li>
+              <li>• PostgreSQL Database</li>
               <li>• JWT Authentication</li>
               <li>• Cron Jobs</li>
             </ul>

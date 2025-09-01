@@ -12,9 +12,11 @@ import {
   Filter,
   Search,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  MessageCircle
 } from 'lucide-react';
 import ToastNotification from './ToastNotification';
+import TelegramManagement from './TelegramManagement';
 
 import { Link } from 'react-router-dom';
 
@@ -34,7 +36,8 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
   const tabs = [
     { id: 'collections', name: 'Database Collections', icon: Database },
     { id: 'ai-analysis', name: 'AI Analysis', icon: Brain },
-    { id: 'overview', name: 'Overview', icon: BarChart3 }
+    { id: 'overview', name: 'Overview', icon: BarChart3 },
+    { id: 'telegram', name: 'Telegram Bot', icon: MessageCircle }
   ];
 
   const showAlert = (message, type = 'success') => {
@@ -46,6 +49,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
     { id: 'ai_analysis', name: 'AI Analysis', description: 'AI-generated market analysis and predictions' },
     { id: 'fear_greed', name: 'Fear & Greed', description: 'Market sentiment indicators' },
     { id: 'trending_narratives', name: 'Trending Narratives', description: 'Popular market narratives and trends' },
+    { id: 'upcoming_events', name: 'Upcoming Events', description: 'Scheduled market events and announcements' },
     { id: 'users', name: 'Users', description: 'User accounts and subscription data' },
     { id: 'subscriptions', name: 'Subscriptions', description: 'User subscription information' },
     { id: 'error_logs', name: 'Error Logs', description: 'System error logs and debugging information' }
@@ -651,6 +655,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
           {activeTab === 'collections' && renderCollectionsTab()}
           {activeTab === 'ai-analysis' && renderAiAnalysisTab()}
           {activeTab === 'overview' && renderOverviewTab()}
+          {activeTab === 'telegram' && <TelegramManagement />}
         </div>
       </div>
       {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}

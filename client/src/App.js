@@ -26,6 +26,7 @@ import Profile from './components/Profile';
 import ContactForm from './components/ContactForm';
 import UpcomingEventsPage from './components/UpcomingEventsPage';
 import MarketingPage from './components/MarketingPage';
+import UnsubscribeSuccess from './components/UnsubscribeSuccess';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -71,7 +72,12 @@ function App() {
   const triggerDataCollection = async () => {
     try {
       setLoading(true);
-      await axios.post('/api/collect-data');
+      const token = localStorage.getItem('authToken');
+      await axios.post('/api/collect-data', {}, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       await fetchDashboardData();
     } catch (err) {
       console.error('Error triggering data collection:', err);
@@ -145,6 +151,7 @@ function App() {
         <Routes>
           <Route path="/" element={<MarketingPage />} />
           <Route path="/landing" element={<LandingPage />} />
+          <Route path="/unsubscribe-success" element={<UnsubscribeSuccess />} />
           
 
           

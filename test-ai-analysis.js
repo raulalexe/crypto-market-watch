@@ -1,33 +1,22 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
+require('dotenv').config({ path: '.env.local' });
 
-const dbPath = path.join(__dirname, 'data/market_data.db');
-const db = new sqlite3.Database(dbPath);
+// Create PostgreSQL connection
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 async function testAIAnalysis() {
   try {
-    console.log('🔍 Testing AI analysis data...');
-    
     // Get the latest AI analysis
     const analysis = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM ai_analysis ORDER BY timestamp DESC LIMIT 1', (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(row);
-        }
-      });
+      db.query('SELECT * FROM ai_analysis ORDER BY timestamp DESC LIMIT 1')
+        .then(result => resolve(result.rows[0] || null))
+        .catch(reject);
     });
 
     if (analysis) {
-      console.log('📊 Latest AI Analysis:');
-      console.log(`  ID: ${analysis.id}`);
-      console.log(`  Market Direction: ${analysis.market_direction}`);
-      console.log(`  Confidence: ${analysis.confidence}%`);
-      console.log(`  Reasoning: ${analysis.reasoning}`);
-      console.log(`  Factors Analyzed: ${analysis.factors_analyzed}`);
-      console.log(`  Analysis Data: ${analysis.analysis_data ? 'Present' : 'Missing'}`);
-      
       if (analysis.analysis_data) {
         try {
           // First, let's see what the raw data looks like

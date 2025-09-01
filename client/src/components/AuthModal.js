@@ -23,6 +23,13 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
         // Login
         response = await axios.post('/api/auth/login', { email, password });
         
+        // Check if login requires email confirmation
+        if (response.data.requiresConfirmation) {
+          setEmailSent(true);
+          setConfirmationMessage('Please check your email and click the confirmation link to activate your account before signing in.');
+          return;
+        }
+        
         const { token, user } = response.data;
         
         // Store the real JWT token
@@ -77,16 +84,36 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
               <p className="text-sm text-slate-300 mb-2">Email sent to:</p>
               <p className="text-crypto-blue font-medium">{email}</p>
             </div>
-            <button
-              onClick={() => {
-                setEmailSent(false);
-                setConfirmationMessage('');
-                setError('');
-              }}
-              className="text-crypto-blue hover:text-blue-400 text-sm"
-            >
-              Back to Sign Up
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    await axios.post('/api/auth/resend-confirmation', { email });
+                    setConfirmationMessage('Confirmation email resent! Please check your inbox.');
+                  } catch (error) {
+                    setError(error.response?.data?.error || 'Failed to resend confirmation email');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="w-full bg-crypto-blue text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Sending...' : 'Resend Confirmation Email'}
+              </button>
+              
+              <button
+                onClick={() => {
+                  setEmailSent(false);
+                  setConfirmationMessage('');
+                  setError('');
+                }}
+                className="text-crypto-blue hover:text-blue-400 text-sm"
+              >
+                Back to Sign Up
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -167,11 +194,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
           </button>
         </div>
 
-        <div className="mt-4 p-3 bg-slate-700 rounded-lg">
-          <p className="text-slate-400 text-xs text-center">
-            Demo Mode: This creates a test account for subscription testing
-          </p>
-        </div>
+
       </div>
     </div>
   );

@@ -17,6 +17,10 @@ ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key_here
 FRED_API_KEY=your_fred_api_key_here
 VENICE_AI_API_KEY=your_venice_ai_key_here
 
+# Brevo Email Service Configuration
+BREVO_API_KEY=your_brevo_api_key_here
+BREVO_SENDER_EMAIL=noreply@yourdomain.com
+
 # JWT Configuration
 JWT_SECRET=your_jwt_secret_key_here
 

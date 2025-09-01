@@ -93,21 +93,30 @@ class AlertService {
   async checkBTCDominanceAlerts(dominance) {
     const alerts = [];
     
-    if (dominance > this.alertThresholds.btcDominance.high) {
+    // Convert to number if it's a string
+    const numDominance = typeof dominance === 'string' ? parseFloat(dominance) : dominance;
+    
+    // Check if conversion was successful
+    if (isNaN(numDominance)) {
+      console.error('Invalid dominance value:', dominance);
+      return alerts;
+    }
+    
+    if (numDominance > this.alertThresholds.btcDominance.high) {
       alerts.push({
         type: 'BTC_DOMINANCE_HIGH',
-        message: `Bitcoin dominance at ${dominance.toFixed(2)}% - BTC outperforming altcoins significantly.`,
+        message: `Bitcoin dominance at ${numDominance.toFixed(2)}% - BTC outperforming altcoins significantly.`,
         severity: 'medium',
         metric: 'btc_dominance',
-        value: dominance
+        value: numDominance
       });
-    } else if (dominance < this.alertThresholds.btcDominance.low) {
+    } else if (numDominance < this.alertThresholds.btcDominance.low) {
       alerts.push({
         type: 'BTC_DOMINANCE_LOW',
-        message: `Bitcoin dominance at ${dominance.toFixed(2)}% - Altcoins outperforming BTC.`,
+        message: `Bitcoin dominance at ${numDominance.toFixed(2)}% - Altcoins outperforming BTC.`,
         severity: 'medium',
         metric: 'btc_dominance',
-        value: dominance
+        value: numDominance
       });
     }
 

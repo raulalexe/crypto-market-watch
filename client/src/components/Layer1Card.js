@@ -34,25 +34,53 @@ const Layer1Card = () => {
 
   const formatCurrency = (value) => {
     if (!value) return 'N/A';
-    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-    if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
-    return `$${value.toFixed(2)}`;
+    
+    // Convert to number if it's a string
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    
+    // Check if conversion was successful
+    if (isNaN(numValue)) return 'N/A';
+    
+    if (numValue >= 1e9) return `$${(numValue / 1e9).toFixed(2)}B`;
+    if (numValue >= 1e6) return `$${(numValue / 1e6).toFixed(2)}M`;
+    if (numValue >= 1e3) return `$${(numValue / 1e3).toFixed(2)}K`;
+    return `$${numValue.toFixed(2)}`;
   };
 
   const formatChange = (change) => {
     if (!change) return '0.00%';
-    return `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+    
+    // Convert to number if it's a string
+    const numChange = typeof change === 'string' ? parseFloat(change) : change;
+    
+    // Check if conversion was successful
+    if (isNaN(numChange)) return '0.00%';
+    
+    return `${numChange >= 0 ? '+' : ''}${numChange.toFixed(2)}%`;
   };
 
   const getChangeColor = (change) => {
     if (!change) return 'text-slate-400';
-    return change >= 0 ? 'text-crypto-green' : 'text-crypto-red';
+    
+    // Convert to number if it's a string
+    const numChange = typeof change === 'string' ? parseFloat(change) : change;
+    
+    // Check if conversion was successful
+    if (isNaN(numChange)) return 'text-slate-400';
+    
+    return numChange >= 0 ? 'text-crypto-green' : 'text-crypto-red';
   };
 
   const getChangeIcon = (change) => {
     if (!change) return null;
-    return change >= 0 ? 
+    
+    // Convert to number if it's a string
+    const numChange = typeof change === 'string' ? parseFloat(change) : change;
+    
+    // Check if conversion was successful
+    if (isNaN(numChange)) return null;
+    
+    return numChange >= 0 ? 
       <TrendingUp className="w-4 h-4 text-crypto-green" /> : 
       <TrendingDown className="w-4 h-4 text-crypto-red" />;
   };
@@ -290,7 +318,7 @@ const Layer1Card = () => {
                       <span className="text-xs text-slate-400">TPS</span>
                     </div>
                     <div className="text-sm font-medium text-white">
-                      {chain.tps.toLocaleString()}
+                      {typeof chain.tps === 'string' ? parseInt(chain.tps).toLocaleString() : chain.tps.toLocaleString()}
                     </div>
                   </div>
 
@@ -300,7 +328,7 @@ const Layer1Card = () => {
                       <span className="text-xs text-slate-400">Active Addresses</span>
                     </div>
                     <div className="text-sm font-medium text-white">
-                      {chain.active_addresses.toLocaleString()}
+                      {typeof chain.active_addresses === 'string' ? parseInt(chain.active_addresses).toLocaleString() : chain.active_addresses.toLocaleString()}
                     </div>
                   </div>
                 </div>

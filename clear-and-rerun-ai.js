@@ -1,40 +1,25 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
+require('dotenv').config({ path: '.env.local' });
 const AIAnalyzer = require('./server/services/aiAnalyzer');
 const DataCollector = require('./server/services/dataCollector');
 
-const dbPath = path.join(__dirname, 'data/market_data.db');
-const db = new sqlite3.Database(dbPath);
+// Create PostgreSQL connection
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 async function clearAndRerunAI() {
   try {
     console.log('🧹 Clearing AI analysis table...');
     
     // Clear the ai_analysis table
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM ai_analysis', (err) => {
-        if (err) {
-          console.error('Error clearing ai_analysis table:', err);
-          reject(err);
-        } else {
-          console.log('✅ AI analysis table cleared');
-          resolve();
-        }
-      });
-    });
+    await db.query('DELETE FROM ai_analysis');
+    console.log('✅ AI analysis table cleared');
 
     // Clear backtest results as well since they reference old analysis
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM backtest_results', (err) => {
-        if (err) {
-          console.error('Error clearing backtest_results table:', err);
-          reject(err);
-        } else {
-          console.log('✅ Backtest results table cleared');
-          resolve();
-        }
-      });
-    });
+    await db.query('DELETE FROM backtest_results');
+    console.log('✅ Backtest results table cleared');
 
     console.log('🔄 Collecting fresh market data...');
     
@@ -66,7 +51,6 @@ async function clearAndRerunAI() {
     }
 
     // Verify the data was saved correctly
-    console.log('🔍 Verifying saved analysis...');
     const savedAnalysis = await new Promise((resolve, reject) => {
       db.get('SELECT * FROM ai_analysis ORDER BY timestamp DESC LIMIT 1', (err, row) => {
         if (err) {
@@ -102,7 +86,7 @@ async function clearAndRerunAI() {
   } catch (error) {
     console.error('❌ Error during clear and rerun:', error.message);
   } finally {
-    db.close();
+    await db.end();
     console.log('✅ Database connection closed');
   }
 }

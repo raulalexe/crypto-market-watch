@@ -1,6 +1,6 @@
 const axios = require('axios');
 const moment = require('moment');
-require('dotenv').config();
+require('dotenv').config({ path: '.env.local' });
 
 const {
   insertMarketData,
@@ -1069,7 +1069,7 @@ class DataCollector {
       const stablecoins = ['tether', 'usd-coin', 'dai', 'binance-usd', 'true-usd'];
       const stablecoinIds = stablecoins.join(',');
       
-      console.log(`Fetching stablecoin data for: ${stablecoinIds}`);
+
       
       // Get stablecoin data using rate-limited API call
       const response = await this.makeCoinGeckoRequest('simple/price', {
@@ -1095,7 +1095,7 @@ class DataCollector {
         console.log(`Total stablecoin market cap: $${(totalStablecoinMarketCap / 1e9).toFixed(2)}B`);
         
         // Get BTC market cap for SSR calculation using rate-limited call
-        console.log('Fetching Bitcoin market cap for SSR calculation...');
+
         const btcResponse = await this.makeCoinGeckoRequest('simple/price', {
           ids: 'bitcoin',
           vs_currencies: 'usd',
@@ -1174,8 +1174,7 @@ class DataCollector {
       const analysis = await aiAnalyzer.analyzeMarketDirection(comprehensiveData);
       
       if (analysis) {
-        console.log('✅ AI analysis completed successfully');
-        console.log(`📈 Overall direction: ${analysis.overall_direction}, Confidence: ${analysis.overall_confidence}%`);
+
         return analysis;
       } else {
         console.log('❌ AI analysis failed');
@@ -1300,7 +1299,7 @@ class DataCollector {
       const stablecoins = ['tether', 'usd-coin', 'dai', 'binance-usd', 'true-usd'];
       const stablecoinIds = stablecoins.join(',');
       
-      console.log(`Fetching stablecoin data for: ${stablecoinIds}`);
+
       
       // Get stablecoin data using rate-limited API call
       const response = await this.makeCoinGeckoRequest('simple/price', {
@@ -1326,7 +1325,7 @@ class DataCollector {
         console.log(`Total stablecoin market cap: $${(totalStablecoinMarketCap / 1e9).toFixed(2)}B`);
         
         // Get BTC market cap for SSR calculation using rate-limited call
-        console.log('Fetching Bitcoin market cap for SSR calculation...');
+
         const btcResponse = await this.makeCoinGeckoRequest('simple/price', {
           ids: 'bitcoin',
           vs_currencies: 'usd',
@@ -1518,7 +1517,7 @@ class DataCollector {
         const { insertBitcoinDominance } = require('../database');
         await insertBitcoinDominance(dominance, 'CoinGecko');
         
-        console.log(`Collected Bitcoin Dominance: ${dominance.toFixed(2)}%`);
+        console.log(`Collected Bitcoin Dominance: ${typeof dominance === 'string' ? parseFloat(dominance).toFixed(2) : dominance.toFixed(2)}%`);
         return dominance;
       }
     } catch (error) {
@@ -1626,7 +1625,7 @@ class DataCollector {
       const results = {};
       for (const request of requests) {
         try {
-          console.log(`Fetching ${request.name} data (${this.alphaVantageCallCount + 1}/${this.alphaVantageDailyLimit})...`);
+
           const response = await axios.get(request.url);
           
           // Check for rate limit

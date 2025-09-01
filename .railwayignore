@@ -38,8 +38,7 @@ data/*.sqlite
 node_modules/
 client/node_modules/
 
-# Build artifacts
-client/build/
+# Build artifacts (keep client/build for production)
 build/
 dist/
 

@@ -2,7 +2,7 @@ const DataCollector = require('../server/services/dataCollector');
 const AIAnalyzer = require('../server/services/aiAnalyzer');
 const EventNotificationService = require('../server/services/eventNotificationService');
 const { initDatabase } = require('../server/database');
-require('dotenv').config();
+require('dotenv').config({ path: '.env.local' });
 
 async function runDataCollection(analysisOnly = false) {
   const mode = analysisOnly ? 'AI Analysis Only' : 'Full Data Collection';

@@ -200,13 +200,15 @@ const Dashboard = ({ isAuthenticated, userData }) => {
 
       {/* Dashboard Cards - Single Column Layout */}
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Data Collection Card - Always at top, collapsible */}
-        <DataCollectionCard 
-          lastCollectionTime={dashboardData?.lastCollectionTime}
-          onCollectData={fetchDashboardData}
-          expanded={dataCollectionExpanded}
-          onToggleExpanded={() => setDataCollectionExpanded(!dataCollectionExpanded)}
-        />
+        {/* Data Collection Card - Admin only */}
+        {dashboardData?.subscriptionStatus?.plan === 'admin' && (
+          <DataCollectionCard 
+            lastCollectionTime={dashboardData?.lastCollectionTime}
+            onCollectData={fetchDashboardData}
+            expanded={dataCollectionExpanded}
+            onToggleExpanded={() => setDataCollectionExpanded(!dataCollectionExpanded)}
+          />
+        )}
         
         <AIAnalysisCard data={dashboardData?.aiAnalysis} />
         

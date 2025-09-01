@@ -8,51 +8,27 @@ if ! command -v railway &> /dev/null; then
     npm install -g @railway/cli
 fi
 
-# Check if user is logged in
+# Check if user is logged in to Railway
 if ! railway whoami &> /dev/null; then
-    echo "🔐 Please login to Railway..."
-    railway login
+    echo "🔐 Please login to Railway first:"
+    echo "   railway login"
+    exit 1
 fi
 
-# Initialize Railway project if not already done
-if [ ! -f ".railway" ]; then
-    echo "📁 Initializing Railway project..."
-    railway init
-fi
-
-# Check if environment variables are set
-echo "🔧 Checking environment variables..."
-if [ -z "$JWT_SECRET" ]; then
-    echo "⚠️  Warning: JWT_SECRET not set. Please set it in Railway dashboard."
-fi
-
-if [ -z "$DATABASE_URL" ]; then
-    echo "⚠️  Warning: DATABASE_URL not set. Please add PostgreSQL plugin in Railway dashboard."
-fi
-
-# Install dependencies
-echo "📦 Installing dependencies..."
-npm install
-
-# Install client dependencies
-echo "📦 Installing client dependencies..."
-cd client && npm install && cd ..
-
-# Build the application
-echo "🔨 Building application..."
-npm run build
+# Build the client
+echo "🔨 Building client..."
+npm run build:client
 
 # Deploy to Railway
-echo "🚂 Deploying to Railway..."
+echo "📤 Deploying to Railway..."
 railway up
 
 echo "✅ Deployment complete!"
-echo "🔗 Your app should be available at the Railway URL"
-echo "📊 Check logs with: railway logs"
-echo "🌐 Open app with: railway open"
 echo ""
 echo "📋 Next steps:"
-echo "1. Set up environment variables in Railway dashboard"
-echo "2. Add PostgreSQL plugin if not already done"
-echo "3. Configure API keys for data collection"
-echo "4. Test the application endpoints"
+echo "1. Get your Railway app URL from the dashboard"
+echo "2. Update your .env file with the new BASE_URL"
+echo "3. Set TELEGRAM_WEBHOOK_URL to your Railway URL"
+echo "4. Setup the Telegram webhook via admin dashboard"
+echo ""
+echo "🌐 Your app will be available at: https://your-app-name.railway.app"

@@ -8,7 +8,7 @@
  */
 
 const axios = require('axios');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const path = require('path');
 
 // Configuration
@@ -58,26 +58,22 @@ async function testBackendHealth() {
 }
 
 async function testDatabaseConnection() {
-  return new Promise((resolve) => {
-    const db = new sqlite3.Database(config.databasePath, (err) => {
-      if (err) {
-        logTest('Database Connection', false, `Error: ${err.message}`);
-        resolve(false);
-        return;
-      }
-      
-      db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", (err, row) => {
-        db.close();
-        if (err) {
-          logTest('Database Connection', false, `Error: ${err.message}`);
-          resolve(false);
-        } else {
-          const passed = row !== undefined;
-          logTest('Database Connection', passed, 'Users table exists');
-          resolve(passed);
-        }
+  return new Promise(async (resolve) => {
+    try {
+      const db = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
       });
-    });
+      
+      const result = await db.query("SELECT table_name FROM information_schema.tables WHERE table_name = 'users'");
+      const passed = result.rows.length > 0;
+      logTest('Database Connection', passed, 'Users table exists');
+      await db.end();
+      resolve(passed);
+    } catch (err) {
+      logTest('Database Connection', false, `Error: ${err.message}`);
+      resolve(false);
+    }
   });
 }
 
@@ -171,13 +167,12 @@ async function testExportEndpoints() {
 }
 
 async function testDatabaseTables() {
-  return new Promise((resolve) => {
-    const db = new sqlite3.Database(config.databasePath, (err) => {
-      if (err) {
-        logTest('Database Tables', false, `Error: ${err.message}`);
-        resolve(false);
-        return;
-      }
+  return new Promise(async (resolve) => {
+    try {
+      const db = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      });
       
       const requiredTables = [
         'users',
@@ -192,24 +187,21 @@ async function testDatabaseTables() {
       ];
       
       let allTablesExist = true;
-      let checkedTables = 0;
       
-      requiredTables.forEach(tableName => {
-        db.get(`SELECT name FROM sqlite_master WHERE type='table' AND name='${tableName}'`, (err, row) => {
-          checkedTables++;
-          const exists = row !== undefined;
-          if (!exists) {
-            allTablesExist = false;
-          }
-          
-          if (checkedTables === requiredTables.length) {
-            db.close();
-            logTest('Database Tables', allTablesExist, `Checked ${requiredTables.length} tables`);
-            resolve(allTablesExist);
-          }
-        });
-      });
-    });
+      for (const tableName of requiredTables) {
+        const result = await db.query(`SELECT table_name FROM information_schema.tables WHERE table_name = '${tableName}'`);
+        if (result.rows.length === 0) {
+          allTablesExist = false;
+        }
+      }
+      
+      await db.end();
+      logTest('Database Tables', allTablesExist, `Checked ${requiredTables.length} tables`);
+      resolve(allTablesExist);
+    } catch (err) {
+      logTest('Database Tables', false, `Error: ${err.message}`);
+      resolve(false);
+    }
   });
 }
 
@@ -220,7 +212,8 @@ async function testDataCollection() {
     logTest('Data Collection Trigger', passed, `Status: ${response.status}`);
     return passed;
   } catch (error) {
-    logTest('Data Collection Trigger', false, `Error: ${error.message}`);
+    // This test will now fail because the endpoint requires admin authentication
+    logTest('Data Collection Trigger', false, `Error: ${error.message} (Admin authentication required)`);
     return false;
   }
 }

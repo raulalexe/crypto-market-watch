@@ -1,41 +1,26 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
+require('dotenv').config({ path: '.env.local' });
 
-const dbPath = path.join(__dirname, 'data/market_data.db');
-const db = new sqlite3.Database(dbPath);
+// Create PostgreSQL connection
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 async function clearAITable() {
   try {
     console.log('🧹 Clearing AI analysis table...');
     
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM ai_analysis', (err) => {
-        if (err) {
-          console.error('Error clearing ai_analysis table:', err);
-          reject(err);
-        } else {
-          console.log('✅ AI analysis table cleared');
-          resolve();
-        }
-      });
-    });
+    await db.query('DELETE FROM ai_analysis');
+    console.log('✅ AI analysis table cleared');
 
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM backtest_results', (err) => {
-        if (err) {
-          console.error('Error clearing backtest_results table:', err);
-          reject(err);
-        } else {
-          console.log('✅ Backtest results table cleared');
-          resolve();
-        }
-      });
-    });
+    await db.query('DELETE FROM backtest_results');
+    console.log('✅ Backtest results table cleared');
 
   } catch (error) {
     console.error('❌ Error clearing tables:', error.message);
   } finally {
-    db.close();
+    await db.end();
     console.log('✅ Database connection closed');
   }
 }

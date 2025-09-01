@@ -2,7 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 // NOWPayments API client using axios
 const axios = require('axios');
 
-require('dotenv').config();
+require('dotenv').config({ path: '.env.local' });
 
 const {
   insertUser,
@@ -203,7 +203,7 @@ class PaymentService {
 
   async handleCheckoutSessionCompleted(session) {
     console.log(`Checkout session completed: ${session.id}`);
-    console.log(`Session metadata:`, JSON.stringify(session.metadata, null, 2));
+
     
     try {
       // Check if metadata exists
@@ -243,7 +243,7 @@ class PaymentService {
 
   async handlePaymentSucceeded(invoice) {
     console.log(`Payment succeeded for invoice: ${invoice.id}`);
-    console.log(`Invoice object:`, JSON.stringify(invoice, null, 2));
+
     
     // Check if this invoice is associated with a subscription
     if (!invoice.subscription) {

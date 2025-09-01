@@ -1,5 +1,5 @@
 const moment = require('moment');
-require('dotenv').config();
+require('dotenv').config({ path: '.env.local' });
 
 const {
   insertAIAnalysis,

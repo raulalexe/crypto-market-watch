@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { Database, RefreshCw, CheckCircle, AlertCircle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import moment from 'moment';
 
+/**
+ * DataCollectionCard - Admin-only component for triggering manual data collection
+ * This component should only be rendered for users with admin subscription plan
+ */
 const DataCollectionCard = ({ lastCollectionTime, onCollectData, expanded = false, onToggleExpanded }) => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [collectionStatus, setCollectionStatus] = useState({
@@ -19,10 +23,12 @@ const DataCollectionCard = ({ lastCollectionTime, onCollectData, expanded = fals
     });
 
     try {
+      const token = localStorage.getItem('authToken');
       const response = await fetch('/api/collect-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 

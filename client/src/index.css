@@ -100,6 +100,34 @@ code {
   color: var(--crypto-red);
 }
 
+/* Form element fixes for dark theme */
+input, textarea, select {
+  color: #111827 !important;
+  background-color: white !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Ensure form elements in white containers have proper text color */
+.bg-white input,
+.bg-white textarea,
+.bg-white select {
+  color: #111827 !important;
+  background-color: white !important;
+}
+
+/* Telegram form specific styling */
+.telegram-form-input {
+  color: #111827 !important;
+  background-color: white !important;
+}
+
+.telegram-form-input::placeholder {
+  color: #6b7280 !important;
+}
+
 .bg-crypto-blue {
   background-color: var(--crypto-blue);
 }

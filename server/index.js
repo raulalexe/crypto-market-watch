@@ -9,8 +9,10 @@ require('dotenv').config({ path: path.join(__dirname, '../.env.local') });
 
 const { 
   db,
+  dbAdapter,
   initDatabase, 
   insertUser, 
+  insertUserWithConfirmation,
   getUserByEmail, 
   getUserById,
   isUserAdmin,
@@ -35,7 +37,7 @@ const AIAnalyzer = require('./services/aiAnalyzer');
 const PaymentService = require('./services/paymentService');
 const EventCollector = require('./services/eventCollector');
 const EventNotificationService = require('./services/eventNotificationService');
-const EmailService = require('./services/emailService');
+const BrevoEmailService = require('./services/brevoEmailService');
 const PushService = require('./services/pushService');
 const TelegramService = require('./services/telegramService');
 const { authenticateToken, optionalAuth, requireSubscription, requireAdmin, rateLimit } = require('./middleware/auth');
@@ -45,7 +47,35 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.static(path.join(__dirname, '../client/build')));
+
+// Serve static files from React build (if available)
+const staticPath = path.join(__dirname, '../client/build');
+const publicPath = path.join(__dirname, '../public');
+console.log('🔍 Checking for React frontend at:', staticPath);
+console.log('🔍 Checking for React frontend in public at:', publicPath);
+
+// List directory contents for debugging
+try {
+  const fs = require('fs');
+  const parentDir = path.join(__dirname, '..');
+
+  
+  if (fs.existsSync(staticPath)) {
+
+    app.use(express.static(staticPath));
+
+  } else if (fs.existsSync(publicPath)) {
+
+    app.use(express.static(publicPath));
+
+  } else {
+    console.log('⚠️ React frontend not found, running in API-only mode');
+
+  }
+} catch (error) {
+  console.log('❌ Error checking frontend:', error.message);
+  console.log('⚠️ Running in API-only mode');
+}
 
 // Parse JSON for all routes except webhooks
 app.use((req, res, next) => {
@@ -57,8 +87,66 @@ app.use((req, res, next) => {
 });
 
 // Initialize database
-initDatabase().then(() => {
+initDatabase().then(async () => {
   console.log('Database initialized successfully');
+  
+  // Wipe all users if WIPE_USERS environment variable is set
+  if (process.env.WIPE_USERS === 'true' && process.env.DATABASE_URL?.startsWith('postgresql://')) {
+    try {
+      console.log('🗑️  Wiping all users from database...');
+      const { Pool } = require('pg');
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      });
+      
+      const client = await pool.connect();
+      
+      // Delete in order to respect foreign key constraints
+      // Only delete from tables that exist
+      const tablesToClean = [
+        'api_usage',
+        'api_keys', 
+        'push_subscriptions',
+        'user_alert_thresholds',
+        'subscriptions',
+        'alerts'
+      ];
+      
+      for (const table of tablesToClean) {
+        try {
+          const result = await client.query(`DELETE FROM ${table}`);
+          console.log(`   Deleted ${result.rowCount} records from ${table}`);
+        } catch (error) {
+          if (error.message.includes('does not exist')) {
+            console.log(`   Table ${table} does not exist, skipping`);
+          } else {
+            console.log(`   Error deleting from ${table}: ${error.message}`);
+          }
+        }
+      }
+      
+      const usersResult = await client.query('DELETE FROM users');
+      
+      console.log(`✅ Wiped ${usersResult.rowCount} users and all related data`);
+      
+      client.release();
+      await pool.end();
+      
+      // Unset the environment variable so it doesn't run again
+      delete process.env.WIPE_USERS;
+    } catch (error) {
+      console.log('⚠️  User wipe failed:', error.message);
+    }
+  }
+  
+  // Create admin user on deploy if environment variables are set
+  try {
+    const { createAdminOnDeploy } = require('../scripts/createAdminOnDeploy');
+    await createAdminOnDeploy();
+  } catch (error) {
+    console.log('⚠️  Admin creation skipped:', error.message);
+  }
 }).catch(err => {
   console.error('Database initialization failed:', err);
 });
@@ -69,7 +157,7 @@ const aiAnalyzer = new AIAnalyzer();
 const paymentService = new PaymentService();
 const eventCollector = new EventCollector();
 const eventNotificationService = new EventNotificationService();
-const emailService = new EmailService();
+const emailService = new BrevoEmailService();
 const pushService = new PushService();
 const telegramService = new TelegramService();
 
@@ -84,7 +172,7 @@ const setupDataCollectionCron = () => {
       try {
         const success = await dataCollector.collectAllData();
         if (success) {
-          console.log('✅ Data collection completed successfully');
+    
         } else {
           console.log('❌ Data collection failed');
         }
@@ -277,24 +365,25 @@ app.get('/api/advanced-metrics', async (req, res) => {
     
     // Calculate 24h changes
     const calculate24hChange = async (tableName, metricType = null) => {
-      const { db } = require('./database');
-      return new Promise((resolve) => {
+      try {
         const query = metricType 
-          ? `SELECT value FROM ${tableName} WHERE metric_type = ? ORDER BY timestamp DESC LIMIT 2`
+          ? `SELECT value FROM ${tableName} WHERE metric_type = $1 ORDER BY timestamp DESC LIMIT 2`
           : `SELECT value FROM ${tableName} ORDER BY timestamp DESC LIMIT 2`;
         const params = metricType ? [metricType] : [];
         
-        db.all(query, params, (err, rows) => {
-          if (err || rows.length < 2) {
-            resolve(0);
-          } else {
-            const current = rows[0].value;
-            const previous = rows[1].value;
-            const change = ((current - previous) / previous) * 100;
-            resolve(change);
-          }
-        });
-      });
+        const rows = await dbAdapter.all(query, params);
+        if (rows.length < 2) {
+          return 0;
+        } else {
+          const current = rows[0].value;
+          const previous = rows[1].value;
+          const change = ((current - previous) / previous) * 100;
+          return change;
+        }
+      } catch (err) {
+        console.error('Error calculating 24h change:', err);
+        return 0;
+      }
     };
 
     const btcDominanceChange = await calculate24hChange('bitcoin_dominance');
@@ -1036,6 +1125,30 @@ app.post('/api/push/unsubscribe', authenticateToken, async (req, res) => {
   }
 });
 
+// Unsubscribe from email notifications
+app.get('/api/email/unsubscribe', async (req, res) => {
+  try {
+    const { token, email } = req.query;
+    
+    if (!token || !email) {
+      return res.status(400).json({ error: 'Missing token or email' });
+    }
+
+    const { unsubscribeFromEmailNotifications } = require('./database');
+    const result = await unsubscribeFromEmailNotifications(email, token);
+    
+    if (result.success) {
+      // Redirect to a success page or show success message
+      res.redirect(`${process.env.BASE_URL || 'http://localhost:3001'}/unsubscribe-success?email=${encodeURIComponent(email)}`);
+    } else {
+      res.status(400).json({ error: result.error });
+    }
+  } catch (error) {
+    console.error('Error unsubscribing from email notifications:', error);
+    res.status(500).json({ error: 'Failed to unsubscribe from email notifications' });
+  }
+});
+
 // Update notification preferences
 app.post('/api/notifications/preferences', authenticateToken, async (req, res) => {
   try {
@@ -1093,6 +1206,49 @@ app.get('/api/telegram/status', authenticateToken, requireAdmin, async (req, res
   } catch (error) {
     console.error('Error getting Telegram status:', error);
     res.status(500).json({ error: 'Failed to get Telegram status' });
+  }
+});
+
+app.get('/api/telegram/subscribers', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const subscribers = telegramService.getSubscribers();
+    const stats = telegramService.getSubscriberStats();
+    res.json({ subscribers, stats });
+  } catch (error) {
+    console.error('Error getting Telegram subscribers:', error);
+    res.status(500).json({ error: 'Failed to get Telegram subscribers' });
+  }
+});
+
+app.post('/api/telegram/remove-chat', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { chatId } = req.body;
+    const result = await telegramService.removeChatId(chatId);
+    res.json(result);
+  } catch (error) {
+    console.error('Error removing Telegram chat:', error);
+    res.status(500).json({ error: 'Failed to remove Telegram chat' });
+  }
+});
+
+app.post('/api/telegram/setup-webhook', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await telegramService.setupWebhook();
+    res.json({ success: true, message: 'Webhook setup completed' });
+  } catch (error) {
+    console.error('Error setting up Telegram webhook:', error);
+    res.status(500).json({ error: 'Failed to setup webhook' });
+  }
+});
+
+app.post('/api/telegram/test-message', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { chatId, message } = req.body;
+    const result = await telegramService.sendMessage(chatId, message || '🧪 Test message from Crypto Market Monitor bot');
+    res.json({ success: true, message: 'Test message sent' });
+  } catch (error) {
+    console.error('Error sending test message:', error);
+    res.status(500).json({ error: 'Failed to send test message' });
   }
 });
 
@@ -1942,15 +2098,15 @@ app.get('/api/history/:dataType', async (req, res) => {
   }
 });
 
-// Manual data collection trigger
-app.post('/api/collect-data', async (req, res) => {
+// Manual data collection trigger - Admin only
+app.post('/api/collect-data', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    console.log('Manual data collection triggered');
+    console.log('Manual data collection triggered by admin user:', req.user.id);
     const success = await dataCollector.collectAllData();
     
     if (success) {
       // AI analysis is already done during data collection - no need for additional calls
-      console.log('✅ Data collection completed with AI analysis');
+
       
       // Collect upcoming events
       await eventCollector.collectUpcomingEvents();
@@ -2043,12 +2199,25 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    const { checkDatabaseHealth } = require('./database');
+    const dbHealth = await checkDatabaseHealth();
+    
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      database: dbHealth
+    });
+  } catch (error) {
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      database: { status: 'unknown', error: error.message }
+    });
+  }
 });
 
 // ===== INFLATION DATA ENDPOINTS =====
@@ -2258,6 +2427,139 @@ app.get('/api/inflation/sentiment', async (req, res) => {
       error: 'Failed to fetch inflation sentiment',
       message: error.message
     });
+  }
+});
+
+// ===== PASSWORD RESET ROUTES =====
+
+// Request password reset
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    const user = await getUserByEmail(email);
+    if (!user) {
+      // Don't reveal if user exists or not for security
+      return res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+    }
+    
+    // Generate reset token
+    const resetToken = jwt.sign(
+      { userId: user.id, email: user.email, type: 'password_reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    
+    // Send password reset email using Brevo
+    const emailSent = await emailService.sendPasswordResetEmail(email, resetToken);
+    if (emailSent) {
+      console.log(`📧 Password reset email sent to ${email}`);
+    } else {
+      console.log(`⚠️ Failed to send password reset email to ${email}`);
+    }
+    
+    res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+  } catch (error) {
+    console.error('Password reset request error:', error);
+    res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+});
+
+// Reset password with token
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+    
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.type !== 'password_reset') {
+      return res.status(400).json({ error: 'Invalid token type' });
+    }
+    
+    // Find user
+    const user = await getUserByEmail(decoded.email);
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+    
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    await dbAdapter.run(
+      'UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3',
+      [passwordHash, new Date().toISOString(), user.id]
+    );
+    
+    console.log(`✅ Password reset successfully for ${user.email}`);
+    
+    res.json({ message: 'Password reset successfully. You can now sign in with your new password.' });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      res.status(400).json({ error: 'Invalid or expired reset token' });
+    } else {
+      res.status(500).json({ error: 'Failed to reset password' });
+    }
+  }
+});
+
+// ===== EMAIL TEST ROUTES =====
+
+// Test email service (admin only)
+app.post('/api/admin/test-email', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { email, type = 'test' } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+    
+    let emailSent = false;
+    
+    switch (type) {
+      case 'test':
+        // Test connection
+        const testResult = await emailService.testConnection();
+        if (testResult.success) {
+          emailSent = true;
+        }
+        break;
+      case 'welcome':
+        emailSent = await emailService.sendWelcomeEmail(email);
+        break;
+      case 'alert':
+        const testAlert = {
+          type: 'price_alert',
+          severity: 'medium',
+          message: 'This is a test alert email',
+          metric: 'BTC Price',
+          value: '$45,000',
+          timestamp: new Date().toISOString()
+        };
+        emailSent = await emailService.sendAlertEmail(email, testAlert);
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid email type. Use: test, welcome, or alert' });
+    }
+    
+    if (emailSent) {
+      res.json({ success: true, message: `${type} email sent successfully to ${email}` });
+    } else {
+      res.status(500).json({ error: 'Failed to send email' });
+    }
+  } catch (error) {
+    console.error('Email test error:', error);
+    res.status(500).json({ error: 'Email test failed' });
   }
 });
 
@@ -2623,6 +2925,14 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
+    // Check if email is verified
+    if (!user.email_verified) {
+      return res.status(401).json({ 
+        error: 'Please check your email and click the confirmation link to activate your account before signing in.',
+        requiresConfirmation: true 
+      });
+    }
+    
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     console.log('Password valid:', isValidPassword);
     
@@ -2683,9 +2993,13 @@ app.post('/api/auth/register', async (req, res) => {
     // Create user with email_verified = false
     const userId = await insertUserWithConfirmation(email, passwordHash, confirmationToken);
     
-    // Send confirmation email (in production, this would use a real email service)
-    console.log(`📧 Email confirmation sent to ${email}`);
-    console.log(`🔗 Confirmation link: ${process.env.BASE_URL || 'http://localhost:3001'}/api/auth/confirm-email?token=${confirmationToken}`);
+          // Send confirmation email using Brevo
+      const emailSent = await emailService.sendEmailConfirmation(email, confirmationToken);
+      if (emailSent) {
+        console.log(`📧 Email confirmation sent to ${email}`);
+      } else {
+        console.log(`⚠️ Failed to send confirmation email to ${email}`);
+      }
     
     res.json({
       requiresConfirmation: true,
@@ -2694,6 +3008,53 @@ app.post('/api/auth/register', async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// Resend confirmation email endpoint
+app.post('/api/auth/resend-confirmation', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    // Check if user exists and needs confirmation
+    const user = await getUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (user.email_verified) {
+      return res.status(400).json({ error: 'Email is already verified' });
+    }
+    
+    // Generate new confirmation token
+    const confirmationToken = jwt.sign(
+      { email, type: 'email_confirmation' },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
+    
+    // Update user with new confirmation token
+    await dbAdapter.run(
+      'UPDATE users SET confirmation_token = $1, updated_at = $2 WHERE id = $3',
+      [confirmationToken, new Date().toISOString(), user.id]
+    );
+    
+    // Send new confirmation email
+    const emailSent = await emailService.sendEmailConfirmation(email, confirmationToken);
+    if (emailSent) {
+      console.log(`📧 Confirmation email resent to ${email}`);
+      res.json({ message: 'Confirmation email sent successfully' });
+    } else {
+      console.log(`⚠️ Failed to resend confirmation email to ${email}`);
+      res.status(500).json({ error: 'Failed to send confirmation email' });
+    }
+  } catch (error) {
+    console.error('Resend confirmation error:', error);
+    res.status(500).json({ error: 'Failed to resend confirmation email' });
   }
 });
 
@@ -2714,8 +3075,8 @@ app.get('/api/auth/confirm-email', async (req, res) => {
     }
     
     // Find user by email and confirmation token
-    const user = await db.get(
-      'SELECT * FROM users WHERE email = ? AND confirmation_token = ? AND email_verified = 0',
+    const user = await dbAdapter.get(
+      'SELECT * FROM users WHERE email = $1 AND confirmation_token = $2 AND email_verified = false',
       [decoded.email, token]
     );
     
@@ -2724,14 +3085,20 @@ app.get('/api/auth/confirm-email', async (req, res) => {
     }
     
     // Update user to verified
-    await db.run(
-      'UPDATE users SET email_verified = 1, confirmation_token = NULL, updated_at = ? WHERE id = ?',
+    await dbAdapter.run(
+      'UPDATE users SET email_verified = true, confirmation_token = NULL, updated_at = $1 WHERE id = $2',
       [new Date().toISOString(), user.id]
     );
     
+    // Send welcome email
+    const welcomeEmailSent = await emailService.sendWelcomeEmail(user.email, user.email.split('@')[0]);
+    if (welcomeEmailSent) {
+      console.log(`📧 Welcome email sent to ${user.email}`);
+    }
+    
     // Create subscription record
-    await db.run(
-      'INSERT INTO subscriptions (user_id, plan, status, created_at) VALUES (?, ?, ?, ?)',
+    await dbAdapter.run(
+      'INSERT INTO subscriptions (user_id, plan_type, status, created_at) VALUES ($1, $2, $3, $4)',
       [user.id, 'free', 'active', new Date().toISOString()]
     );
     
@@ -2763,6 +3130,58 @@ app.get('/api/auth/confirm-email', async (req, res) => {
   }
 });
 
+// First-time admin setup endpoint (remove after first admin is created)
+app.post('/api/setup/first-admin', async (req, res) => {
+  try {
+    const { email, password, setupKey } = req.body;
+    
+    // Check if setup key is correct (set this in environment)
+    const expectedSetupKey = process.env.FIRST_ADMIN_SETUP_KEY || 'crypto-market-2024';
+    
+    if (setupKey !== expectedSetupKey) {
+      return res.status(401).json({ error: 'Invalid setup key' });
+    }
+    
+    // Check if any admin users already exist
+    const adminCount = await dbAdapter.get('SELECT COUNT(*) as count FROM users WHERE is_admin = true');
+    if (adminCount.count > 0) {
+      return res.status(400).json({ error: 'Admin user already exists. Use regular admin creation.' });
+    }
+    
+    // Check if user already exists
+    const existingUser = await getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+    
+    // Hash password
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+    
+    // Create admin user (verified by default for first admin)
+    const userId = await insertUser(email, passwordHash, true);
+    
+    // Mark email as verified for first admin
+    await dbAdapter.run(
+      'UPDATE users SET email_verified = true WHERE id = $1',
+      [userId]
+    );
+    
+    console.log(`👑 First admin user created: ${email} (ID: ${userId})`);
+    
+    res.json({
+      success: true,
+      message: 'First admin user created successfully',
+      userId: userId,
+      email: email
+    });
+    
+  } catch (error) {
+    console.error('First admin setup error:', error);
+    res.status(500).json({ error: 'Failed to create first admin user' });
+  }
+});
+
 // Admin routes
 app.get('/api/admin/collections', authenticateToken, async (req, res) => {
   try {
@@ -2777,6 +3196,7 @@ app.get('/api/admin/collections', authenticateToken, async (req, res) => {
       'ai_analysis', 
       'fear_greed_index',
       'trending_narratives',
+      'upcoming_events',
       'users',
       'subscriptions',
       'error_logs'
@@ -2819,27 +3239,19 @@ app.get('/api/admin/ai-analysis', authenticateToken, async (req, res) => {
     }
 
     // Get raw database records for admin view
-    const rawAnalysis = await new Promise((resolve, reject) => {
-      db.all(`
-        SELECT 
-          id,
-          market_direction,
-          confidence,
-          reasoning,
-          factors_analyzed,
-          analysis_data,
-          timestamp
-        FROM ai_analysis 
-        ORDER BY timestamp DESC 
-        LIMIT 50
-      `, (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows || []);
-        }
-      });
-    });
+    const rawAnalysis = await dbAdapter.all(`
+      SELECT 
+        id,
+        market_direction,
+        confidence,
+        reasoning,
+        factors_analyzed,
+        analysis_data,
+        timestamp
+      FROM ai_analysis 
+      ORDER BY timestamp DESC 
+      LIMIT 50
+    `);
 
     // Parse the analysis_data to show multi-timeframe structure
     const parsedAnalysis = rawAnalysis.map(analysis => {
@@ -2896,6 +3308,7 @@ app.get('/api/admin/export/:collection', authenticateToken, async (req, res) => 
       'ai_analysis', 
       'fear_greed_index',
       'trending_narratives',
+      'upcoming_events',
       'users',
       'subscriptions',
       'error_logs'
@@ -2926,22 +3339,22 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
     const userId = req.user.userId;
 
     // Update user profile
-    await db.run(
-      'UPDATE users SET email = ?, updated_at = ? WHERE id = ?',
+    await dbAdapter.run(
+      'UPDATE users SET email = $1, updated_at = $2 WHERE id = $3',
       [email, new Date().toISOString(), userId]
     );
 
     // Update notification preferences
     if (notifications) {
-      await db.run(
-        'UPDATE users SET notification_preferences = ? WHERE id = ?',
+      await dbAdapter.run(
+        'UPDATE users SET notification_preferences = $1 WHERE id = $2',
         [JSON.stringify(notifications), userId]
       );
     }
 
     // Get updated user data
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
-    const subscription = await db.get('SELECT * FROM subscriptions WHERE user_id = ?', [userId]);
+    const user = await dbAdapter.get('SELECT * FROM users WHERE id = $1', [userId]);
+    const subscription = await dbAdapter.get('SELECT * FROM subscriptions WHERE user_id = $1', [userId]);
 
     res.json({
       id: user.id,
@@ -2979,8 +3392,8 @@ app.post('/api/contact', async (req, res) => {
     }
 
     // Store contact message in database
-    await db.run(
-      'INSERT INTO contact_messages (name, email, subject, message, created_at) VALUES (?, ?, ?, ?, ?)',
+    await dbAdapter.run(
+      'INSERT INTO contact_messages (name, email, subject, message, created_at) VALUES ($1, $2, $3, $4, $5)',
       [name, email, subject, message, new Date().toISOString()]
     );
 
@@ -3172,9 +3585,37 @@ app.delete('/api/exports/scheduled/:id', authenticateToken, requireSubscription(
   }
 });
 
-// Serve React app for all other routes
+// Serve React app for all other routes (if available)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/build/index.html'));
+  const indexPath = path.join(__dirname, '../client/build/index.html');
+  const publicIndexPath = path.join(__dirname, '../public/index.html');
+  
+  // Check if the React app exists in client/build
+  if (require('fs').existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else if (require('fs').existsSync(publicIndexPath)) {
+    // Check if the React app exists in public directory
+    res.sendFile(publicIndexPath);
+  } else {
+    // If React app is not built, serve a simple API info page
+    res.status(200).json({
+      message: 'Crypto Market Watch API',
+      status: 'running',
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      endpoints: {
+        health: '/api/health',
+        marketData: '/api/market-data',
+        cryptoPrices: '/api/crypto-prices',
+        aiAnalysis: '/api/ai-analysis',
+        events: '/api/events',
+        auth: '/api/auth',
+        users: '/api/users'
+      },
+      note: 'Frontend not built. This is an API-only deployment.',
+      documentation: 'API endpoints are available at /api/*'
+    });
+  }
 });
 
 // Error handling middleware

@@ -53,6 +53,7 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
 - **CoinGecko** for cryptocurrency prices (free, no API key required, 10,000 calls/month)
 - **NOWPayments** for crypto payments and subscriptions (200+ cryptocurrencies)
 - **Venice AI** for market analysis
+- **Brevo** for transactional emails (confirmation, alerts, notifications)
 - **Alternative.me** for Fear & Greed Index
 
 ## 📦 Installation
@@ -87,6 +88,8 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
    ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
    FRED_API_KEY=your_fred_api_key
    VENICE_AI_API_KEY=your_venice_ai_key
+   BREVO_API_KEY=your_brevo_api_key
+   BREVO_SENDER_EMAIL=noreply@yourdomain.com
    ```
 
 4. **Initialize Database**
@@ -208,6 +211,13 @@ Modify `scripts/setupCron.js` to change collection frequency:
 - **Key Factors**: Identified market influencers
 - **Risk Assessment**: Potential market risks
 
+### Email Notifications
+- **Email Confirmation**: Account verification emails
+- **Welcome Emails**: New user onboarding
+- **Password Reset**: Secure password recovery
+- **Market Alerts**: Custom price and market notifications
+- **Bulk Notifications**: System-wide announcements
+
 ## 🔒 Security
 
 ### Environment Variables
@@ -272,6 +282,10 @@ MIT License - see LICENSE file for details
 - **Alternative.me** for Fear & Greed Index
 - **Tailwind CSS** for styling framework
 - **React** team for the amazing framework
+
+## 📧 Email Setup
+
+For email functionality setup, see [BREVO_EMAIL_SETUP.md](./BREVO_EMAIL_SETUP.md)
 
 ## 📞 Support
 

@@ -14,6 +14,14 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
+// Helper function to safely convert values to numbers and format them
+const safeToFixed = (value, decimals = 2) => {
+  if (value === null || value === undefined) return 'N/A';
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(numValue)) return 'N/A';
+  return numValue.toFixed(decimals);
+};
+
 const AdvancedAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -142,23 +150,31 @@ const AdvancedAnalytics = () => {
     const riskAdjustedReturn = (avgReturn - riskFreeRate) / (volatility / 100);
 
     return {
-      avgChange: avgChange.toFixed(2),
+      avgChange: safeToFixed(avgChange, 2),
       totalVolume: totalVolume,
-      volatility: volatility.toFixed(2),
-      riskAdjustedReturn: riskAdjustedReturn.toFixed(2),
+      volatility: safeToFixed(volatility, 2),
+      riskAdjustedReturn: safeToFixed(riskAdjustedReturn, 2),
       assetCount: prices.length
     };
   };
 
   const formatVolume = (volume) => {
-    if (volume >= 1e9) {
-      return `$${(volume / 1e9).toFixed(2)}B`;
-    } else if (volume >= 1e6) {
-      return `$${(volume / 1e6).toFixed(2)}M`;
-    } else if (volume >= 1e3) {
-      return `$${(volume / 1e3).toFixed(2)}K`;
+    if (!volume) return 'N/A';
+    
+    // Convert to number if it's a string
+    const numVolume = typeof volume === 'string' ? parseFloat(volume) : volume;
+    
+    // Check if conversion was successful
+    if (isNaN(numVolume)) return 'N/A';
+    
+    if (numVolume >= 1e9) {
+      return `$${(numVolume / 1e9).toFixed(2)}B`;
+    } else if (numVolume >= 1e6) {
+      return `$${(numVolume / 1e6).toFixed(2)}M`;
+    } else if (numVolume >= 1e3) {
+      return `$${(numVolume / 1e3).toFixed(2)}K`;
     }
-    return `$${volume.toFixed(2)}`;
+    return `$${numVolume.toFixed(2)}`;
   };
 
   const exportAnalyticsReport = async (format = 'pdf') => {
@@ -312,7 +328,7 @@ const AdvancedAnalytics = () => {
                 <TrendingUp className="w-6 h-6 text-crypto-green" />
               </div>
               <div className="text-3xl font-bold text-crypto-green">
-                {advancedMetrics?.bitcoinDominance?.value ? `${advancedMetrics.bitcoinDominance.value.toFixed(1)}%` : 'N/A'}
+                {advancedMetrics?.bitcoinDominance?.value ? `${safeToFixed(advancedMetrics.bitcoinDominance.value, 1)}%` : 'N/A'}
               </div>
               <p className="text-sm text-slate-400 mt-2">BTC market share</p>
             </div>
@@ -400,79 +416,79 @@ const AdvancedAnalytics = () => {
                   <div className="font-semibold text-slate-300 p-2">BTC</div>
                   <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_ETH)}`}>
-                    {analyticsData.correlationData.BTC_ETH?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.BTC_ETH, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_SOL)}`}>
-                    {analyticsData.correlationData.BTC_SOL?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.BTC_SOL, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_SUI)}`}>
-                    {analyticsData.correlationData.BTC_SUI?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.BTC_SUI, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_XRP)}`}>
-                    {analyticsData.correlationData.BTC_XRP?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.BTC_XRP, 2)}
                   </div>
                   
                   {/* ETH row */}
                   <div className="font-semibold text-slate-300 p-2">ETH</div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_ETH)}`}>
-                    {analyticsData.correlationData.BTC_ETH?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.BTC_ETH, 2)}
                   </div>
                   <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_SOL)}`}>
-                    {analyticsData.correlationData.ETH_SOL?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.ETH_SOL, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_SUI)}`}>
-                    {analyticsData.correlationData.ETH_SUI?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.ETH_SUI, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_XRP)}`}>
-                    {analyticsData.correlationData.ETH_XRP?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.ETH_XRP, 2)}
                   </div>
                   
                   {/* SOL row */}
                   <div className="font-semibold text-slate-300 p-2">SOL</div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_SOL)}`}>
-                    {analyticsData.correlationData.BTC_SOL?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.BTC_SOL, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_SOL)}`}>
-                    {analyticsData.correlationData.ETH_SOL?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.ETH_SOL, 2)}
                   </div>
                   <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SOL_SUI)}`}>
-                    {analyticsData.correlationData.SOL_SUI?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.SOL_SUI, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SOL_XRP)}`}>
-                    {analyticsData.correlationData.SOL_XRP?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.SOL_XRP, 2)}
                   </div>
                   
                   {/* SUI row */}
                   <div className="font-semibold text-slate-300 p-2">SUI</div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_SUI)}`}>
-                    {analyticsData.correlationData.BTC_SUI?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.BTC_SUI, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_SUI)}`}>
-                    {analyticsData.correlationData.ETH_SUI?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.ETH_SUI, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SOL_SUI)}`}>
-                    {analyticsData.correlationData.SOL_SUI?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.SOL_SUI, 2)}
                   </div>
                   <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SUI_XRP)}`}>
-                    {analyticsData.correlationData.SUI_XRP?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.SUI_XRP, 2)}
                   </div>
                   
                   {/* XRP row */}
                   <div className="font-semibold text-slate-300 p-2">XRP</div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_XRP)}`}>
-                    {analyticsData.correlationData.BTC_XRP?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.BTC_XRP, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_XRP)}`}>
-                    {analyticsData.correlationData.ETH_XRP?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.ETH_XRP, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SOL_XRP)}`}>
-                    {analyticsData.correlationData.SOL_XRP?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.SOL_XRP, 2)}
                   </div>
                   <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SUI_XRP)}`}>
-                    {analyticsData.correlationData.SUI_XRP?.toFixed(2) || 'N/A'}
+                    {safeToFixed(analyticsData.correlationData.SUI_XRP, 2)}
                   </div>
                   <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
                 </div>
@@ -530,7 +546,7 @@ const AdvancedAnalytics = () => {
                   <div className="flex justify-between">
                     <span className="text-slate-400">BTC Dominance</span>
                     <span className="text-white font-medium">
-                      {advancedMetrics?.bitcoinDominance?.value ? `${advancedMetrics.bitcoinDominance.value.toFixed(1)}%` : 'N/A'}
+                      {advancedMetrics?.bitcoinDominance?.value ? `${safeToFixed(advancedMetrics.bitcoinDominance.value, 1)}%` : 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">

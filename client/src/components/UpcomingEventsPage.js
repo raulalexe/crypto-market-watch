@@ -39,9 +39,8 @@ const UpcomingEventsPage = () => {
       setLoading(true);
       setError(null);
       
-      // Always use the approaching-events endpoint for now
-      // Admin functionality can be added later if needed
-      const response = await axios.get('/api/approaching-events');
+      // Use the events endpoint
+      const response = await axios.get('/api/events');
       
       // Ensure we always set an array, even if the response is not an array
       const eventsData = Array.isArray(response.data) ? response.data : [];
@@ -463,7 +462,7 @@ const UpcomingEventsPage = () => {
               <Calendar className="w-12 h-12 text-slate-400 mx-auto mb-4" />
               <p className="text-slate-400 text-lg">No events match your filters</p>
               <button 
-                onClick={() => setFilters({ category: 'all', impact: 'all', search: '' })}
+                onClick={() => setFilters({ category: 'all', impact: 'all', search: '', showIgnored: false })}
                 className="mt-4 text-crypto-blue hover:text-blue-400 transition-colors"
               >
                 Clear filters

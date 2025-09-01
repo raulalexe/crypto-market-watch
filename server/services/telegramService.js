@@ -3,8 +3,10 @@ const axios = require('axios');
 class TelegramService {
   constructor() {
     this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+    this.webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
     this.isConfigured = false;
     this.chatIds = new Set();
+    this.subscribers = new Map(); // Store user info with chat IDs
     this.initBot();
   }
 
@@ -23,6 +25,35 @@ class TelegramService {
       const chatIds = process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim());
       chatIds.forEach(id => this.chatIds.add(id));
       console.log(`📱 Loaded ${this.chatIds.size} Telegram chat IDs`);
+    }
+
+    // Set up webhook if webhook URL is provided
+    if (this.webhookUrl) {
+      this.setupWebhook();
+    }
+  }
+
+  async setupWebhook() {
+    if (!this.isConfigured || !this.webhookUrl) {
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `https://api.telegram.org/bot${this.botToken}/setWebhook`,
+        {
+          url: `${this.webhookUrl}/api/telegram/webhook`,
+          allowed_updates: ['message', 'callback_query']
+        }
+      );
+
+      if (response.data.ok) {
+        console.log('✅ Telegram webhook set successfully');
+      } else {
+        console.log('⚠️ Failed to set Telegram webhook');
+      }
+    } catch (error) {
+      console.error('❌ Error setting Telegram webhook:', error.message);
     }
   }
 
@@ -170,6 +201,29 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
     return Array.from(this.chatIds);
   }
 
+  getSubscribers() {
+    return Array.from(this.subscribers.values());
+  }
+
+  getActiveSubscribers() {
+    return Array.from(this.subscribers.values()).filter(sub => sub.subscribed);
+  }
+
+  getSubscriberStats() {
+    const subscribers = this.getSubscribers();
+    const activeSubscribers = this.getActiveSubscribers();
+    
+    return {
+      total: subscribers.length,
+      active: activeSubscribers.length,
+      inactive: subscribers.length - activeSubscribers.length,
+      recentSubscribers: subscribers
+        .filter(sub => sub.subscribedAt)
+        .sort((a, b) => new Date(b.subscribedAt) - new Date(a.subscribedAt))
+        .slice(0, 5)
+    };
+  }
+
   async getBotInfo() {
     if (!this.isConfigured) {
       return { success: false, error: 'Telegram bot not configured' };
@@ -223,22 +277,169 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
 
     try {
       if (update.message) {
-        const { chat, text } = update.message;
+        const { chat, text, from } = update.message;
         
         if (text === '/start') {
-          await this.sendWelcomeMessage(chat.id);
+          await this.handleStartCommand(chat, from);
         } else if (text === '/stop') {
-          await this.removeChatId(chat.id);
-          await this.sendMessage(chat.id, '❌ You have been unsubscribed from market alerts.');
+          await this.handleStopCommand(chat);
         } else if (text === '/status') {
           await this.sendStatusMessage(chat.id);
         } else if (text === '/help') {
           await this.sendHelpMessage(chat.id);
+        } else if (text === '/subscribe') {
+          await this.handleSubscribeCommand(chat, from);
+        } else if (text === '/unsubscribe') {
+          await this.handleUnsubscribeCommand(chat);
+        } else if (text === '/info') {
+          await this.sendInfoMessage(chat.id);
+        } else if (text.startsWith('/set_')) {
+          await this.handleSettingsCommand(chat, text);
+        } else {
+          await this.sendUnknownCommandMessage(chat.id);
         }
+      } else if (update.callback_query) {
+        await this.handleCallbackQuery(update.callback_query);
       }
     } catch (error) {
       console.error('❌ Error handling Telegram webhook:', error);
     }
+  }
+
+  async handleStartCommand(chat, from) {
+    const chatId = chat.id.toString();
+    const userInfo = {
+      id: from.id,
+      username: from.username,
+      firstName: from.first_name,
+      lastName: from.last_name,
+      chatId: chatId,
+      subscribed: true,
+      subscribedAt: new Date().toISOString()
+    };
+
+    this.subscribers.set(chatId, userInfo);
+    this.chatIds.add(chatId);
+
+    await this.sendWelcomeMessage(chatId);
+    console.log(`✅ New Telegram subscriber: ${from.first_name} (${chatId})`);
+  }
+
+  async handleStopCommand(chat) {
+    const chatId = chat.id.toString();
+    await this.removeChatId(chatId);
+    this.subscribers.delete(chatId);
+    await this.sendMessage(chatId, '❌ You have been unsubscribed from market alerts.');
+    console.log(`❌ Telegram unsubscriber: ${chatId}`);
+  }
+
+  async handleSubscribeCommand(chat, from) {
+    const chatId = chat.id.toString();
+    const userInfo = this.subscribers.get(chatId) || {
+      id: from.id,
+      username: from.username,
+      firstName: from.first_name,
+      lastName: from.last_name,
+      chatId: chatId,
+      subscribed: true,
+      subscribedAt: new Date().toISOString()
+    };
+
+    userInfo.subscribed = true;
+    userInfo.subscribedAt = new Date().toISOString();
+    this.subscribers.set(chatId, userInfo);
+    this.chatIds.add(chatId);
+
+    await this.sendMessage(chatId, '✅ You have been subscribed to market alerts!');
+  }
+
+  async handleUnsubscribeCommand(chat) {
+    const chatId = chat.id.toString();
+    const userInfo = this.subscribers.get(chatId);
+    if (userInfo) {
+      userInfo.subscribed = false;
+      userInfo.unsubscribedAt = new Date().toISOString();
+    }
+    this.chatIds.delete(chatId);
+
+    await this.sendMessage(chatId, '❌ You have been unsubscribed from market alerts.');
+  }
+
+  async handleSettingsCommand(chat, text) {
+    const chatId = chat.id.toString();
+    const userInfo = this.subscribers.get(chatId);
+    
+    if (!userInfo) {
+      await this.sendMessage(chatId, '❌ You need to start the bot first with /start');
+      return;
+    }
+
+    // Parse settings command
+    const parts = text.split(' ');
+    if (parts.length < 2) {
+      await this.sendMessage(chatId, '❌ Invalid settings command. Use /help for available commands.');
+      return;
+    }
+
+    const setting = parts[1];
+    const value = parts[2];
+
+    switch (setting) {
+      case 'frequency':
+        if (value === 'high' || value === 'medium' || value === 'low') {
+          userInfo.alertFrequency = value;
+          await this.sendMessage(chatId, `✅ Alert frequency set to: ${value}`);
+        } else {
+          await this.sendMessage(chatId, '❌ Invalid frequency. Use: high, medium, or low');
+        }
+        break;
+      default:
+        await this.sendMessage(chatId, '❌ Unknown setting. Use /help for available commands.');
+    }
+  }
+
+  async handleCallbackQuery(callbackQuery) {
+    const { data, message } = callbackQuery;
+    const chatId = message.chat.id.toString();
+
+    try {
+      if (data === 'subscribe') {
+        await this.handleSubscribeCommand(message.chat, callbackQuery.from);
+      } else if (data === 'unsubscribe') {
+        await this.handleUnsubscribeCommand(message.chat);
+      } else if (data === 'help') {
+        await this.sendHelpMessage(chatId);
+      } else if (data === 'status') {
+        await this.sendStatusMessage(chatId);
+      }
+
+      // Answer callback query
+      await axios.post(
+        `https://api.telegram.org/bot${this.botToken}/answerCallbackQuery`,
+        {
+          callback_query_id: callbackQuery.id
+        }
+      );
+    } catch (error) {
+      console.error('❌ Error handling callback query:', error);
+    }
+  }
+
+  async sendUnknownCommandMessage(chatId) {
+    const message = `
+❓ Unknown command
+
+Use these commands:
+/start - Start the bot
+/help - Show help
+/status - Check status
+/subscribe - Subscribe to alerts
+/unsubscribe - Unsubscribe from alerts
+/stop - Stop the bot
+/info - Show bot information
+    `.trim();
+
+    await this.sendMessage(chatId, message);
   }
 
   async sendWelcomeMessage(chatId) {
@@ -250,14 +451,50 @@ You will now receive real-time market alerts for:
 • Bitcoin dominance shifts
 • Exchange flow movements
 • Stablecoin market cap changes
+• Market volatility spikes
+• Large whale movements
 
 <b>Commands:</b>
 /start - Start receiving alerts
 /stop - Stop receiving alerts
+/subscribe - Subscribe to alerts
+/unsubscribe - Unsubscribe from alerts
 /status - Check bot status
-/help - Show this help message
+/help - Show help message
+/info - Show bot information
+
+<b>Settings:</b>
+/set_frequency [high|medium|low] - Set alert frequency
 
 <i>Disclaimer: This is not financial advice. Always do your own research.</i>
+    `.trim();
+
+    await this.sendMessage(chatId, message);
+  }
+
+  async sendInfoMessage(chatId) {
+    const userInfo = this.subscribers.get(chatId);
+    const subscriberCount = this.subscribers.size;
+    const activeSubscribers = Array.from(this.subscribers.values()).filter(u => u.subscribed).length;
+
+    const message = `
+<b>📊 Bot Information</b>
+
+<b>Your Status:</b>
+${userInfo ? `• Subscribed: ${userInfo.subscribed ? '✅ Yes' : '❌ No'}` : '• Not registered'}
+${userInfo?.alertFrequency ? `• Alert Frequency: ${userInfo.alertFrequency}` : ''}
+
+<b>Bot Statistics:</b>
+• Total Subscribers: ${subscriberCount}
+• Active Subscribers: ${activeSubscribers}
+• Bot Status: ✅ Active
+
+<b>Alert Types:</b>
+🚨 High Severity - Critical market movements
+⚠️ Medium Severity - Significant changes
+ℹ️ Low Severity - Important updates
+
+<i>For support, contact the bot administrator.</i>
     `.trim();
 
     await this.sendMessage(chatId, message);
@@ -289,10 +526,21 @@ This bot sends you real-time cryptocurrency market alerts.
 ℹ️ Low Severity - Important updates
 
 <b>Commands:</b>
-/start - Subscribe to alerts
-/stop - Unsubscribe from alerts
+/start - Start the bot and subscribe
+/stop - Stop the bot and unsubscribe
+/subscribe - Subscribe to alerts
+/unsubscribe - Unsubscribe from alerts
 /status - Check bot status
+/info - Show bot information
 /help - Show this help
+
+<b>Settings:</b>
+/set_frequency [high|medium|low] - Set alert frequency
+
+<b>Examples:</b>
+/set_frequency high - Get all alerts
+/set_frequency medium - Get medium and high priority alerts
+/set_frequency low - Get only high priority alerts
 
 <i>For support, contact the bot administrator.</i>
     `.trim();
