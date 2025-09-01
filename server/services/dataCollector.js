@@ -9,11 +9,15 @@ const {
   insertTrendingNarrative,
   insertBitcoinDominance,
   insertStablecoinMetric,
-  insertExchangeFlow
+  insertExchangeFlow,
+  getLatestMarketSentiment,
+  getLatestDerivativesData,
+  getLatestOnchainData
 } = require('../database');
 
 const ErrorLogger = require('./errorLogger');
 const AlertService = require('./alertService');
+const AdvancedDataCollector = require('./advancedDataCollector');
 
 class DataCollector {
   constructor() {
@@ -21,6 +25,7 @@ class DataCollector {
     this.fredApiKey = process.env.FRED_API_KEY;
     this.errorLogger = new ErrorLogger();
     this.alertService = new AlertService();
+    this.advancedDataCollector = new AdvancedDataCollector();
     
     // Rate limiting for CoinGecko API
     this.coingeckoLastCall = 0;
@@ -1269,14 +1274,14 @@ class DataCollector {
       const stablecoinMetrics = await getLatestStablecoinMetrics();
       const exchangeFlows = await getLatestExchangeFlows();
       
-      // Get market sentiment (only if we have real data)
-      const marketSentiment = null; // We'll get this from real sources when available
+      // Get market sentiment from new data sources
+      const marketSentiment = await getLatestMarketSentiment();
       
-      // Get derivatives data (only if we have real data)
-      const derivatives = null; // We'll get this from real sources when available
+      // Get derivatives data from new data sources
+      const derivatives = await getLatestDerivativesData();
       
-      // Get on-chain data (only if we have real data)
-      const onchain = null; // We'll get this from real sources when available
+      // Get on-chain data from new data sources
+      const onchain = await getLatestOnchainData();
       
       return {
         bitcoinDominance,
@@ -1403,6 +1408,10 @@ class DataCollector {
         this.collectBitcoinDominanceOptimized(), // Uses data from collectCryptoPrices
         this.collectLayer1DataOptimized() // Uses data from collectCryptoPrices
       ]);
+      
+      // Collect advanced data (market sentiment, derivatives, on-chain)
+      console.log('Collecting advanced data...');
+      await this.advancedDataCollector.collectAllAdvancedData();
       
       // Run AI analysis after all data is collected
       console.log('Running AI analysis...');

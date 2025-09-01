@@ -40,37 +40,57 @@ class InflationDataService {
     }
   }
 
-  // Fetch PCE data from BEA API
+  // Fetch PCE data from BEA API with retry logic
   async fetchPCEData() {
-    try {
-      // Use the correct table name T20804 for PCE data
-      const response = await axios.get(this.beaBaseUrl, {
-        params: {
-          UserID: this.beaApiKey,
-          Method: 'GetData',
-          DataSetName: 'NIPA',
-          TableName: 'T20804', // Price Indexes for Personal Consumption Expenditures by Major Type of Product, Monthly
-          Frequency: 'M',
-          Year: new Date().getFullYear().toString(),
-          ResultFormat: 'JSON'
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 seconds
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📊 Fetching PCE data from BEA API (attempt ${attempt}/${maxRetries})...`);
+        
+        // Use the correct table name T20804 for PCE data
+        const response = await axios.get(this.beaBaseUrl, {
+          params: {
+            UserID: this.beaApiKey,
+            Method: 'GetData',
+            DataSetName: 'NIPA',
+            TableName: 'T20804', // Price Indexes for Personal Consumption Expenditures by Major Type of Product, Monthly
+            Frequency: 'M',
+            Year: new Date().getFullYear().toString(),
+            ResultFormat: 'JSON'
+          },
+          timeout: 45000, // Increased timeout to 45 seconds
+          headers: {
+            'User-Agent': 'CryptoMarketWatch/1.0',
+            'Accept': 'application/json'
+          }
+        });
+
+
+
+        if (response.data && response.data.BEAAPI && response.data.BEAAPI.Results && response.data.BEAAPI.Results.Data) {
+          const data = response.data.BEAAPI.Results.Data;
+          console.log('✅ PCE data fetched successfully');
+          return this.parsePCEData(data);
+        } else if (response.data && response.data.BEAAPI && response.data.BEAAPI.Results) {
+          // Handle case where Data might be in a different structure
+          console.log('✅ PCE data fetched successfully (alternative structure)');
+          return this.parsePCEData(response.data.BEAAPI.Results);
         }
-      });
-
-
-
-      if (response.data && response.data.BEAAPI && response.data.BEAAPI.Results && response.data.BEAAPI.Results.Data) {
-        const data = response.data.BEAAPI.Results.Data;
-        return this.parsePCEData(data);
-      } else if (response.data && response.data.BEAAPI && response.data.BEAAPI.Results) {
-        // Handle case where Data might be in a different structure
-
-        return this.parsePCEData(response.data.BEAAPI.Results);
+        
+        throw new Error('Invalid BEA API response structure');
+      } catch (error) {
+        console.error(`❌ PCE data fetch attempt ${attempt} failed:`, error.message);
+        
+        if (attempt === maxRetries) {
+          console.error('❌ All PCE data fetch attempts failed');
+          throw error;
+        }
+        
+        console.log(`⏳ Retrying PCE data fetch in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
-      
-      throw new Error('Invalid BEA API response structure');
-    } catch (error) {
-      console.error('Error fetching PCE data:', error.message);
-      throw error;
     }
   }
 
@@ -129,26 +149,47 @@ class InflationDataService {
     return pceData;
   }
 
-  // Fetch CPI data from BLS API
+  // Fetch CPI data from BLS API with retry logic
   async fetchCPIData() {
-    try {
-      const response = await axios.post(this.blsBaseUrl + '/timeseries/data/', {
-        seriesid: ['CUSR0000SA0', 'CUSR0000SA0L1E'], // All items and Core CPI
-        startyear: new Date().getFullYear().toString(),
-        endyear: new Date().getFullYear().toString(),
-        registrationkey: this.blsApiKey
-      });
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 seconds
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📊 Fetching CPI data from BLS API (attempt ${attempt}/${maxRetries})...`);
+        
+        const response = await axios.post(this.blsBaseUrl + '/timeseries/data/', {
+          seriesid: ['CUSR0000SA0', 'CUSR0000SA0L1E'], // All items and Core CPI
+          startyear: new Date().getFullYear().toString(),
+          endyear: new Date().getFullYear().toString(),
+          registrationkey: this.blsApiKey
+        }, {
+          timeout: 45000, // Increased timeout to 45 seconds
+          headers: {
+            'User-Agent': 'CryptoMarketWatch/1.0',
+            'Accept': 'application/json'
+          }
+        });
 
 
 
-      if (response.data && response.data.Results && response.data.Results.series) {
-        return this.parseCPIData(response.data.Results.series);
+        if (response.data && response.data.Results && response.data.Results.series) {
+          console.log('✅ CPI data fetched successfully');
+          return this.parseCPIData(response.data.Results.series);
+        }
+        
+        throw new Error('Invalid BLS API response structure');
+      } catch (error) {
+        console.error(`❌ CPI data fetch attempt ${attempt} failed:`, error.message);
+        
+        if (attempt === maxRetries) {
+          console.error('❌ All CPI data fetch attempts failed');
+          throw error;
+        }
+        
+        console.log(`⏳ Retrying CPI data fetch in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
-      
-      throw new Error('Invalid BLS API response structure');
-    } catch (error) {
-      console.error('Error fetching CPI data:', error.message);
-      throw error; // Remove mock data fallback
     }
   }
 

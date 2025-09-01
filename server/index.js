@@ -96,7 +96,7 @@ initDatabase().then(async () => {
   // Create admin user on deploy if environment variables are set
   if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
     try {
-      const { createAdminOnDeploy } = require('../scripts/createAdminOnDeploy');
+      const { createAdminOnDeploy } = require('./scripts/createAdminOnDeploy');
       await createAdminOnDeploy();
     } catch (error) {
       console.log('⚠️  Admin creation failed:', error.message);
@@ -500,6 +500,123 @@ app.get('/api/advanced-metrics', async (req, res) => {
   } catch (error) {
     console.error('Error fetching advanced metrics:', error);
     res.status(500).json({ error: 'Failed to fetch advanced metrics' });
+  }
+});
+
+// Get market sentiment data
+app.get('/api/market-sentiment', async (req, res) => {
+  try {
+    const { getLatestMarketSentiment } = require('./database');
+    const sentiment = await getLatestMarketSentiment();
+    
+    if (!sentiment) {
+      return res.json({
+        fear_greed_index: null,
+        social_sentiment: null,
+        market_momentum: null,
+        message: 'No sentiment data available yet'
+      });
+    }
+    
+    res.json(sentiment);
+  } catch (error) {
+    console.error('Error fetching market sentiment:', error);
+    res.status(500).json({ error: 'Failed to fetch market sentiment' });
+  }
+});
+
+// Get derivatives data
+app.get('/api/derivatives', async (req, res) => {
+  try {
+    const { getLatestDerivativesData } = require('./database');
+    const derivatives = await getLatestDerivativesData();
+    
+    if (!derivatives) {
+      return res.json({
+        btc_futures: null,
+        eth_futures: null,
+        sol_futures: null,
+        message: 'No derivatives data available yet'
+      });
+    }
+    
+    res.json(derivatives);
+  } catch (error) {
+    console.error('Error fetching derivatives data:', error);
+    res.status(500).json({ error: 'Failed to fetch derivatives data' });
+  }
+});
+
+// Get on-chain data
+app.get('/api/onchain', async (req, res) => {
+  try {
+    const { getLatestOnchainData } = require('./database');
+    const onchain = await getLatestOnchainData();
+    
+    if (!onchain) {
+      return res.json({
+        bitcoin_metrics: null,
+        ethereum_metrics: null,
+        network_health: null,
+        message: 'No on-chain data available yet'
+      });
+    }
+    
+    res.json(onchain);
+  } catch (error) {
+    console.error('Error fetching on-chain data:', error);
+    res.status(500).json({ error: 'Failed to fetch on-chain data' });
+  }
+});
+
+// Get comprehensive advanced data (all three types)
+app.get('/api/advanced-data', async (req, res) => {
+  try {
+    const { 
+      getLatestMarketSentiment, 
+      getLatestDerivativesData, 
+      getLatestOnchainData 
+    } = require('./database');
+    
+    const [marketSentiment, derivatives, onchain] = await Promise.all([
+      getLatestMarketSentiment(),
+      getLatestDerivativesData(),
+      getLatestOnchainData()
+    ]);
+    
+    res.json({
+      marketSentiment,
+      derivatives,
+      onchain,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching advanced data:', error);
+    res.status(500).json({ error: 'Failed to fetch advanced data' });
+  }
+});
+
+// Manual trigger for advanced data collection (for testing)
+app.post('/api/collect-advanced-data', async (req, res) => {
+  try {
+    const AdvancedDataCollector = require('./services/advancedDataCollector');
+    const advancedCollector = new AdvancedDataCollector();
+    
+    console.log('🚀 Manual trigger: Starting advanced data collection...');
+    await advancedCollector.collectAllAdvancedData();
+    
+    res.json({ 
+      success: true, 
+      message: 'Advanced data collection completed',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error in manual advanced data collection:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to collect advanced data',
+      details: error.message
+    });
   }
 });
 

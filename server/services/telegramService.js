@@ -7,6 +7,11 @@ class TelegramService {
     this.isConfigured = false;
     this.chatIds = new Set();
     this.subscribers = new Map(); // Store user info with chat IDs
+    
+    // Rate limiting for webhook setup
+    this.lastWebhookSetup = 0;
+    this.webhookSetupCooldown = 60000; // 1 minute cooldown
+    
     this.initBot();
   }
 
@@ -27,9 +32,11 @@ class TelegramService {
       console.log(`📱 Loaded ${this.chatIds.size} Telegram chat IDs`);
     }
 
-    // Set up webhook if webhook URL is provided
+    // Set up webhook if webhook URL is provided (with delay to avoid rate limits)
     if (this.webhookUrl) {
-      this.setupWebhook();
+      setTimeout(() => {
+        this.setupWebhook();
+      }, 5000); // 5 second delay
     }
   }
 
@@ -38,22 +45,39 @@ class TelegramService {
       return;
     }
 
+    // Check rate limiting
+    const now = Date.now();
+    if (now - this.lastWebhookSetup < this.webhookSetupCooldown) {
+      console.log('⏳ Telegram webhook setup rate limited, skipping...');
+      return;
+    }
+
     try {
+      console.log('🔗 Setting up Telegram webhook...');
       const response = await axios.post(
         `https://api.telegram.org/bot${this.botToken}/setWebhook`,
         {
           url: `${this.webhookUrl}/api/telegram/webhook`,
           allowed_updates: ['message', 'callback_query']
+        },
+        {
+          timeout: 10000 // 10 second timeout
         }
       );
 
       if (response.data.ok) {
         console.log('✅ Telegram webhook set successfully');
+        this.lastWebhookSetup = now;
       } else {
-        console.log('⚠️ Failed to set Telegram webhook');
+        console.log('⚠️ Failed to set Telegram webhook:', response.data.description);
       }
     } catch (error) {
-      console.error('❌ Error setting Telegram webhook:', error.message);
+      if (error.response && error.response.status === 429) {
+        console.log('⏳ Telegram webhook setup rate limited, will retry later');
+        this.lastWebhookSetup = now; // Update timestamp to respect rate limit
+      } else {
+        console.error('❌ Error setting Telegram webhook:', error.message);
+      }
     }
   }
 

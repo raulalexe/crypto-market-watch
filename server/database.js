@@ -335,6 +335,48 @@ const initDatabase = async () => {
       )
     `);
     
+    // Market Sentiment Data
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS market_sentiment (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        sentiment_type VARCHAR(50) NOT NULL,
+        value DECIMAL,
+        classification VARCHAR(50),
+        metadata TEXT,
+        source VARCHAR(100)
+      )
+    `);
+    
+    // Derivatives Data
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS derivatives_data (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        asset VARCHAR(10) NOT NULL,
+        derivative_type VARCHAR(20) NOT NULL,
+        open_interest DECIMAL,
+        volume_24h DECIMAL,
+        funding_rate DECIMAL,
+        long_short_ratio DECIMAL,
+        metadata TEXT,
+        source VARCHAR(100)
+      )
+    `);
+    
+    // On-Chain Data
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS onchain_data (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        blockchain VARCHAR(20) NOT NULL,
+        metric_type VARCHAR(50) NOT NULL,
+        value DECIMAL,
+        metadata TEXT,
+        source VARCHAR(100)
+      )
+    `);
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS contact_messages (
         id SERIAL PRIMARY KEY,
@@ -1391,6 +1433,120 @@ const unsubscribeFromEmailNotifications = (email, token) => {
   });
 };
 
+// Market Sentiment Functions
+const insertMarketSentiment = (sentimentType, value, classification = null, metadata = {}, source = 'Unknown') => {
+  return new Promise((resolve, reject) => {
+    const metadataStr = JSON.stringify(metadata);
+    
+    dbAdapter.run(
+      'INSERT INTO market_sentiment (sentiment_type, value, classification, metadata, source) VALUES ($1, $2, $3, $4, $5)',
+      [sentimentType, value, classification, metadataStr, source]
+    ).then(result => resolve(result.lastID))
+     .catch(reject);
+  });
+};
+
+const getLatestMarketSentiment = (sentimentType = null) => {
+  return new Promise((resolve, reject) => {
+    let query, params;
+    
+    if (sentimentType) {
+      query = 'SELECT * FROM market_sentiment WHERE sentiment_type = $1 ORDER BY timestamp DESC LIMIT 1';
+      params = [sentimentType];
+    } else {
+      query = 'SELECT * FROM market_sentiment ORDER BY timestamp DESC LIMIT 1';
+      params = [];
+    }
+    
+    dbAdapter.get(query, params)
+      .then(row => {
+        if (row && row.metadata) {
+          row.metadata = JSON.parse(row.metadata);
+        }
+        resolve(row);
+      })
+      .catch(reject);
+  });
+};
+
+// Derivatives Data Functions
+const insertDerivativesData = (asset, derivativeType, openInterest = null, volume24h = null, fundingRate = null, longShortRatio = null, metadata = {}, source = 'Unknown') => {
+  return new Promise((resolve, reject) => {
+    const metadataStr = JSON.stringify(metadata);
+    
+    dbAdapter.run(
+      'INSERT INTO derivatives_data (asset, derivative_type, open_interest, volume_24h, funding_rate, long_short_ratio, metadata, source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+      [asset, derivativeType, openInterest, volume24h, fundingRate, longShortRatio, metadataStr, source]
+    ).then(result => resolve(result.lastID))
+     .catch(reject);
+  });
+};
+
+const getLatestDerivativesData = (asset = null, derivativeType = null) => {
+  return new Promise((resolve, reject) => {
+    let query, params;
+    
+    if (asset && derivativeType) {
+      query = 'SELECT * FROM derivatives_data WHERE asset = $1 AND derivative_type = $2 ORDER BY timestamp DESC LIMIT 1';
+      params = [asset, derivativeType];
+    } else if (asset) {
+      query = 'SELECT * FROM derivatives_data WHERE asset = $1 ORDER BY timestamp DESC LIMIT 1';
+      params = [asset];
+    } else {
+      query = 'SELECT * FROM derivatives_data ORDER BY timestamp DESC LIMIT 1';
+      params = [];
+    }
+    
+    dbAdapter.get(query, params)
+      .then(row => {
+        if (row && row.metadata) {
+          row.metadata = JSON.parse(row.metadata);
+        }
+        resolve(row);
+      })
+      .catch(reject);
+  });
+};
+
+// On-Chain Data Functions
+const insertOnchainData = (blockchain, metricType, value, metadata = {}, source = 'Unknown') => {
+  return new Promise((resolve, reject) => {
+    const metadataStr = JSON.stringify(metadata);
+    
+    dbAdapter.run(
+      'INSERT INTO onchain_data (blockchain, metric_type, value, metadata, source) VALUES ($1, $2, $3, $4, $5)',
+      [blockchain, metricType, value, metadataStr, source]
+    ).then(result => resolve(result.lastID))
+     .catch(reject);
+  });
+};
+
+const getLatestOnchainData = (blockchain = null, metricType = null) => {
+  return new Promise((resolve, reject) => {
+    let query, params;
+    
+    if (blockchain && metricType) {
+      query = 'SELECT * FROM onchain_data WHERE blockchain = $1 AND metric_type = $2 ORDER BY timestamp DESC LIMIT 1';
+      params = [blockchain, metricType];
+    } else if (blockchain) {
+      query = 'SELECT * FROM onchain_data WHERE blockchain = $1 ORDER BY timestamp DESC LIMIT 1';
+      params = [blockchain];
+    } else {
+      query = 'SELECT * FROM onchain_data ORDER BY timestamp DESC LIMIT 1';
+      params = [];
+    }
+    
+    dbAdapter.get(query, params)
+      .then(row => {
+        if (row && row.metadata) {
+          row.metadata = JSON.parse(row.metadata);
+        }
+        resolve(row);
+      })
+      .catch(reject);
+  });
+};
+
 module.exports = {
   db,
   dbAdapter,
@@ -1405,6 +1561,12 @@ module.exports = {
   getLatestCryptoPrice,
   insertFearGreedIndex,
   getLatestFearGreedIndex,
+  insertMarketSentiment,
+  getLatestMarketSentiment,
+  insertDerivativesData,
+  getLatestDerivativesData,
+  insertOnchainData,
+  getLatestOnchainData,
   insertTrendingNarrative,
   getTrendingNarratives,
   getLayer1Data,

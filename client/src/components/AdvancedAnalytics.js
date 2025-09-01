@@ -30,6 +30,9 @@ const AdvancedAnalytics = () => {
   const [chartType, setChartType] = useState('candlestick');
   const [marketMetrics, setMarketMetrics] = useState(null);
   const [advancedMetrics, setAdvancedMetrics] = useState(null);
+  const [marketSentiment, setMarketSentiment] = useState(null);
+  const [derivativesData, setDerivativesData] = useState(null);
+  const [onchainData, setOnchainData] = useState(null);
 
   const timeframes = [
     { value: '1', label: '1 Minute' },
@@ -65,11 +68,14 @@ const AdvancedAnalytics = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const [marketData, backtestData, correlationData, advancedMetricsData] = await Promise.all([
+      const [marketData, backtestData, correlationData, advancedMetricsData, sentimentData, derivatives, onchain] = await Promise.all([
         fetchMarketData(),
         fetchBacktestData(),
         fetchCorrelationData(),
-        fetchAdvancedMetrics()
+        fetchAdvancedMetrics(),
+        fetchMarketSentiment(),
+        fetchDerivativesData(),
+        fetchOnchainData()
       ]);
 
       setAnalyticsData({
@@ -82,6 +88,9 @@ const AdvancedAnalytics = () => {
       const metrics = calculateMarketMetrics(marketData);
       setMarketMetrics(metrics);
       setAdvancedMetrics(advancedMetricsData);
+      setMarketSentiment(sentimentData);
+      setDerivativesData(derivatives);
+      setOnchainData(onchain);
 
     } catch (error) {
       console.error('Error fetching analytics data:', error);
@@ -126,6 +135,36 @@ const AdvancedAnalytics = () => {
       return response.data;
     } catch (error) {
       console.error('Error fetching advanced metrics:', error);
+      return null;
+    }
+  };
+
+  const fetchMarketSentiment = async () => {
+    try {
+      const response = await axios.get('/api/market-sentiment');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching market sentiment:', error);
+      return null;
+    }
+  };
+
+  const fetchDerivativesData = async () => {
+    try {
+      const response = await axios.get('/api/derivatives');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching derivatives data:', error);
+      return null;
+    }
+  };
+
+  const fetchOnchainData = async () => {
+    try {
+      const response = await axios.get('/api/onchain');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching on-chain data:', error);
       return null;
     }
   };
@@ -590,6 +629,202 @@ const AdvancedAnalytics = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* New Advanced Data Sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          {/* Market Sentiment Section */}
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <Activity className="w-6 h-6 text-crypto-blue mr-2" />
+              Market Sentiment
+            </h3>
+            {marketSentiment ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Fear & Greed Index</span>
+                  <span className={`font-bold text-lg ${
+                    marketSentiment.value > 75 ? 'text-crypto-red' :
+                    marketSentiment.value > 55 ? 'text-crypto-yellow' :
+                    marketSentiment.value > 25 ? 'text-crypto-green' : 'text-crypto-blue'
+                  }`}>
+                    {marketSentiment.value || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Classification</span>
+                  <span className="text-white font-medium">
+                    {marketSentiment.classification || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Source</span>
+                  <span className="text-slate-300 text-sm">
+                    {marketSentiment.source || 'N/A'}
+                  </span>
+                </div>
+                {marketSentiment.metadata && (
+                  <div className="pt-2 border-t border-slate-700">
+                    <p className="text-xs text-slate-400">
+                      Last updated: {new Date(marketSentiment.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Activity className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-400">No sentiment data available</p>
+                <p className="text-slate-500 text-sm mt-2">Data will appear after collection</p>
+              </div>
+            )}
+          </div>
+
+          {/* Derivatives Data Section */}
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <BarChart3 className="w-6 h-6 text-crypto-green mr-2" />
+              Derivatives
+            </h3>
+            {derivativesData ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Asset</span>
+                  <span className="text-white font-medium">
+                    {derivativesData.asset || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Type</span>
+                  <span className="text-white font-medium">
+                    {derivativesData.derivative_type || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Open Interest</span>
+                  <span className="text-white font-medium">
+                    {derivativesData.open_interest ? 
+                      `$${(derivativesData.open_interest / 1000000).toFixed(2)}M` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Funding Rate</span>
+                  <span className={`font-medium ${
+                    parseFloat(derivativesData.funding_rate || 0) > 0 ? 'text-crypto-red' : 'text-crypto-green'
+                  }`}>
+                    {derivativesData.funding_rate ? 
+                      `${(derivativesData.funding_rate * 100).toFixed(4)}%` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">24h Volume</span>
+                  <span className="text-white font-medium">
+                    {derivativesData.volume_24h ? 
+                      `$${(derivativesData.volume_24h / 1000000).toFixed(2)}M` : 'N/A'}
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-slate-700">
+                  <p className="text-xs text-slate-400">
+                    Source: {derivativesData.source || 'N/A'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <BarChart3 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-400">No derivatives data available</p>
+                <p className="text-slate-500 text-sm mt-2">Data will appear after collection</p>
+              </div>
+            )}
+          </div>
+
+          {/* On-Chain Data Section */}
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <Zap className="w-6 h-6 text-crypto-yellow mr-2" />
+              On-Chain Metrics
+            </h3>
+            {onchainData ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Blockchain</span>
+                  <span className="text-white font-medium">
+                    {onchainData.blockchain || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Metric Type</span>
+                  <span className="text-white font-medium">
+                    {onchainData.metric_type || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Value</span>
+                  <span className="text-white font-medium">
+                    {onchainData.value ? 
+                      (onchainData.metric_type === 'hash_rate' ? 
+                        `${(onchainData.value / 1e18).toFixed(2)} EH/s` :
+                        onchainData.metric_type === 'total_supply' ?
+                        `${onchainData.value.toFixed(2)} ETH` :
+                        onchainData.metric_type === 'gas_price' ?
+                        `${onchainData.value} Gwei` :
+                        onchainData.value.toLocaleString()
+                      ) : 'N/A'}
+                  </span>
+                </div>
+                {onchainData.metadata && (
+                  <div className="pt-2 border-t border-slate-700">
+                    <p className="text-xs text-slate-400">
+                      Source: {onchainData.source || 'N/A'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Last updated: {new Date(onchainData.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Zap className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-400">No on-chain data available</p>
+                <p className="text-slate-500 text-sm mt-2">Data will appear after collection</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Manual Data Collection Trigger */}
+        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-8">
+          <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+            <RefreshCw className="w-6 h-6 text-crypto-blue mr-2" />
+            Data Collection
+          </h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-300 mb-2">Manually trigger advanced data collection</p>
+              <p className="text-slate-400 text-sm">
+                This will collect market sentiment, derivatives, and on-chain data from external APIs
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  setLoading(true);
+                  await axios.post('/api/collect-advanced-data');
+                  await fetchAnalyticsData(); // Refresh data
+                } catch (error) {
+                  console.error('Error triggering data collection:', error);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              className="bg-crypto-blue hover:bg-crypto-blue-dark text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Collecting...' : 'Collect Data'}
+            </button>
           </div>
         </div>
       </div>
