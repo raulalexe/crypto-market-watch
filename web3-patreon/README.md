@@ -1,22 +1,39 @@
 # Web3 Patreon MVP
 
-A decentralized creator support platform built with Next.js, RainbowKit, and Web3 technologies.
+A decentralized creator support platform built with Next.js, RainbowKit, and Web3 technologies on Base network.
+
+## Why Base Network?
+
+We chose Base for our Web3 Patreon MVP because:
+
+- **Low Fees**: ~$0.01-0.05 per transaction (perfect for micro-payments)
+- **EVM Compatible**: All existing Ethereum tooling works seamlessly
+- **Stablecoin Support**: Native USDC support with excellent liquidity
+- **Fast Transactions**: Quick confirmation times for better UX
+- **Coinbase Backing**: Strong institutional support and user adoption
+- **Growing Ecosystem**: Rapidly expanding DeFi and creator economy projects
 
 ## Features
 
-### Phase 1 MVP (Current)
+### Phase 1 MVP (Completed)
 - ✅ Wallet connection with RainbowKit
 - ✅ Creator onboarding flow
 - ✅ Profile creation and management
 - ✅ Creator dashboard
 - ✅ Modern, responsive UI with Tailwind CSS
 
+### Phase 2 MVP (In Progress)
+- 🔄 Smart contracts for support tiers and payments
+- 🔄 Creator support tier management
+- 🔄 One-time tips with stablecoins (USDC/DAI)
+- 🔄 Recurring subscriptions
+- 🔄 Base network integration
+
 ### Planned Features
-- Creator support tiers and subscriptions
-- Direct crypto payments
 - Exclusive content access
 - Fan engagement features
 - Analytics and insights
+- Mobile app
 
 ## Getting Started
 
@@ -60,8 +77,11 @@ npm run dev
 - **Frontend**: Next.js 14, React, TypeScript
 - **Styling**: Tailwind CSS
 - **Web3**: RainbowKit, Wagmi, Viem
+- **Blockchain**: Base Network (EVM-compatible L2)
+- **Smart Contracts**: Solidity, OpenZeppelin
 - **Wallet Connection**: WalletConnect v2
 - **State Management**: TanStack Query
+- **Stablecoins**: USDC, DAI on Base
 
 ## Project Structure
 

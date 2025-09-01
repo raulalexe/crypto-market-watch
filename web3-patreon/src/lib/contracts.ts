@@ -38,11 +38,11 @@ export const CREATOR_SUPPORT_ABI = [
 // Contract address (will be set after deployment)
 export const CREATOR_SUPPORT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
 
-// Supported stablecoin addresses on Polygon
+// Supported stablecoin addresses on Base
 export const SUPPORTED_TOKENS = {
-  USDC: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-  DAI: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
-  USDT: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+  USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
+  DAI: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb", // DAI on Base
+  USDT: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Using USDC for now
 } as const;
 
 // Token metadata
