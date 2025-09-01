@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
+import { SupportTierManager } from './SupportTierManager';
 
 interface CreatorProfile {
   name: string;
@@ -181,6 +182,9 @@ export function CreatorDashboard() {
         </div>
       </div>
 
+      {/* Support Tiers Management */}
+      <SupportTierManager onTierCreated={() => window.location.reload()} />
+
       {/* Quick Actions */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
@@ -194,14 +198,17 @@ export function CreatorDashboard() {
             </div>
           </button>
 
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
+          <a
+            href={`/creator/${address}`}
+            className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
+          >
             <div className="text-center">
               <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
               </svg>
-              <p className="text-sm font-medium text-gray-700">Set Tiers</p>
+              <p className="text-sm font-medium text-gray-700">View Public Profile</p>
             </div>
-          </button>
+          </a>
 
           <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
             <div className="text-center">

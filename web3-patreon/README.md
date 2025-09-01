@@ -22,12 +22,14 @@ We chose Base for our Web3 Patreon MVP because:
 - ✅ Creator dashboard
 - ✅ Modern, responsive UI with Tailwind CSS
 
-### Phase 2 MVP (In Progress)
-- 🔄 Smart contracts for support tiers and payments
-- 🔄 Creator support tier management
-- 🔄 One-time tips with stablecoins (USDC/DAI)
-- 🔄 Recurring subscriptions
-- 🔄 Base network integration
+### Phase 2 MVP (Completed)
+- ✅ Smart contracts for support tiers and payments
+- ✅ Creator support tier management
+- ✅ One-time tips with stablecoins (USDC/DAI)
+- ✅ Recurring subscriptions
+- ✅ Base network integration
+- ✅ Individual creator pages
+- ✅ Support modal with tipping and subscription
 
 ### Planned Features
 - Exclusive content access
@@ -114,8 +116,10 @@ src/
 
 ### For Fans
 1. Browse creators on the creators page
-2. Connect your wallet to support creators
-3. Send crypto directly to creators (coming in Phase 2)
+2. Click "View Profile" to visit a creator's page
+3. Connect your wallet to support creators
+4. Send one-time tips or subscribe to support tiers
+5. Support creators with USDC/DAI on Base network
 
 ## Development
 
