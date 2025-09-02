@@ -86,9 +86,20 @@ app.use((req, res, next) => {
   }
 });
 
-// Initialize database
+// Initialize database and run migrations
 initDatabase().then(async () => {
   console.log('Database initialized successfully');
+  
+  // Run database migrations
+  try {
+    console.log('🚀 Running database migrations...');
+    const migrateDatabase = require('../scripts/migrate-database');
+    await migrateDatabase();
+    console.log('✅ Database migrations completed');
+  } catch (error) {
+    console.error('❌ Database migration failed:', error);
+    // Continue startup even if migrations fail
+  }
   
   // Database wiping functionality removed for security reasons
   // Use manual database management scripts if needed
