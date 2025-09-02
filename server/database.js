@@ -228,14 +228,28 @@ const initDatabase = async () => {
       )
     `);
     
-    // Ensure the type column exists (for existing databases)
-    try {
-      await client.query(`
-        ALTER TABLE alerts ADD COLUMN IF NOT EXISTS type VARCHAR(50)
-      `);
-    } catch (error) {
-      // Column might already exist, ignore error
-      console.log('ℹ️ Type column check completed');
+    // Ensure all required columns exist (for existing databases)
+    const alertsColumns = [
+      { name: 'type', type: 'VARCHAR(50)' },
+      { name: 'metric', type: 'VARCHAR(50)' },
+      { name: 'severity', type: 'VARCHAR(20)' },
+      { name: 'message', type: 'TEXT' },
+      { name: 'value', type: 'TEXT' },
+      { name: 'eventId', type: 'INTEGER' },
+      { name: 'eventDate', type: 'TEXT' },
+      { name: 'eventTitle', type: 'TEXT' },
+      { name: 'eventCategory', type: 'TEXT' }
+    ];
+    
+    for (const column of alertsColumns) {
+      try {
+        await client.query(`
+          ALTER TABLE alerts ADD COLUMN IF NOT EXISTS ${column.name} ${column.type}
+        `);
+      } catch (error) {
+        // Column might already exist, ignore error
+        console.log(`ℹ️ Column ${column.name} check completed`);
+      }
     }
     
     await client.query(`
