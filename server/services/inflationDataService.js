@@ -415,17 +415,20 @@ class InflationDataService {
   // Send inflation notifications
   async sendInflationNotifications(alert) {
     try {
-      // Send email notifications
-      const { sendEmailNotification } = require('./emailService');
-      await sendEmailNotification('inflation_alert', alert);
+      // Send email notifications (requires user email - will be handled by alert system)
+      console.log('📧 Inflation alert created - email notifications will be sent by alert system');
       
       // Send push notifications
-      const { sendPushNotification } = require('./pushService');
-      await sendPushNotification('Inflation Alert', alert.message);
+      try {
+        const { sendPushNotification } = require('./pushService');
+        await sendPushNotification('Inflation Alert', alert.message);
+      } catch (pushError) {
+        console.log('⚠️ Push notification service not available:', pushError.message);
+      }
       
-      console.log('Inflation notifications sent');
+      console.log('✅ Inflation notifications processed');
     } catch (error) {
-      console.error('Error sending inflation notifications:', error);
+      console.error('❌ Error sending inflation notifications:', error);
     }
   }
 

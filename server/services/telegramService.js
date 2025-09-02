@@ -8,9 +8,10 @@ class TelegramService {
     this.chatIds = new Set();
     this.subscribers = new Map(); // Store user info with chat IDs
     
-    // Rate limiting for webhook setup
+    // Rate limiting and webhook state management
     this.lastWebhookSetup = 0;
     this.webhookSetupCooldown = 60000; // 1 minute cooldown
+    this.webhookSetupAttempted = false; // Prevent multiple automatic setups
     
     this.initBot();
   }
@@ -32,16 +33,18 @@ class TelegramService {
       console.log(`📱 Loaded ${this.chatIds.size} Telegram chat IDs`);
     }
 
-    // Set up webhook if webhook URL is provided (with delay to avoid rate limits)
-    if (this.webhookUrl) {
-      setTimeout(() => {
-        this.setupWebhook();
-      }, 5000); // 5 second delay
-    }
+    // Note: Webhook setup is now handled explicitly by the server startup
+    // to prevent multiple automatic setup attempts
   }
 
   async setupWebhook() {
     if (!this.isConfigured || !this.webhookUrl) {
+      return;
+    }
+
+    // Check if webhook setup has already been attempted
+    if (this.webhookSetupAttempted) {
+      console.log('ℹ️ Telegram webhook setup already attempted, skipping...');
       return;
     }
 
@@ -68,15 +71,19 @@ class TelegramService {
       if (response.data.ok) {
         console.log('✅ Telegram webhook set successfully');
         this.lastWebhookSetup = now;
+        this.webhookSetupAttempted = true; // Mark as attempted
       } else {
         console.log('⚠️ Failed to set Telegram webhook:', response.data.description);
+        this.webhookSetupAttempted = true; // Mark as attempted even on failure
       }
     } catch (error) {
       if (error.response && error.response.status === 429) {
         console.log('⏳ Telegram webhook setup rate limited, will retry later');
         this.lastWebhookSetup = now; // Update timestamp to respect rate limit
+        this.webhookSetupAttempted = true; // Mark as attempted even on rate limit
       } else {
         console.error('❌ Error setting Telegram webhook:', error.message);
+        this.webhookSetupAttempted = true; // Mark as attempted even on error
       }
     }
   }
@@ -184,6 +191,12 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
       default:
         return '⚪';
     }
+  }
+
+  // Reset webhook setup flag to allow manual setup
+  resetWebhookSetupFlag() {
+    this.webhookSetupAttempted = false;
+    console.log('🔄 Telegram webhook setup flag reset');
   }
 
   async addChatId(chatId) {

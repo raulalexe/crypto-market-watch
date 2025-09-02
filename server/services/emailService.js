@@ -1,15 +1,25 @@
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 class EmailService {
   constructor() {
     this.transporter = null;
     this.isConfigured = false;
+    this.emailProvider = null;
     this.initTransporter();
   }
 
   initTransporter() {
     try {
-      // Check if email configuration is available
+      // Check for Brevo configuration first
+      if (process.env.BREVO_API_KEY) {
+        this.emailProvider = 'brevo';
+        this.isConfigured = true;
+        console.log('✅ Email service configured with Brevo API');
+        return;
+      }
+
+      // Check for traditional SMTP configuration
       const emailConfig = {
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT || 587,
@@ -20,13 +30,14 @@ class EmailService {
         }
       };
 
-      // Only configure if we have the required settings
+      // Only configure if we have the required SMTP settings
       if (emailConfig.host && emailConfig.auth.user && emailConfig.auth.pass) {
         this.transporter = nodemailer.createTransporter(emailConfig);
+        this.emailProvider = 'smtp';
         this.isConfigured = true;
-        console.log('✅ Email service configured successfully');
+        console.log('✅ Email service configured with SMTP');
       } else {
-        console.log('⚠️ Email service not configured - missing SMTP settings');
+        console.log('⚠️ Email service not configured - missing email settings');
         this.isConfigured = false;
       }
     } catch (error) {
@@ -45,6 +56,66 @@ class EmailService {
       const severityEmoji = this.getSeverityEmoji(alert.severity);
       const alertType = alert.type.replace(/_/g, ' ');
       
+      if (this.emailProvider === 'brevo') {
+        return await this.sendEmailViaBrevo(userEmail, alert, severityEmoji, alertType);
+      } else if (this.emailProvider === 'smtp') {
+        return await this.sendEmailViaSMTP(userEmail, alert, severityEmoji, alertType);
+      } else {
+        console.log('⚠️ Unknown email provider, skipping email send');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error sending alert email:', error);
+      return false;
+    }
+  }
+
+  async sendEmailViaBrevo(userEmail, alert, severityEmoji, alertType) {
+    try {
+      const emailData = {
+        sender: {
+          name: 'Crypto Market Monitor',
+          email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        },
+        to: [
+          {
+            email: userEmail,
+            name: userEmail.split('@')[0] // Use part before @ as name
+          }
+        ],
+        subject: `${severityEmoji} Market Alert: ${alertType}`,
+        htmlContent: this.generateAlertEmailHTML(alert),
+        textContent: this.generateAlertEmailText(alert)
+      };
+
+      const response = await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        emailData,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'api-key': process.env.BREVO_API_KEY
+          },
+          timeout: 30000
+        }
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        console.log(`✅ Brevo email sent to ${userEmail}: ${response.data.messageId || 'success'}`);
+        return true;
+      } else {
+        console.error('❌ Brevo API error:', response.status, response.data);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error sending Brevo email:', error.message);
+      return false;
+    }
+  }
+
+  async sendEmailViaSMTP(userEmail, alert, severityEmoji, alertType) {
+    try {
       const emailContent = {
         from: `"Crypto Market Monitor" <${process.env.SMTP_USER}>`,
         to: userEmail,
@@ -54,10 +125,10 @@ class EmailService {
       };
 
       const result = await this.transporter.sendMail(emailContent);
-      console.log(`✅ Alert email sent to ${userEmail}: ${result.messageId}`);
+      console.log(`✅ SMTP email sent to ${userEmail}: ${result.messageId}`);
       return true;
     } catch (error) {
-      console.error('❌ Error sending alert email:', error);
+      console.error('❌ Error sending SMTP email:', error);
       return false;
     }
   }
@@ -70,6 +141,9 @@ class EmailService {
 
     const results = { sent: 0, failed: 0 };
 
+    // Add rate limiting for Brevo API (max 10 requests per second)
+    const rateLimitDelay = this.emailProvider === 'brevo' ? 100 : 0;
+
     for (const user of users) {
       if (user.emailNotifications && user.email) {
         const success = await this.sendAlertEmail(user.email, alert, user);
@@ -78,10 +152,15 @@ class EmailService {
         } else {
           results.failed++;
         }
+        
+        // Rate limiting delay for Brevo
+        if (rateLimitDelay > 0) {
+          await new Promise(resolve => setTimeout(resolve, rateLimitDelay));
+        }
       }
     }
 
-    console.log(`📧 Bulk email results: ${results.sent} sent, ${results.failed} failed`);
+    console.log(`📧 Bulk email results: ${results.sent} sent, ${results.failed} failed (${this.emailProvider})`);
     return results;
   }
 
@@ -188,14 +267,44 @@ Crypto Market Monitor
     }
   }
 
+  // Compatibility method for other services
+  async sendEmailNotification(type, alert, userEmail = null) {
+    if (!userEmail) {
+      console.log('⚠️ No user email provided for email notification');
+      return false;
+    }
+    
+    return await this.sendAlertEmail(userEmail, alert);
+  }
+
   async testConnection() {
     if (!this.isConfigured) {
       return { success: false, error: 'Email service not configured' };
     }
 
     try {
-      await this.transporter.verify();
-      return { success: true };
+      if (this.emailProvider === 'brevo') {
+        // Test Brevo API connection by making a simple request
+        const response = await axios.get('https://api.brevo.com/v3/account', {
+          headers: {
+            'Accept': 'application/json',
+            'api-key': process.env.BREVO_API_KEY
+          },
+          timeout: 10000
+        });
+        
+        if (response.status === 200) {
+          return { success: true, provider: 'Brevo API' };
+        } else {
+          return { success: false, error: `Brevo API returned status ${response.status}` };
+        }
+      } else if (this.emailProvider === 'smtp') {
+        // Test SMTP connection
+        await this.transporter.verify();
+        return { success: true, provider: 'SMTP' };
+      } else {
+        return { success: false, error: 'Unknown email provider' };
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
