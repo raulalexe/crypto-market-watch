@@ -25,6 +25,7 @@ const migrations = [
       ALTER TABLE alerts ADD COLUMN IF NOT EXISTS eventDate TEXT;
       ALTER TABLE alerts ADD COLUMN IF NOT EXISTS eventTitle TEXT;
       ALTER TABLE alerts ADD COLUMN IF NOT EXISTS eventCategory TEXT;
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     `
   },
   {
@@ -94,6 +95,36 @@ const migrations = [
     description: 'Add missing columns to market_data table',
     sql: `
       ALTER TABLE market_data ADD COLUMN IF NOT EXISTS source VARCHAR(100);
+    `
+  },
+  {
+    name: 'create_alerts_table',
+    description: 'Create alerts table with proper schema',
+    sql: `
+      CREATE TABLE IF NOT EXISTS alerts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        alert_type VARCHAR(50),
+        message TEXT,
+        is_acknowledged BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        type VARCHAR(50),
+        metric VARCHAR(50),
+        severity VARCHAR(20),
+        value TEXT,
+        eventId INTEGER,
+        eventDate TEXT,
+        eventTitle TEXT,
+        eventCategory TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_alerts_timestamp_index',
+    description: 'Create index on alerts timestamp column for performance',
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts(timestamp)
     `
   }
 ];

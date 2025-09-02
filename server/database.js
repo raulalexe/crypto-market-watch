@@ -215,10 +215,14 @@ const initDatabase = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS alerts (
         id SERIAL PRIMARY KEY,
-        type VARCHAR(50),
+        user_id INTEGER,
+        alert_type VARCHAR(50),
         message TEXT,
-        severity VARCHAR(20),
+        is_acknowledged BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        type VARCHAR(50),
         metric VARCHAR(50),
+        severity VARCHAR(20),
         value TEXT,
         eventId INTEGER,
         eventDate TEXT,
@@ -230,6 +234,10 @@ const initDatabase = async () => {
     
     // Ensure all required columns exist (for existing databases)
     const alertsColumns = [
+      { name: 'user_id', type: 'INTEGER' },
+      { name: 'alert_type', type: 'VARCHAR(50)' },
+      { name: 'is_acknowledged', type: 'BOOLEAN DEFAULT FALSE' },
+      { name: 'created_at', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' },
       { name: 'type', type: 'VARCHAR(50)' },
       { name: 'metric', type: 'VARCHAR(50)' },
       { name: 'severity', type: 'VARCHAR(20)' },
@@ -238,7 +246,8 @@ const initDatabase = async () => {
       { name: 'eventId', type: 'INTEGER' },
       { name: 'eventDate', type: 'TEXT' },
       { name: 'eventTitle', type: 'TEXT' },
-      { name: 'eventCategory', type: 'TEXT' }
+      { name: 'eventCategory', type: 'TEXT' },
+      { name: 'timestamp', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' }
     ];
     
     for (const column of alertsColumns) {
@@ -250,6 +259,16 @@ const initDatabase = async () => {
         // Column might already exist, ignore error
         console.log(`ℹ️ Column ${column.name} check completed`);
       }
+    }
+    
+    // Create index on timestamp column for better performance
+    try {
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts(timestamp)
+      `);
+      console.log('✅ Alerts timestamp index created/verified');
+    } catch (error) {
+      console.log(`ℹ️ Alerts timestamp index: ${error.message}`);
     }
     
     await client.query(`
