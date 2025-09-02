@@ -228,6 +228,16 @@ const initDatabase = async () => {
       )
     `);
     
+    // Ensure the type column exists (for existing databases)
+    try {
+      await client.query(`
+        ALTER TABLE alerts ADD COLUMN IF NOT EXISTS type VARCHAR(50)
+      `);
+    } catch (error) {
+      // Column might already exist, ignore error
+      console.log('ℹ️ Type column check completed');
+    }
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS error_logs (
         id SERIAL PRIMARY KEY,

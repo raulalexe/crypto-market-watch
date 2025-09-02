@@ -40,10 +40,18 @@ class InflationDataService {
     }
   }
 
+
+
   // Fetch PCE data from BEA API with retry logic
   async fetchPCEData() {
     const maxRetries = 3;
     const retryDelay = 2000; // 2 seconds
+    
+    // Check if we have the required API key
+    if (!this.beaApiKey) {
+      console.log('⚠️ BEA API key not configured, skipping PCE data collection');
+      return null;
+    }
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -60,7 +68,7 @@ class InflationDataService {
             Year: new Date().getFullYear().toString(),
             ResultFormat: 'JSON'
           },
-          timeout: 45000, // Increased timeout to 45 seconds
+          timeout: 60000, // Increased timeout to 60 seconds
           headers: {
             'User-Agent': 'CryptoMarketWatch/1.0',
             'Accept': 'application/json'
@@ -149,10 +157,18 @@ class InflationDataService {
     return pceData;
   }
 
+
+
   // Fetch CPI data from BLS API with retry logic
   async fetchCPIData() {
     const maxRetries = 3;
     const retryDelay = 2000; // 2 seconds
+    
+    // Check if we have the required API key
+    if (!this.blsApiKey) {
+      console.log('⚠️ BLS API key not configured, skipping CPI data collection');
+      return null;
+    }
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -164,7 +180,7 @@ class InflationDataService {
           endyear: new Date().getFullYear().toString(),
           registrationkey: this.blsApiKey
         }, {
-          timeout: 45000, // Increased timeout to 45 seconds
+          timeout: 60000, // Increased timeout to 60 seconds
           headers: {
             'User-Agent': 'CryptoMarketWatch/1.0',
             'Accept': 'application/json'
@@ -821,28 +837,9 @@ class InflationDataService {
       };
     } catch (error) {
       console.error('Error fetching data with analysis:', error.message);
-      // Return fallback data instead of throwing error
-      return {
-        data: {
-          cpi: { cpi: 3.2, cpiYoY: 3.2, coreCPI: 3.8, coreCPIYoY: 3.8, date: new Date().toISOString(), source: 'fallback' },
-          pce: { pce: 2.6, pceYoY: 2.6, corePCE: 2.8, corePCEYoY: 2.8, date: new Date().toISOString(), source: 'fallback' }
-        },
-        expectations: {
-          cpi: { headline: { expected: 3.2 }, core: { expected: 3.8 } },
-          pce: { headline: { expected: 2.6 }, core: { expected: 2.8 } }
-        },
-        analysis: {
-          overallSentiment: 'neutral',
-          marketImpact: {
-            crypto: 'neutral',
-            stocks: 'neutral',
-            bonds: 'neutral',
-            dollar: 'neutral'
-          },
-          description: 'Analysis unavailable due to data fetch errors'
-        },
-        timestamp: new Date().toISOString()
-      };
+      // Return null when data is unavailable
+      console.log('⚠️ Inflation data unavailable due to API failures');
+      return null;
     }
   }
 
@@ -870,50 +867,15 @@ class InflationDataService {
       
       // Check if we have at least one data source
       if (!results.cpi && !results.pce) {
-        console.warn('⚠️ Both CPI and PCE data fetch failed, returning fallback data');
-        // Return fallback data instead of throwing error
-        return {
-          cpi: {
-            cpi: 3.2,
-            cpiYoY: 3.2,
-            coreCPI: 3.8,
-            coreCPIYoY: 3.8,
-            date: new Date().toISOString(),
-            source: 'fallback'
-          },
-          pce: {
-            pce: 2.6,
-            pceYoY: 2.6,
-            corePCE: 2.8,
-            corePCEYoY: 2.8,
-            date: new Date().toISOString(),
-            source: 'fallback'
-          }
-        };
+        console.warn('⚠️ Both CPI and PCE data fetch failed, no data available');
+        return null;
       }
       
       return results;
     } catch (error) {
       console.error('Error fetching latest data:', error);
-      // Return fallback data instead of throwing error
-      return {
-        cpi: {
-          cpi: 3.2,
-          cpiYoY: 3.2,
-          coreCPI: 3.8,
-          coreCPIYoY: 3.8,
-          date: new Date().toISOString(),
-          source: 'fallback'
-        },
-        pce: {
-          pce: 2.6,
-          pceYoY: 2.6,
-          corePCE: 2.8,
-          corePCEYoY: 2.8,
-          date: new Date().toISOString(),
-          source: 'fallback'
-        }
-      };
+      // Return null when data is unavailable
+      return null;
     }
   }
 }

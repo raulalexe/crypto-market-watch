@@ -96,7 +96,7 @@ initDatabase().then(async () => {
   // Create admin user on deploy if environment variables are set
   if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
     try {
-      const { createAdminOnDeploy } = require('./scripts/createAdminOnDeploy');
+      const { createAdminOnDeploy } = require('../scripts/createAdminOnDeploy');
       await createAdminOnDeploy();
     } catch (error) {
       console.log('⚠️  Admin creation failed:', error.message);
