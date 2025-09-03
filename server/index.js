@@ -234,13 +234,24 @@ app.get('/api/crypto-prices', async (req, res) => {
   try {
     const { getCryptoPrices } = require('./database');
     const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-    const prices = {};
+    const prices = [];
     let totalMarketCap = 0;
     
     for (const symbol of cryptoSymbols) {
       const data = await getCryptoPrices(symbol, 1);
       if (data && data.length > 0) {
-        prices[symbol] = data[0];
+        // Convert to array format that frontend expects
+        const cryptoData = {
+          symbol: symbol,
+          name: symbol, // You can add proper names if needed
+          price: parseFloat(data[0].price),
+          volume_24h: parseFloat(data[0].volume_24h),
+          market_cap: parseFloat(data[0].market_cap),
+          change_24h: parseFloat(data[0].change_24h),
+          timestamp: data[0].timestamp
+        };
+        prices.push(cryptoData);
+        
         // Add to total market cap
         if (data[0].market_cap) {
           totalMarketCap += parseFloat(data[0].market_cap);
@@ -248,9 +259,7 @@ app.get('/api/crypto-prices', async (req, res) => {
       }
     }
     
-    // Add total market cap to response
-    prices.totalMarketCap = totalMarketCap;
-    
+    // Return array format that frontend expects
     res.json(prices);
   } catch (error) {
     console.error('Error fetching crypto prices:', error);
@@ -2137,11 +2146,20 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
       (async () => {
         const { getCryptoPrices } = require('./database');
         const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-        const prices = {};
+        const prices = [];
         for (const symbol of cryptoSymbols) {
           const data = await getCryptoPrices(symbol, 1);
           if (data && data.length > 0) {
-            prices[symbol] = data[0];
+            // Convert to array format that frontend expects
+            prices.push({
+              symbol: symbol,
+              name: symbol, // You can add proper names if needed
+              price: parseFloat(data[0].price),
+              volume_24h: parseFloat(data[0].volume_24h),
+              market_cap: parseFloat(data[0].market_cap),
+              change_24h: parseFloat(data[0].change_24h),
+              timestamp: data[0].timestamp
+            });
           }
         }
         return prices;

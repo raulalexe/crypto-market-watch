@@ -1826,6 +1826,9 @@ class DataCollector {
           } catch (error) {
             console.error(`Error collecting data for ${chain.symbol}:`, error.message);
             // Insert with available data only
+            const dominance = (data.marketCap / this.lastCryptoData.totalMarketCap) * 100;
+            const sentiment = data.change24h > 0 ? 'positive' : data.change24h < -5 ? 'negative' : 'neutral';
+            
             await insertLayer1Data(
               chain.symbol.toLowerCase(),
               chain.name,

@@ -444,6 +444,20 @@ const migrations = [
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `
+  },
+  {
+    name: 'fix_layer1_data_constraints',
+    description: 'Add unique constraint to layer1_data table for ON CONFLICT support',
+    sql: `
+      ALTER TABLE layer1_data ADD CONSTRAINT IF NOT EXISTS layer1_data_chain_id_unique UNIQUE (chain_id);
+    `
+  },
+  {
+    name: 'fix_crypto_prices_constraints',
+    description: 'Add unique constraint to crypto_prices table for ON CONFLICT support',
+    sql: `
+      ALTER TABLE crypto_prices ADD CONSTRAINT IF NOT EXISTS crypto_prices_symbol_unique UNIQUE (symbol);
+    `
   }
 ];
 
