@@ -562,6 +562,10 @@ const Settings = ({ setAuthModalOpen }) => {
                     <p className="text-slate-400">Get crypto prices</p>
                   </div>
                   <div>
+                    <p className="text-white font-mono">GET /api/v1/m2-money-supply</p>
+                    <p className="text-slate-400">Get M2 money supply data</p>
+                  </div>
+                  <div>
                     <p className="text-white font-mono">GET /api/v1/analysis</p>
                     <p className="text-slate-400">Get AI analysis</p>
                   </div>

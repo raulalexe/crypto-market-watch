@@ -113,7 +113,7 @@ const About = () => {
             </ul>
             <ul className="space-y-2 text-slate-400">
               <li>• Cryptocurrency prices (BTC, ETH, SOL, SUI, XRP)</li>
-              <li>• Macro indicators (DXY, Treasury Yields, VIX)</li>
+              <li>• Macro indicators (DXY, Treasury Yields, VIX, M2 Money Supply)</li>
               <li>• Equity indices (S&P 500, NASDAQ)</li>
               <li>• Market sentiment and narratives</li>
             </ul>

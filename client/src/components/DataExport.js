@@ -214,6 +214,7 @@ const DataExport = () => {
                 >
                   <option value="crypto_prices">Crypto Prices</option>
                   <option value="market_data">Market Data</option>
+                  <option value="m2_money_supply">M2 Money Supply</option>
                   <option value="fear_greed">Fear & Greed Index</option>
                   <option value="narratives">Trending Narratives</option>
                   <option value="ai_analysis">AI Analysis</option>

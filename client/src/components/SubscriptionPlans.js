@@ -202,7 +202,7 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
         'Email notifications',
         'Push notifications',
         'Telegram bot alerts',
-        'Advanced metrics (VIX, DXY, Treasury yields)',
+        'Advanced metrics (VIX, DXY, Treasury yields, M2 Money Supply)',
         'Exchange flow data',
         'Stablecoin metrics (SSR)',
         'Data exports (CSV, JSON)',

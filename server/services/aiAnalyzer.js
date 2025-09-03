@@ -168,9 +168,10 @@ CRITICAL ANALYSIS REQUIREMENTS:
 1. **Bitcoin Price Analysis**: Pay special attention to BTC price levels, 24h changes, and volume patterns
 2. **Bitcoin Dominance (BTC.D)**: Analyze Bitcoin's market dominance percentage and its implications
 3. **Market Sentiment**: Consider Fear & Greed Index, VIX volatility, and overall market mood
-4. **Macro Factors**: Evaluate DXY (dollar strength), Treasury yields, equity markets, and oil prices
+4. **Macro Factors**: Evaluate DXY (dollar strength), Treasury yields, equity markets, oil prices, and M2 money supply
 5. **Inflation Impact**: Assess how inflation data affects crypto markets specifically
-6. **Technical Indicators**: Consider price levels, volume, and market structure
+6. **M2 Money Supply**: Analyze M2 money supply trends and their impact on crypto liquidity and risk appetite
+7. **Technical Indicators**: Consider price levels, volume, and market structure
 7. **Fundamental Factors**: Upcoming events, regulatory news, and adoption trends
 8. **Trending Narratives**: Consider trending narratives for the crypto market
 
@@ -234,6 +235,7 @@ ANALYSIS REQUIREMENTS:
 - **MUST** analyze Treasury yield impact on risk assets
 - **MUST** consider equity market correlation (SP500, NASDAQ)
 - **MUST** assess oil price impact on inflation and crypto
+- **MUST** analyze M2 money supply trends and their impact on crypto liquidity
 - Provide realistic confidence scores (0-100) based on data strength
 - Include specific price levels, percentages, and data points in reasoning
 - Key factors should be the most important drivers of market direction

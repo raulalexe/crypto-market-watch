@@ -2139,7 +2139,8 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
       fearGreed,
       narratives,
       backtestMetrics,
-      upcomingEvents
+      upcomingEvents,
+      m2Data
     ] = await Promise.all([
       dataCollector.getMarketDataSummary(),
       aiAnalyzer.getAnalysisSummary(),
@@ -2173,7 +2174,11 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
         return await getProcessedTrendingNarratives(5);
       })(),
       aiAnalyzer.getBacktestMetrics(),
-      eventCollector.getUpcomingEvents(10)
+      eventCollector.getUpcomingEvents(10),
+      (async () => {
+        const { getLatestMarketData } = require('./database');
+        return await getLatestMarketData('M2_MONEY_SUPPLY', 'M2SL');
+      })()
     ]);
 
     // Add subscription status if user is authenticated
@@ -2201,6 +2206,7 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
       trendingNarratives: narratives,
       backtestResults: backtestMetrics,
       upcomingEvents,
+      m2Data,
       subscriptionStatus,
       lastCollectionTime,
       timestamp: lastCollectionTime || new Date().toISOString()
@@ -2943,6 +2949,22 @@ app.get('/api/v1/crypto-prices', authenticateToken, requireSubscription('pro'), 
   }
 });
 
+app.get('/api/v1/m2-money-supply', authenticateToken, requireSubscription('pro'), rateLimit('/api/v1/m2-money-supply'), async (req, res) => {
+  try {
+    const { getLatestMarketData } = require('./database');
+    const m2Data = await getLatestMarketData('M2_MONEY_SUPPLY', 'M2SL');
+    
+    if (!m2Data) {
+      return res.status(404).json({ error: 'M2 money supply data not available' });
+    }
+    
+    res.json(m2Data);
+  } catch (error) {
+    console.error('Error fetching M2 money supply data:', error);
+    res.status(500).json({ error: 'Failed to fetch M2 money supply data' });
+  }
+});
+
 app.get('/api/v1/backtest', authenticateToken, requireSubscription('pro'), rateLimit('/api/v1/backtest'), async (req, res) => {
   try {
     const metrics = await aiAnalyzer.getBacktestMetrics();
@@ -3665,6 +3687,7 @@ app.get('*', (req, res) => {
         health: '/api/health',
         marketData: '/api/market-data',
         cryptoPrices: '/api/crypto-prices',
+        m2MoneySupply: '/api/v1/m2-money-supply',
         aiAnalysis: '/api/ai-analysis',
         events: '/api/events',
         auth: '/api/auth',

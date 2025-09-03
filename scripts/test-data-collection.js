@@ -75,6 +75,14 @@ async function testDataCollection() {
     }
     
     try {
+      console.log('📊 Testing M2 money supply collection...');
+      await dataCollector.collectM2MoneySupply();
+      console.log('  ✅ M2 money supply collected');
+    } catch (error) {
+      console.log(`  ❌ M2 money supply collection failed: ${error.message}`);
+    }
+    
+    try {
       console.log('📊 Testing Layer 1 data collection...');
       await dataCollector.collectLayer1DataOptimized();
       console.log('  ✅ Layer 1 data collected');
