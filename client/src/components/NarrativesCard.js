@@ -63,6 +63,7 @@ const NarrativesCard = ({ data }) => {
 
   const formatRelevanceScore = (score) => {
     if (!score && score !== 0) return 'N/A';
+    // Score is already normalized to 0-1 range, just convert to percentage
     return `${(score * 100).toFixed(1)}%`;
   };
 
@@ -83,7 +84,7 @@ const NarrativesCard = ({ data }) => {
                   <h4 className="text-white font-medium">{narrative.narrative}</h4>
                   <p className="text-sm text-gray-400">
                     {narrative.coins && narrative.coins.length > 0 
-                      ? `${narrative.coins.length} coins` 
+                      ? `${narrative.coins.length} coins (${narrative.coins.map(coin => coin.coin_symbol).join(', ')})` 
                       : 'No coins data'}
                   </p>
                 </div>

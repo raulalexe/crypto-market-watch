@@ -64,7 +64,7 @@ const FearGreedCard = ({ fearGreed }) => {
         {/* Index Value */}
         <div className="text-center">
           <div className={`text-4xl font-bold ${getIndexColor(fearGreed.value)}`}>
-            {fearGreed.value}
+            {Math.round(fearGreed.value)}
           </div>
           <div className={`text-lg font-medium ${getIndexColor(fearGreed.value)}`}>
             {getIndexLabel(fearGreed.value)}

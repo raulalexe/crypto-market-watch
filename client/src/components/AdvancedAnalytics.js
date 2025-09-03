@@ -367,7 +367,7 @@ const AdvancedAnalytics = () => {
                 <TrendingUp className="w-6 h-6 text-crypto-green" />
               </div>
               <div className="text-3xl font-bold text-crypto-green">
-                {advancedMetrics?.bitcoinDominance?.value ? `${safeToFixed(advancedMetrics.bitcoinDominance.value, 1)}%` : 'N/A'}
+                {advancedMetrics?.bitcoinDominance?.value ? `${parseFloat(advancedMetrics.bitcoinDominance.value).toFixed(2)}%` : 'N/A'}
               </div>
               <p className="text-sm text-slate-400 mt-2">BTC market share</p>
             </div>
@@ -572,7 +572,7 @@ const AdvancedAnalytics = () => {
         )}
 
         {/* Market Analysis */}
-        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <div className="bg-slate-800 rounded-lg p-6 mb-4 border border-slate-700">
           <h3 className="text-xl font-semibold text-white mb-4">Market Analysis</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
@@ -649,7 +649,7 @@ const AdvancedAnalytics = () => {
                     marketSentiment.value > 55 ? 'text-crypto-yellow' :
                     marketSentiment.value > 25 ? 'text-crypto-green' : 'text-crypto-blue'
                   }`}>
-                    {marketSentiment.value || 'N/A'}
+                    {marketSentiment.value ? Math.round(marketSentiment.value) : 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -748,15 +748,18 @@ const AdvancedAnalytics = () => {
             {onchainData ? (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Blockchain</span>
+                  <span className="text-slate-400">Network</span>
                   <span className="text-white font-medium">
                     {onchainData.blockchain || 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Metric Type</span>
+                  <span className="text-slate-400">Metric</span>
                   <span className="text-white font-medium">
-                    {onchainData.metric_type || 'N/A'}
+                    {onchainData.metric_type ? 
+                      onchainData.metric_type.split('_').map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1)
+                      ).join(' ') : 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -769,20 +772,46 @@ const AdvancedAnalytics = () => {
                         `${onchainData.value.toFixed(2)} ETH` :
                         onchainData.metric_type === 'gas_price' ?
                         `${onchainData.value} Gwei` :
+                        onchainData.metric_type === 'exchange_flows' ?
+                        `${(onchainData.value * 100).toFixed(1)}%` :
+                        onchainData.metric_type === 'network_health' ?
+                        `${(onchainData.value * 100).toFixed(1)}%` :
+                        onchainData.metric_type === 'whale_activity' ?
+                        `${(onchainData.value * 100).toFixed(1)}%` :
+                        onchainData.metric_type === 'fear_greed_index' ?
+                        Math.round(onchainData.value) :
+                        typeof onchainData.value === 'number' && onchainData.value < 1 ?
+                        `${(onchainData.value * 100).toFixed(1)}%` :
                         onchainData.value.toLocaleString()
                       ) : 'N/A'}
                   </span>
                 </div>
-                {onchainData.metadata && (
-                  <div className="pt-2 border-t border-slate-700">
-                    <p className="text-xs text-slate-400">
-                      Source: {onchainData.source || 'N/A'}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Last updated: {new Date(onchainData.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                )}
+                {/* Metric Description */}
+                <div className="pt-2 border-t border-slate-700">
+                  <p className="text-xs text-slate-400 mb-2">
+                    <strong>What this means:</strong>
+                  </p>
+                  <p className="text-xs text-slate-400 mb-2">
+                    {onchainData.metric_type === 'exchange_flows' ? 
+                      'Exchange Flows: Shows money movement direction. Above 50% = money leaving exchanges (bullish), below 50% = money entering exchanges (bearish)' :
+                      onchainData.metric_type === 'network_health' ?
+                      'Network Health: Overall blockchain health score. Higher percentage = healthier network with better performance' :
+                      onchainData.metric_type === 'whale_activity' ?
+                      'Whale Activity: Large transaction volume. Higher percentage = more large transactions happening' :
+                      'Metric from multiple blockchain sources combined for overall market insight'
+                    }
+                  </p>
+                  {onchainData.metadata && (
+                    <>
+                      <p className="text-xs text-slate-400">
+                        Source: {onchainData.source || 'N/A'}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Last updated: {new Date(onchainData.timestamp).toLocaleString()}
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="text-center py-8">

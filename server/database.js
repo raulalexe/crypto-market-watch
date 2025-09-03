@@ -580,7 +580,7 @@ const getLatestFearGreedIndex = () => {
 const insertTrendingNarrative = (narrative, sentiment, relevanceScore, source) => {
   return new Promise((resolve, reject) => {
     dbAdapter.run(
-      'INSERT INTO trending_narratives (narrative, sentiment, relevance_score, source) VALUES ($1, $2, $3, $4)',
+      'INSERT INTO trending_narratives (narrative, sentiment, relevance_score, source, timestamp) VALUES ($1, $2, $3, $4, NOW())',
       [narrative, sentiment, relevanceScore, source]
     ).then(result => resolve(result.lastID))
      .catch(reject);
@@ -600,6 +600,78 @@ const insertTrendingNarrative = (narrative, sentiment, relevanceScore, source) =
          ORDER BY timestamp DESC 
          LIMIT $1`,
         [limit]
+      ).then(resolve).catch(reject);
+    });
+  };
+
+  const getProcessedTrendingNarratives = (limit = 10) => {
+    return new Promise((resolve, reject) => {
+      getTrendingNarratives(limit).then(rawNarratives => {
+        try {
+          const processedNarratives = rawNarratives.map(narrative => {
+            // Parse the source JSON to extract coin data
+            let sourceData = {};
+            try {
+              sourceData = JSON.parse(narrative.source || '{}');
+            } catch (e) {
+              console.error('Error parsing narrative source:', e);
+              sourceData = {};
+            }
+
+            const coins = sourceData.coins || [];
+            const totalVolume24h = sourceData.total_volume_24h || 0;
+            const totalMarketCap = sourceData.total_market_cap || 0;
+            const avgChange24h = sourceData.avg_change_24h || 0;
+
+            // Calculate market insights
+            const marketInsights = {
+              trend_analysis: avgChange24h > 2 ? 'Strong Uptick' : avgChange24h > 0 ? 'Slight Uptick' : avgChange24h > -2 ? 'Slight Downtick' : 'Strong Downtick',
+              volume_analysis: totalVolume24h > 1e9 ? 'High Trading Activity' : totalVolume24h > 1e8 ? 'Moderate Trading' : 'Low Trading Activity',
+              risk_level: coins.length > 3 ? 'Lower Risk - Diversified' : coins.length > 1 ? 'Medium Risk - Limited Diversification' : 'Medium Risk - Single Asset',
+              opportunity_score: Math.min(100, Math.max(0, 50 + (avgChange24h * 5) + (coins.length * 2))),
+              opportunity_rating: function() {
+                const score = this.opportunity_score;
+                if (score >= 80) return 'Excellent';
+                if (score >= 60) return 'Good';
+                if (score >= 40) return 'Fair';
+                return 'Poor';
+              }
+            };
+
+            return {
+              narrative: narrative.narrative,
+              sentiment: narrative.sentiment,
+              relevance_score: parseFloat(narrative.relevance_score) || 0,
+              total_volume_24h: totalVolume24h,
+              total_market_cap: totalMarketCap,
+              avg_change_24h: avgChange24h,
+              coin_count: coins.length,
+              coins: coins,
+              market_insights: marketInsights
+            };
+          });
+
+          resolve(processedNarratives);
+        } catch (error) {
+          console.error('Error processing trending narratives:', error);
+          reject(error);
+        }
+      }).catch(reject);
+    });
+  };
+
+  const getDerivativesData = () => {
+    return new Promise((resolve, reject) => {
+      dbAdapter.all(
+        'SELECT * FROM derivatives_data ORDER BY timestamp DESC'
+      ).then(resolve).catch(reject);
+    });
+  };
+
+  const getOnchainData = () => {
+    return new Promise((resolve, reject) => {
+      dbAdapter.all(
+        'SELECT * FROM onchain_data ORDER BY timestamp DESC'
       ).then(resolve).catch(reject);
     });
   };
@@ -1339,25 +1411,42 @@ const regenerateApiKey = (userId, apiKeyId) => {
 // Inflation data functions
 const insertInflationData = (data) => {
   return new Promise((resolve, reject) => {
-    dbAdapter.run(`
+    // Use explicit type casting to ensure proper data handling
+    const query = `
       INSERT INTO inflation_data (
         type, date, value, core_value, yoy_change, core_yoy_change, source, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
-    `, [data.type, data.date, data.value, data.coreValue, data.yoyChange, data.coreYoYChange, data.source])
-    .then(result => resolve(result.lastID))
+      ) VALUES ($1::VARCHAR(10), $2::DATE, $3::NUMERIC, $4::NUMERIC, $5::NUMERIC, $6::NUMERIC, $7::VARCHAR(10), CURRENT_TIMESTAMP)
+      RETURNING id
+    `;
+    
+    const params = [
+      data.type, 
+      data.date, 
+      data.value, 
+      data.coreValue, 
+      data.yoyChange, 
+      data.coreYoYChange, 
+      data.source
+    ];
+    
+    db.query(query, params)
+    .then(result => {
+      const id = result.rows[0]?.id;
+      resolve(id);
+    })
     .catch(reject);
   });
 };
 
 const getLatestInflationData = (type) => {
   return new Promise((resolve, reject) => {
-    dbAdapter.get(`
+    db.query(`
       SELECT * FROM inflation_data 
       WHERE type = $1 
-      ORDER BY date DESC 
+      ORDER BY created_at DESC 
       LIMIT 1
     `, [type])
-    .then(resolve)
+    .then(result => resolve(result.rows[0] || null))
     .catch(reject);
   });
 };
@@ -1612,6 +1701,9 @@ module.exports = {
   getLatestOnchainData,
   insertTrendingNarrative,
   getTrendingNarratives,
+  getProcessedTrendingNarratives,
+  getDerivativesData,
+  getOnchainData,
   getLayer1Data,
   insertLayer1Data,
   insertBacktestResult,

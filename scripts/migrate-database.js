@@ -13,22 +13,6 @@ const { Pool } = require('pg');
 // Migration definitions
 const migrations = [
   {
-    name: 'fix_alerts_table',
-    description: 'Add missing columns to alerts table',
-    sql: `
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS type VARCHAR(50);
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS metric VARCHAR(50);
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS severity VARCHAR(20);
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS message TEXT;
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS value TEXT;
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS eventId INTEGER;
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS eventDate TEXT;
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS eventTitle TEXT;
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS eventCategory TEXT;
-      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-    `
-  },
-  {
     name: 'create_market_sentiment_table',
     description: 'Create market_sentiment table',
     sql: `
@@ -77,24 +61,46 @@ const migrations = [
     `
   },
   {
-    name: 'fix_crypto_prices_table',
-    description: 'Add missing columns to crypto_prices table',
+    name: 'create_crypto_prices_table',
+    description: 'Create crypto_prices table',
     sql: `
-      ALTER TABLE crypto_prices ADD COLUMN IF NOT EXISTS change_24h DECIMAL;
+      CREATE TABLE IF NOT EXISTS crypto_prices (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        symbol VARCHAR(10) NOT NULL,
+        price DECIMAL,
+        volume_24h DECIMAL,
+        market_cap DECIMAL,
+        change_24h DECIMAL
+      )
     `
   },
   {
-    name: 'fix_fear_greed_index_table',
-    description: 'Add missing columns to fear_greed_index table',
+    name: 'create_fear_greed_index_table',
+    description: 'Create fear_greed_index table',
     sql: `
-      ALTER TABLE fear_greed_index ADD COLUMN IF NOT EXISTS source VARCHAR(100);
+      CREATE TABLE IF NOT EXISTS fear_greed_index (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        value INTEGER,
+        classification VARCHAR(20),
+        source VARCHAR(100)
+      )
     `
   },
   {
-    name: 'fix_market_data_table',
-    description: 'Add missing columns to market_data table',
+    name: 'create_market_data_table',
+    description: 'Create market_data table',
     sql: `
-      ALTER TABLE market_data ADD COLUMN IF NOT EXISTS source VARCHAR(100);
+      CREATE TABLE IF NOT EXISTS market_data (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        data_type VARCHAR(50) NOT NULL,
+        symbol VARCHAR(20),
+        value DECIMAL,
+        metadata TEXT,
+        source VARCHAR(100)
+      )
     `
   },
   {
@@ -125,6 +131,318 @@ const migrations = [
     description: 'Create index on alerts timestamp column for performance',
     sql: `
       CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts(timestamp)
+    `
+  },
+  {
+    name: 'create_users_table',
+    description: 'Create users table with complete schema',
+    sql: `
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        is_admin BOOLEAN DEFAULT FALSE,
+        email_verified BOOLEAN DEFAULT FALSE,
+        subscription_status VARCHAR(50),
+        subscription_plan VARCHAR(50),
+        subscription_expires_at TIMESTAMP,
+        telegram_chat_id VARCHAR(100),
+        push_subscription TEXT,
+        api_key VARCHAR(255),
+        last_login TIMESTAMP,
+        email_notifications BOOLEAN DEFAULT TRUE,
+        push_notifications BOOLEAN DEFAULT TRUE,
+        telegram_notifications BOOLEAN DEFAULT FALSE,
+        notification_preferences TEXT,
+        confirmation_token VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_subscriptions_table',
+    description: 'Create subscriptions table with correct schema',
+    sql: `
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        plan_type VARCHAR(50) NOT NULL,
+        status VARCHAR(50) NOT NULL,
+        current_period_start TIMESTAMP,
+        current_period_end TIMESTAMP,
+        cancel_at_period_end BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_upcoming_events_table',
+    description: 'Create upcoming_events table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS upcoming_events (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(100),
+        impact VARCHAR(50),
+        date TIMESTAMP NOT NULL,
+        source VARCHAR(100),
+        ignored BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_ai_analysis_table',
+    description: 'Create ai_analysis table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS ai_analysis (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        market_direction VARCHAR(20),
+        confidence DECIMAL,
+        reasoning TEXT,
+        factors_analyzed TEXT,
+        analysis_data TEXT
+      )
+    `
+  },
+  {
+    name: 'create_trending_narratives_table',
+    description: 'Create trending_narratives table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS trending_narratives (
+        id SERIAL PRIMARY KEY,
+        narrative VARCHAR(255) NOT NULL,
+        sentiment VARCHAR(20),
+        relevance_score DECIMAL,
+        source VARCHAR(100),
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_bitcoin_dominance_table',
+    description: 'Create bitcoin_dominance table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS bitcoin_dominance (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        value DECIMAL NOT NULL,
+        source VARCHAR(100)
+      )
+    `
+  },
+  {
+    name: 'create_layer1_data_table',
+    description: 'Create layer1_data table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS layer1_data (
+        id SERIAL PRIMARY KEY,
+        chain_id VARCHAR(20) NOT NULL,
+        name VARCHAR(100),
+        symbol VARCHAR(20),
+        price DECIMAL,
+        change_24h DECIMAL,
+        market_cap DECIMAL,
+        volume_24h DECIMAL,
+        tps DECIMAL,
+        active_addresses DECIMAL,
+        hash_rate DECIMAL,
+        dominance DECIMAL,
+        narrative TEXT,
+        sentiment VARCHAR(20),
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_inflation_data_table',
+    description: 'Create inflation_data table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS inflation_data (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(10) NOT NULL,
+        date DATE NOT NULL,
+        value DECIMAL NOT NULL,
+        core_value DECIMAL,
+        yoy_change DECIMAL,
+        core_yoy_change DECIMAL,
+        source VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_inflation_releases_table',
+    description: 'Create inflation_releases table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS inflation_releases (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(10) NOT NULL,
+        date DATE NOT NULL,
+        time TIME,
+        timezone VARCHAR(50),
+        source VARCHAR(100),
+        status VARCHAR(20) DEFAULT 'scheduled',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_inflation_forecasts_table',
+    description: 'Create inflation_forecasts table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS inflation_forecasts (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(10) NOT NULL,
+        forecast_data TEXT,
+        confidence DECIMAL,
+        factors TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_stablecoin_metrics_table',
+    description: 'Create stablecoin_metrics table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS stablecoin_metrics (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        metric_type VARCHAR(50) NOT NULL,
+        value DECIMAL,
+        metadata TEXT,
+        source VARCHAR(100)
+      )
+    `
+  },
+  {
+    name: 'create_exchange_flows_table',
+    description: 'Create exchange_flows table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS exchange_flows (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        asset VARCHAR(10) NOT NULL,
+        flow_type VARCHAR(20) NOT NULL,
+        value DECIMAL,
+        volume DECIMAL,
+        source VARCHAR(100)
+      )
+    `
+  },
+  {
+    name: 'create_api_usage_table',
+    description: 'Create api_usage table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS api_usage (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        endpoint VARCHAR(100) NOT NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        response_time INTEGER,
+        status_code INTEGER,
+        metadata TEXT
+      )
+    `
+  },
+  {
+    name: 'create_api_keys_table',
+    description: 'Create api_keys table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        api_key VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_used TIMESTAMP,
+        usage_count INTEGER DEFAULT 0
+      )
+    `
+  },
+  {
+    name: 'create_push_subscriptions_table',
+    description: 'Create push_subscriptions table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_user_alert_thresholds_table',
+    description: 'Create user_alert_thresholds table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS user_alert_thresholds (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        threshold_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        metric TEXT NOT NULL,
+        condition TEXT NOT NULL,
+        value DECIMAL NOT NULL,
+        unit TEXT,
+        enabled BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_error_logs_table',
+    description: 'Create error_logs table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS error_logs (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(50),
+        source VARCHAR(100),
+        message TEXT,
+        details TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  {
+    name: 'create_contact_messages_table',
+    description: 'Create contact_messages table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS contact_messages (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending'
+      )
+    `
+  },
+  {
+    name: 'create_backtest_results_table',
+    description: 'Create backtest_results table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS backtest_results (
+        id SERIAL PRIMARY KEY,
+        prediction_date TIMESTAMP,
+        actual_date TIMESTAMP,
+        predicted_direction VARCHAR(20),
+        actual_direction VARCHAR(20),
+        accuracy DECIMAL,
+        crypto_symbol VARCHAR(20),
+        price_at_prediction DECIMAL,
+        price_at_actual DECIMAL,
+        correlation_score DECIMAL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
     `
   }
 ];

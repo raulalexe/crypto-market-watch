@@ -18,9 +18,10 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "GENERATE_SOURCEMAP=false CI=false react-scripts build",
+    "build:prod": "REACT_APP_ENVIRONMENT=production GENERATE_SOURCEMAP=false CI=false react-scripts build",
     "test": "echo 'Tests skipped in production'",
     "eject": "react-scripts eject",
-    "vercel-build": "react-scripts build"
+    "vercel-build": "REACT_APP_ENVIRONMENT=production react-scripts build"
   },
   "eslintConfig": {
     "extends": [
@@ -39,5 +40,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:3001"
+  "proxy": "http://localhost:3001",
+  "homepage": "."
 }

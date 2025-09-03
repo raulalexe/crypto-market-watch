@@ -37,12 +37,24 @@ const AdvancedMetricsCard = () => {
     }).format(num);
   };
 
+  const formatPercentage = (num, decimals = 3) => {
+    if (num === null || num === undefined) return 'N/A';
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
+    }).format(num);
+  };
+
   const formatCurrency = (num) => {
     if (num === null || num === undefined) return 'N/A';
-    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
-    return `$${num.toFixed(2)}`;
+    const absNum = Math.abs(num);
+    const sign = num < 0 ? '-' : '';
+    
+    if (absNum >= 1e12) return `${sign}$${(absNum / 1e12).toFixed(1)}T`;
+    if (absNum >= 1e9) return `${sign}$${(absNum / 1e9).toFixed(1)}B`;
+    if (absNum >= 1e6) return `${sign}$${(absNum / 1e6).toFixed(1)}M`;
+    if (absNum >= 1e3) return `${sign}$${(absNum / 1e3).toFixed(1)}K`;
+    return `${sign}$${absNum.toFixed(1)}`;
   };
 
   const getTrendIcon = (value, isPositive = true) => {
@@ -162,6 +174,9 @@ const AdvancedMetricsCard = () => {
                 In: {formatCurrency(metrics?.exchangeFlows?.btc?.inflow)} | 
                 Out: {formatCurrency(metrics?.exchangeFlows?.btc?.outflow)}
               </div>
+              <div className="text-xs text-slate-400">
+                {metrics?.exchangeFlows?.btc?.netFlow > 0 ? '💰 Money entering exchanges' : '🚀 Money leaving exchanges'}
+              </div>
             </div>
 
             {/* ETH Exchange Flows */}
@@ -179,6 +194,9 @@ const AdvancedMetricsCard = () => {
               <div className="text-xs text-slate-400">
                 In: {formatCurrency(metrics?.exchangeFlows?.eth?.inflow)} | 
                 Out: {formatCurrency(metrics?.exchangeFlows?.eth?.outflow)}
+              </div>
+              <div className="text-xs text-slate-400">
+                {metrics?.exchangeFlows?.eth?.netFlow > 0 ? '💰 Money entering exchanges' : '🚀 Money leaving exchanges'}
               </div>
             </div>
 
@@ -241,7 +259,7 @@ const AdvancedMetricsCard = () => {
                 {formatCurrency(metrics?.derivatives?.openInterest?.value)}
               </div>
               <div className="text-xs text-slate-400">
-                BTC: {metrics?.derivatives?.openInterest?.metadata?.btc_percentage || 0}% | ETH: {metrics?.derivatives?.openInterest?.metadata?.eth_percentage || 0}%
+                BTC: {formatCurrency(metrics?.derivatives?.openInterest?.metadata?.btc_oi || 0)} | ETH: {formatCurrency(metrics?.derivatives?.openInterest?.metadata?.eth_oi || 0)}
               </div>
             </div>
 
@@ -252,10 +270,10 @@ const AdvancedMetricsCard = () => {
                 {getTrendIcon(metrics?.derivatives?.fundingRate?.value)}
               </div>
               <div className="text-2xl font-bold text-white mb-1">
-                {formatNumber(metrics?.derivatives?.fundingRate?.value)}%
+                {formatPercentage(metrics?.derivatives?.fundingRate?.value)}%
               </div>
               <div className="text-xs text-slate-400">
-                BTC: {formatNumber(metrics?.derivatives?.fundingRate?.metadata?.btc_funding || 0)}% | ETH: {formatNumber(metrics?.derivatives?.fundingRate?.metadata?.eth_funding || 0)}%
+                BTC: {formatPercentage(metrics?.derivatives?.fundingRate?.metadata?.btc_funding || 0)}% | ETH: {formatPercentage(metrics?.derivatives?.fundingRate?.metadata?.eth_funding || 0)}%
               </div>
             </div>
 
@@ -283,7 +301,7 @@ const AdvancedMetricsCard = () => {
                 {Math.round(metrics?.onchain?.whaleTransactions?.value || 0)}
               </div>
               <div className="text-xs text-slate-400">
-                BTC: {Math.round(metrics?.onchain?.whaleTransactions?.metadata?.btc_whales || 0)} | ETH: {Math.round(metrics?.onchain?.whaleTransactions?.metadata?.eth_whales || 0)}
+                Large: {Math.round(metrics?.onchain?.whaleTransactions?.metadata?.large_transfers || 0)} | Exchange: {Math.round(metrics?.onchain?.whaleTransactions?.metadata?.exchange_deposits || 0)}
               </div>
             </div>
 
@@ -297,7 +315,7 @@ const AdvancedMetricsCard = () => {
                 {formatNumber(metrics?.onchain?.hashRate?.value || 0)} EH/s
               </div>
               <div className="text-xs text-slate-400">
-                BTC: {formatNumber(metrics?.onchain?.hashRate?.metadata?.btc_hashrate || 0)} EH/s
+                Difficulty: {formatNumber(metrics?.onchain?.hashRate?.metadata?.difficulty / 1e12 || 0)}T | Health: {metrics?.onchain?.hashRate?.metadata?.network_health || 'Unknown'}
               </div>
             </div>
 
@@ -311,7 +329,7 @@ const AdvancedMetricsCard = () => {
                 {formatNumber((metrics?.onchain?.activeAddresses?.value || 0) / 1e6)}M
               </div>
               <div className="text-xs text-slate-400">
-                BTC: {formatNumber((metrics?.onchain?.activeAddresses?.metadata?.btc_addresses || 0) / 1e6)}M | ETH: {formatNumber((metrics?.onchain?.activeAddresses?.metadata?.eth_addresses || 0) / 1e6)}M
+                New: {formatNumber((metrics?.onchain?.activeAddresses?.metadata?.new_addresses || 0) / 1e6)}M | Returning: {formatNumber((metrics?.onchain?.activeAddresses?.metadata?.returning_addresses || 0) / 1e6)}M
               </div>
             </div>
           </div>
@@ -328,7 +346,10 @@ const AdvancedMetricsCard = () => {
                 <div>
                   <div className="text-sm font-medium text-white">{narrative.narrative}</div>
                   <div className="text-xs text-slate-400">
-                    {narrative.coin_count} coins • ${(narrative.total_volume_24h / 1e6).toFixed(1)}M volume
+                    {narrative.coins && narrative.coins.length > 0 
+                      ? `${narrative.coins.length} coins (${narrative.coins.map(coin => coin.coin_symbol).join(', ')})`
+                      : 'No coins data'
+                    } • ${(narrative.total_volume_24h / 1e6).toFixed(1)}M volume
                   </div>
                 </div>
                 <div className="text-right">

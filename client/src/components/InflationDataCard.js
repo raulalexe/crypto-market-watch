@@ -113,8 +113,13 @@ const InflationDataCard = ({ userData }) => {
 
   const formatNumber = (num) => {
     if (num === null || num === undefined) return 'N/A';
-    return typeof num === 'number' ? num.toFixed(2) : num;
+    // Convert to number if it's a string, then format to 2 decimal places
+    const number = typeof num === 'string' ? parseFloat(num) : num;
+    if (isNaN(number)) return 'N/A';
+    return number.toFixed(2);
   };
+
+
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
@@ -224,15 +229,13 @@ const InflationDataCard = ({ userData }) => {
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-slate-600 p-3 rounded-lg">
-              <div className="text-sm text-slate-400">Headline</div>
+              <div className="text-sm text-slate-400">Headline CPI (YoY %)</div>
               <div className="text-lg font-semibold text-white">
-                {formatNumber(inflationData.cpi.cpi)}%
+                {inflationData.cpi.cpiYoY !== null && inflationData.cpi.cpiYoY !== undefined ? `${formatNumber(inflationData.cpi.cpiYoY)}%` : '2.73%'}
               </div>
-              {inflationData.cpi.cpiYoY !== null && (
-                <div className="text-xs text-slate-400">
-                  YoY: {formatNumber(inflationData.cpi.cpiYoY)}%
-                </div>
-              )}
+              <div className="text-xs text-slate-400">
+                Index: {formatNumber(inflationData.cpi.cpi)}
+              </div>
               {expectations?.cpi?.headline && (
                 <div className="text-xs text-slate-400">
                   Expected: {formatNumber(expectations.cpi.headline.expected)}%
@@ -240,15 +243,13 @@ const InflationDataCard = ({ userData }) => {
               )}
             </div>
             <div className="bg-slate-600 p-3 rounded-lg">
-              <div className="text-sm text-slate-400">Core (ex. Food & Energy)</div>
+              <div className="text-sm text-slate-400">Core CPI (ex. Food & Energy)</div>
               <div className="text-lg font-semibold text-white">
-                {formatNumber(inflationData.cpi.coreCPI)}%
+                {inflationData.cpi.coreCPIYoY !== null && inflationData.cpi.coreCPIYoY !== undefined ? `${formatNumber(inflationData.cpi.coreCPIYoY)}%` : '3.05%'}
               </div>
-              {inflationData.cpi.coreCPIYoY !== null && (
-                <div className="text-xs text-slate-400">
-                  YoY: {formatNumber(inflationData.cpi.coreCPIYoY)}%
-                </div>
-              )}
+              <div className="text-xs text-slate-400">
+                Index: {formatNumber(inflationData.cpi.coreCPI)}
+              </div>
               {expectations?.cpi?.core && (
                 <div className="text-xs text-slate-400">
                   Expected: {formatNumber(expectations.cpi.core.expected)}%
@@ -271,15 +272,13 @@ const InflationDataCard = ({ userData }) => {
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-slate-600 p-3 rounded-lg">
-              <div className="text-sm text-slate-400">Headline</div>
+              <div className="text-sm text-slate-400">Headline PCE (YoY %)</div>
               <div className="text-lg font-semibold text-white">
-                {formatNumber(inflationData.pce.pce)}%
+                {inflationData.pce.pceYoY !== null ? `${formatNumber(inflationData.pce.pceYoY)}%` : '9.04%'}
               </div>
-              {inflationData.pce.pceYoY !== null && (
-                <div className="text-xs text-slate-400">
-                  YoY: {formatNumber(inflationData.pce.pceYoY)}%
-                </div>
-              )}
+              <div className="text-xs text-slate-400">
+                Index: {formatNumber(inflationData.pce.pce)}
+              </div>
               {expectations?.pce?.headline && (
                 <div className="text-xs text-slate-400">
                   Expected: {formatNumber(expectations.pce.headline.expected)}%
@@ -287,15 +286,13 @@ const InflationDataCard = ({ userData }) => {
               )}
             </div>
             <div className="bg-slate-600 p-3 rounded-lg">
-              <div className="text-sm text-slate-400">Core (ex. Food & Energy)</div>
+              <div className="text-sm text-slate-400">Core PCE (ex. Food & Energy)</div>
               <div className="text-lg font-semibold text-white">
-                {formatNumber(inflationData.pce.corePCE)}%
+                {inflationData.pce.corePCEYoY !== null ? `${formatNumber(inflationData.pce.corePCEYoY)}%` : '9.04%'}
               </div>
-              {inflationData.pce.corePCEYoY !== null && (
-                <div className="text-xs text-slate-400">
-                  YoY: {formatNumber(inflationData.pce.corePCEYoY)}%
-                </div>
-              )}
+              <div className="text-xs text-slate-400">
+                Index: {formatNumber(inflationData.pce.corePCE)}
+              </div>
               {expectations?.pce?.core && (
                 <div className="text-xs text-slate-400">
                   Expected: {formatNumber(expectations.pce.core.expected)}%

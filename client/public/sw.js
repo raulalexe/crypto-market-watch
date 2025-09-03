@@ -154,7 +154,7 @@ async function getAuthToken() {
     // Try to get token from IndexedDB or localStorage
     const clients = await self.clients.matchAll();
     for (const client of clients) {
-      if (client.url.includes('localhost:3000') || client.url.includes('crypto-market-watch')) {
+      if (client.url) {
         // Send message to client to get token
         const response = await client.postMessage({
           type: 'GET_AUTH_TOKEN'

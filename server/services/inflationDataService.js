@@ -136,13 +136,13 @@ class InflationDataService {
 
     // Extract PCE value and date
     pceData.pce = parseFloat(latestData.DataValue);
-    pceData.date = latestData.TimePeriod;
+    pceData.date = this.parseBEAtoDate(latestData.TimePeriod);
 
     // Calculate YoY change if we have enough data
     if (dataArray.length >= 12) {
       const currentValue = parseFloat(latestData.DataValue);
       const yearAgoValue = parseFloat(dataArray[11].DataValue);
-      pceData.pceYoY = ((currentValue - yearAgoValue) / yearAgoValue) * 100;
+      pceData.pceYoY = parseFloat((((currentValue - yearAgoValue) / yearAgoValue) * 100).toFixed(2));
     }
 
     // For now, use the same value for core PCE (we can refine this later)
@@ -155,6 +155,47 @@ class InflationDataService {
     }
 
     return pceData;
+  }
+
+  // Parse BEA date format (e.g., "2025M01") to PostgreSQL date format
+  parseBEAtoDate(beaDate) {
+    try {
+      // Handle format like "2025M01" (Year + Month)
+      if (beaDate && typeof beaDate === 'string') {
+        const match = beaDate.match(/^(\d{4})M(\d{2})$/);
+        if (match) {
+          const year = parseInt(match[1]);
+          const month = parseInt(match[2]);
+          // Use the first day of the month
+          return `${year}-${month.toString().padStart(2, '0')}-01`;
+        }
+        
+        // Handle format like "July 2025"
+        const monthNames = {
+          'January': '01', 'February': '02', 'March': '03', 'April': '04',
+          'May': '05', 'June': '06', 'July': '07', 'August': '08',
+          'September': '09', 'October': '10', 'November': '11', 'December': '12'
+        };
+        
+        const monthMatch = beaDate.match(/^(\w+)\s+(\d{4})$/);
+        if (monthMatch) {
+          const monthName = monthMatch[1];
+          const year = monthMatch[2];
+          const month = monthNames[monthName];
+          if (month) {
+            // Use the first day of the month
+            return `${year}-${month}-01`;
+          }
+        }
+      }
+      
+      // Fallback: return current date
+      console.warn(`⚠️ Could not parse BEA date: ${beaDate}, using current date`);
+      return new Date().toISOString().split('T')[0];
+    } catch (error) {
+      console.error('Error parsing BEA date:', error);
+      return new Date().toISOString().split('T')[0];
+    }
   }
 
 
@@ -170,14 +211,17 @@ class InflationDataService {
       return null;
     }
     
+
+    
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`📊 Fetching CPI data from BLS API (attempt ${attempt}/${maxRetries})...`);
         
+        const currentYear = new Date().getFullYear();
         const response = await axios.post(this.blsBaseUrl + '/timeseries/data/', {
           seriesid: ['CUSR0000SA0', 'CUSR0000SA0L1E'], // All items and Core CPI
-          startyear: new Date().getFullYear().toString(),
-          endyear: new Date().getFullYear().toString(),
+          startyear: (currentYear - 1).toString(), // Get data from previous year for YoY calculation
+          endyear: currentYear.toString(),
           registrationkey: this.blsApiKey
         }, {
           timeout: 60000, // Increased timeout to 60 seconds
@@ -190,7 +234,7 @@ class InflationDataService {
 
 
         if (response.data && response.data.Results && response.data.Results.series) {
-          console.log('✅ CPI data fetched successfully');
+                  console.log('✅ CPI data fetched successfully');
           return this.parseCPIData(response.data.Results.series);
         }
         
@@ -228,31 +272,50 @@ class InflationDataService {
       if (!s || !s.data || !Array.isArray(s.data) || s.data.length === 0) return;
       
       const latest = s.data[0];
-      const previous = s.data[1];
+      
+
       
       if (!latest || !latest.value) return;
       
       if (s.seriesID === 'CUSR0000SA0') { // All items CPI
         cpiData.cpi = parseFloat(latest.value);
-        cpiData.date = latest.periodName + ' ' + latest.year;
+        cpiData.date = this.parseBEAtoDate(latest.periodName + ' ' + latest.year);
         
-        // Calculate YoY change
-        if (previous && previous.value) {
-          const currentYear = parseInt(latest.year);
-          const previousYear = parseInt(previous.year);
-          if (currentYear - previousYear === 1) {
-            cpiData.cpiYoY = ((parseFloat(latest.value) - parseFloat(previous.value)) / parseFloat(previous.value)) * 100;
+        // Calculate YoY change - find the same month from previous year
+        const currentYear = parseInt(latest.year);
+        const currentMonth = latest.periodName;
+        
+        const yearAgoData = s.data.find(d => 
+          parseInt(d.year) === currentYear - 1 && d.periodName === currentMonth
+        );
+        
+        if (yearAgoData && yearAgoData.value) {
+          cpiData.cpiYoY = parseFloat((((parseFloat(latest.value) - parseFloat(yearAgoData.value)) / parseFloat(yearAgoData.value)) * 100).toFixed(2));
+        } else {
+          // Fallback: try to find any data from previous year
+          const anyYearAgoData = s.data.find(d => parseInt(d.year) === currentYear - 1);
+          if (anyYearAgoData && anyYearAgoData.value) {
+            cpiData.cpiYoY = parseFloat((((parseFloat(latest.value) - parseFloat(anyYearAgoData.value)) / parseFloat(anyYearAgoData.value)) * 100).toFixed(2));
           }
         }
       } else if (s.seriesID === 'CUSR0000SA0L1E') { // Core CPI
         cpiData.coreCPI = parseFloat(latest.value);
         
-        // Calculate YoY change for core
-        if (previous && previous.value) {
-          const currentYear = parseInt(latest.year);
-          const previousYear = parseInt(previous.year);
-          if (currentYear - previousYear === 1) {
-            cpiData.coreCPIYoY = ((parseFloat(latest.value) - parseFloat(previous.value)) / parseFloat(previous.value)) * 100;
+        // Calculate YoY change for core - compare current month with same month from previous year
+        const currentYear = parseInt(latest.year);
+        const currentMonth = latest.periodName;
+        
+        const yearAgoData = s.data.find(d => 
+          parseInt(d.year) === currentYear - 1 && d.periodName === currentMonth
+        );
+        
+        if (yearAgoData && yearAgoData.value) {
+          cpiData.coreCPIYoY = parseFloat((((parseFloat(latest.value) - parseFloat(yearAgoData.value)) / parseFloat(yearAgoData.value)) * 100).toFixed(2));
+        } else {
+          // Fallback: try to find any data from previous year
+          const anyYearAgoData = s.data.find(d => parseInt(d.year) === currentYear - 1);
+          if (anyYearAgoData && anyYearAgoData.value) {
+            cpiData.coreCPIYoY = parseFloat((((parseFloat(latest.value) - parseFloat(anyYearAgoData.value)) / parseFloat(anyYearAgoData.value)) * 100).toFixed(2));
           }
         }
       }
@@ -262,6 +325,7 @@ class InflationDataService {
     if (!cpiData.date || !cpiData.cpi) {
       throw new Error('Incomplete CPI data received from API');
     }
+
 
     return cpiData;
   }
@@ -368,7 +432,10 @@ class InflationDataService {
       
       // Check for significant changes and create alerts
       if (previousData) {
-        await this.checkForAlerts(data, previousData, type);
+        await this.checkForAlerts({
+          yoyChange: type === 'CPI' ? data.cpiYoY : data.pceYoY,
+          coreYoYChange: type === 'CPI' ? data.coreCPIYoY : data.corePCEYoY
+        }, previousData, type);
       }
       
       // Update release status
