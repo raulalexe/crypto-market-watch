@@ -5,7 +5,7 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
 ## 🚀 Features
 
 ### Smart Data Collection
-- **Macro Indicators**: DXY Index, US Treasury Yields (2Y & 10Y)
+- **Macro Indicators**: DXY Index, US Treasury Yields (2Y & 10Y), M2 Money Supply
 - **Equity Markets**: S&P 500, NASDAQ indices
 - **Volatility**: VIX (Volatility Index)
 - **Energy**: Oil prices (WTI)
@@ -50,6 +50,7 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
 
 ### APIs & Services
 - **Alpha Vantage** for market data (DXY, yields, equity indices, VIX, oil)
+- **FRED API** for M2 Money Supply and Treasury data (free, 120 requests/minute)
 - **CoinGecko** for cryptocurrency prices (free, no API key required, 10,000 calls/month)
 - **NOWPayments** for crypto payments and subscriptions (200+ cryptocurrencies)
 - **Venice AI** for market analysis
@@ -91,6 +92,10 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
    BREVO_API_KEY=your_brevo_api_key
    BREVO_SENDER_EMAIL=noreply@yourdomain.com
    ```
+   
+   **Get Free API Keys:**
+   - **FRED API**: [Federal Reserve Economic Data](https://fred.stlouisfed.org/docs/api/api_key.html) - Free, 120 requests/minute
+   - **Alpha Vantage**: [Alpha Vantage](https://www.alphavantage.co/support/#api-key) - Free tier available
 
 4. **Initialize Database**
    ```bash

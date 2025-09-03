@@ -7,7 +7,8 @@ import {
   AlertCircle,
   Settings,
   Database,
-  BarChart3
+  BarChart3,
+  DollarSign
 } from 'lucide-react';
 import axios from 'axios';
 import { shouldShowPremiumUpgradePrompt } from '../utils/authUtils';
@@ -37,6 +38,13 @@ const AdvancedDataExport = () => {
       label: 'Market Data', 
       description: 'Equity indices, DXY, Treasury yields, VIX',
       icon: Database,
+      available: true
+    },
+    { 
+      id: 'm2_money_supply', 
+      label: 'M2 Money Supply', 
+      description: 'Federal Reserve M2 money supply data',
+      icon: DollarSign,
       available: true
     },
     { 

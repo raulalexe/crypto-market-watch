@@ -248,6 +248,64 @@ class DataCollector {
     }
   }
 
+  // Collect M2 Money Supply - FRED API
+  async collectM2MoneySupply() {
+    try {
+      console.log('📊 Collecting M2 Money Supply data...');
+      
+      if (!this.fredApiKey) {
+        console.log('⚠️ FRED API key not configured, skipping M2 data collection');
+        return;
+      }
+
+      // Get M2 Money Supply from FRED (M2SL - M2 Money Stock)
+      const fredResponse = await axios.get(
+        `https://api.stlouisfed.org/fred/series/observations?series_id=M2SL&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=2`
+      );
+      
+      if (fredResponse.data.observations && fredResponse.data.observations.length >= 2) {
+        const currentValue = parseFloat(fredResponse.data.observations[0].value);
+        const previousValue = parseFloat(fredResponse.data.observations[1].value);
+        
+        // Calculate month-over-month change
+        const monthOverMonthChange = ((currentValue - previousValue) / previousValue) * 100;
+        
+        // Calculate year-over-year change (get data from 12 months ago)
+        const yearAgoResponse = await axios.get(
+          `https://api.stlouisfed.org/fred/series/observations?series_id=M2SL&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=13`
+        );
+        
+        let yearOverYearChange = null;
+        if (yearAgoResponse.data.observations && yearAgoResponse.data.observations.length >= 13) {
+          const yearAgoValue = parseFloat(yearAgoResponse.data.observations[12].value);
+          yearOverYearChange = ((currentValue - yearAgoValue) / yearAgoValue) * 100;
+        }
+        
+        // Store M2 data
+        await insertMarketData('M2_MONEY_SUPPLY', 'M2SL', currentValue, {
+          month_over_month_change: monthOverMonthChange,
+          year_over_year_change: yearOverYearChange,
+          previous_value: previousValue,
+          current_value: currentValue
+        }, 'FRED API');
+        
+        console.log(`✅ M2 Money Supply collected: $${(currentValue / 1e12).toFixed(2)}T (MoM: ${monthOverMonthChange.toFixed(2)}%, YoY: ${yearOverYearChange ? yearOverYearChange.toFixed(2) + '%' : 'N/A'})`);
+        
+        return {
+          value: currentValue,
+          monthOverMonthChange,
+          yearOverYearChange,
+          previousValue
+        };
+      } else {
+        throw new Error('No M2 data available from FRED');
+      }
+    } catch (error) {
+      console.error('❌ Error collecting M2 Money Supply:', error.message);
+      await this.errorLogger.logApiFailure('FRED', 'M2_MONEY_SUPPLY', error);
+    }
+  }
+
   // Collect US Treasury Yields - OPTIMIZED
   async collectTreasuryYields() {
     try {
@@ -1259,6 +1317,7 @@ class DataCollector {
         market_sentiment: advancedMetrics?.marketSentiment,
         derivatives: advancedMetrics?.derivatives,
         onchain: advancedMetrics?.onchain,
+        m2_money_supply: advancedMetrics?.m2Data,
         upcoming_events: upcomingEvents,
         fear_greed: fearGreed,
         regulatory_news: null // We'll get this from real sources when available
@@ -1333,6 +1392,7 @@ class DataCollector {
       const nasdaq = await getLatestMarketData('EQUITY', 'NASDAQ');
       const vix = await getLatestMarketData('VOLATILITY', 'VIX');
       const oil = await getLatestMarketData('COMMODITY', 'OIL');
+      const m2Data = await getLatestMarketData('M2_MONEY_SUPPLY', 'M2SL');
       
       // Get latest crypto prices with 24h changes
       const cryptoPrices = {};
@@ -1356,7 +1416,8 @@ class DataCollector {
         sp500?.timestamp,
         nasdaq?.timestamp,
         vix?.timestamp,
-        oil?.timestamp
+        oil?.timestamp,
+        m2Data?.timestamp
       ].filter(Boolean);
       
       const latestTimestamp = timestamps.length > 0 
@@ -1374,6 +1435,7 @@ class DataCollector {
         nasdaq: nasdaq?.value,
         vix: vix?.value || 25, // Default VIX value if not available
         oil: oil?.value,
+        m2_money_supply: m2Data?.value,
         crypto_prices: cryptoPrices
       };
     } catch (error) {
@@ -1412,13 +1474,17 @@ class DataCollector {
       // Get on-chain data from new data sources
       const onchain = await getLatestOnchainData();
       
+      // Get latest M2 money supply data
+      const m2Data = await this.getLatestMarketData('M2_MONEY_SUPPLY', 'M2SL');
+      
       return {
         bitcoinDominance,
         stablecoinMetrics,
         exchangeFlows,
         marketSentiment,
         derivatives,
-        onchain
+        onchain,
+        m2Data
       };
     } catch (error) {
       console.error('Error getting advanced metrics summary:', error.message);
@@ -1537,7 +1603,8 @@ class DataCollector {
         this.collectBitcoinDominanceOptimized(), // Uses data from collectCryptoPrices
         this.collectLayer1DataOptimized(), // Uses data from collectCryptoPrices
         this.collectExchangeFlows(), // Collect exchange flows from Binance
-        this.collectInflationData() // Collect and store inflation data
+        this.collectInflationData(), // Collect and store inflation data
+        this.collectM2MoneySupply() // Collect M2 Money Supply data
       ]);
       
       // Collect advanced data (market sentiment, derivatives, on-chain)

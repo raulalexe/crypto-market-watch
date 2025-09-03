@@ -20,6 +20,7 @@ const HistoricalData = ({ userData }) => {
     { value: 'CRYPTO_PRICE', label: 'Crypto Prices', description: 'Bitcoin, Ethereum prices' },
     { value: 'DXY', label: 'Dollar Index', description: 'US Dollar strength' },
     { value: 'TREASURY_YIELD', label: 'Treasury Yields', description: '2Y, 10Y bond yields' },
+    { value: 'M2_MONEY_SUPPLY', label: 'M2 Money Supply', description: 'Federal Reserve M2 data' },
     { value: 'VOLATILITY_INDEX', label: 'Volatility (VIX)', description: 'Market volatility index' },
     { value: 'ENERGY_PRICE', label: 'Energy Prices', description: 'Oil, gas prices' },
     { value: 'TOTAL_MARKET_CAP', label: 'Total Market Cap', description: 'Crypto market capitalization' },

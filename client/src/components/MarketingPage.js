@@ -107,6 +107,7 @@ const MarketingPage = () => {
         '200+ cryptocurrency prices',
         'Fear & Greed Index',
         'Treasury yields & DXY',
+        'M2 Money Supply data',
         'VIX volatility index',
         'Energy & equity markets'
       ]

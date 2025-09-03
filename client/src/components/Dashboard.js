@@ -11,6 +11,7 @@ import BacktestCard from './BacktestCard';
 import UpcomingEventsCard from './UpcomingEventsCard';
 import AlertCard from './AlertCard';
 import InflationDataCard from './InflationDataCard';
+import M2DataCard from './M2DataCard';
 
 const Dashboard = ({ isAuthenticated, userData }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -203,6 +204,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         
         {/* Other Cards */}
         <CryptoPricesCard data={dashboardData?.cryptoPrices} />
+        <M2DataCard data={dashboardData?.m2Data} />
         <InflationDataCard userData={userData} />
         <UpcomingEventsCard events={dashboardData?.upcomingEvents} />
         <NarrativesCard data={dashboardData?.trendingNarratives} />
