@@ -130,8 +130,11 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('lastSeenAlertId');
     delete axios.defaults.headers.common['Authorization'];
     setIsAuthenticated(false);
+    // Reload the page to clear any cached data and ensure clean state
+    window.location.reload();
   };
 
   // Check if current route is the landing page

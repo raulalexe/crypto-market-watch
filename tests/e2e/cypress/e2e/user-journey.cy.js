@@ -1,5 +1,11 @@
 describe('User Journey Tests', () => {
   beforeEach(() => {
+    // Mock API responses
+    cy.intercept('GET', '/api/market-data', { fixture: 'market-data.json' }).as('marketData');
+    cy.intercept('GET', '/api/fear-greed', { fixture: 'fear-greed.json' }).as('fearGreed');
+    cy.intercept('GET', '/api/analysis', { fixture: 'ai-analysis.json' }).as('aiAnalysis');
+    cy.intercept('GET', '/api/subscription/plans', { fixture: 'subscription-plans.json' }).as('subscriptionPlans');
+    
     cy.visit('/');
   });
 

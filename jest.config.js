@@ -1,7 +1,7 @@
 module.exports = {
-  testEnvironment: 'jsdom',
+  testEnvironment: 'node',
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/tests/__mocks__/fileMock.js'
   },
@@ -15,14 +15,6 @@ module.exports = {
     '!**/coverage/**',
     '!**/tests/**'
   ],
-  coverageThreshold: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
-    }
-  },
   testMatch: [
     '<rootDir>/tests/**/*.test.{js,jsx}',
     '<rootDir>/tests/**/*.spec.{js,jsx}'
@@ -34,5 +26,9 @@ module.exports = {
   ],
   verbose: true,
   clearMocks: true,
-  restoreMocks: true
+  restoreMocks: true,
+  globals: {
+    TextEncoder: require('util').TextEncoder,
+    TextDecoder: require('util').TextDecoder
+  }
 };

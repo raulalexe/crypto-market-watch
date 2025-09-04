@@ -183,7 +183,8 @@ const Profile = ({ onProfileUpdate }) => {
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('lastSeenAlertId');
-    navigate('/');
+    // Reload the page to clear any cached data and ensure clean state
+    window.location.reload();
   };
 
   const getPlanColor = (userData) => {

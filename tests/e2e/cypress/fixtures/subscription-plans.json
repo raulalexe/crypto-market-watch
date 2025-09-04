@@ -1,0 +1,20 @@
+[
+  {
+    "id": "free",
+    "name": "Free",
+    "price": 0,
+    "features": ["Basic market data", "Limited alerts"]
+  },
+  {
+    "id": "pro",
+    "name": "Pro",
+    "price": 29,
+    "features": ["Advanced analytics", "Unlimited alerts", "Email notifications"]
+  },
+  {
+    "id": "premium",
+    "name": "Premium",
+    "price": 99,
+    "features": ["All Pro features", "API access", "Priority support"]
+  }
+]
