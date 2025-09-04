@@ -281,7 +281,7 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
             Unlock powerful crypto market insights and advanced analytics to make informed trading decisions
           </p>
-          {discountActive && (
+          {discountActive && subscriptionStatus?.plan !== 'pro' && subscriptionStatus?.plan !== 'premium' && subscriptionStatus?.plan !== 'admin' && (
             <div className="mt-4 p-4 bg-red-900/20 border border-red-500/30 rounded-lg max-w-2xl mx-auto animate-pulse">
               <div className="flex items-center justify-center space-x-2">
                 <Tag className="w-5 h-5 text-red-400" />

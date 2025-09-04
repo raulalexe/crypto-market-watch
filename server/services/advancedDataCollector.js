@@ -76,7 +76,15 @@ class AdvancedDataCollector {
           headers: { 'User-Agent': 'CryptoMarketWatch/1.0' }
         }).catch(err => {
           console.warn('⚠️ Hash rate endpoint failed:', err.message);
-          return { data: '0' }; // Fallback value
+          // Try alternative endpoint
+          return axios.get('https://api.blockchain.info/stats', {
+            timeout: 10000,
+            headers: { 'User-Agent': 'CryptoMarketWatch/1.0' }
+          }).then(response => {
+            return { data: response.data.hash_rate || '0' };
+          }).catch(() => {
+            return { data: '0' }; // Final fallback
+          });
         })
       );
       
