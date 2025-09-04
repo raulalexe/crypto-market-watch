@@ -1163,11 +1163,16 @@ app.post('/api/notifications/preferences', authenticateToken, async (req, res) =
     const userId = req.user.userId;
     const preferences = req.body;
 
+    console.log('🔧 [DEBUG] Updating notification preferences for user:', userId);
+    console.log('🔧 [DEBUG] Preferences received:', JSON.stringify(preferences, null, 2));
+
     const { updateNotificationPreferences } = require('./database');
-    await updateNotificationPreferences(userId, preferences);
-    res.json({ success: true });
+    const result = await updateNotificationPreferences(userId, preferences);
+    
+    console.log('🔧 [DEBUG] Database update result:', result);
+    res.json({ success: true, changes: result });
   } catch (error) {
-    console.error('Error updating notification preferences:', error);
+    console.error('❌ [ERROR] Error updating notification preferences:', error);
     res.status(500).json({ error: 'Failed to update notification preferences' });
   }
 });
@@ -1193,6 +1198,50 @@ app.post('/api/telegram/webhook', async (req, res) => {
   } catch (error) {
     console.error('Error handling Telegram webhook:', error);
     res.status(500).json({ error: 'Failed to handle webhook' });
+  }
+});
+
+// Telegram verification endpoints
+app.post('/api/telegram/generate-code', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { generateTelegramVerificationCode } = require('./database');
+    
+    const result = await generateTelegramVerificationCode(userId);
+    res.json({ 
+      success: true, 
+      code: result.code,
+      expiresAt: result.expiresAt 
+    });
+  } catch (error) {
+    console.error('Error generating Telegram verification code:', error);
+    res.status(500).json({ error: 'Failed to generate verification code' });
+  }
+});
+
+app.get('/api/telegram/status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { getTelegramStatus } = require('./database');
+    
+    const status = await getTelegramStatus(userId);
+    res.json({ success: true, status });
+  } catch (error) {
+    console.error('Error getting Telegram status:', error);
+    res.status(500).json({ error: 'Failed to get Telegram status' });
+  }
+});
+
+app.post('/api/telegram/disconnect', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { disconnectTelegram } = require('./database');
+    
+    const result = await disconnectTelegram(userId);
+    res.json({ success: true, changes: result.changes });
+  } catch (error) {
+    console.error('Error disconnecting Telegram:', error);
+    res.status(500).json({ error: 'Failed to disconnect Telegram' });
   }
 });
 

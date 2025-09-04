@@ -76,7 +76,7 @@ const DataCollectionCard = ({ lastCollectionTime, onCollectData, expanded = fals
     <div className="bg-gray-800 rounded-lg border border-gray-700">
       {/* Header - Always visible */}
       <div className="p-4 border-b border-gray-700">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row items-center justify-between">
           <div className="flex items-center space-x-3">
             <Database className="w-6 h-6 text-crypto-blue" />
             <h3 className="text-lg font-semibold text-white">Data Collection</h3>
@@ -87,8 +87,8 @@ const DataCollectionCard = ({ lastCollectionTime, onCollectData, expanded = fals
               {expanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
             </button>
           </div>
-          <div className="flex items-center space-x-3">
-            <span className="text-sm text-gray-400">
+          <div className="flex flex-col md:flex-row items-center space-x-3">
+            <span className="text-sm mb-4 mt-2 sm:mb-0 sm:mt-0 text-gray-400">
               Last: {lastCollectionTime 
                 ? moment(lastCollectionTime).format('MMM Do, h:mm A')
                 : 'Never'

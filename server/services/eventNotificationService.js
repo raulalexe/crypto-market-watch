@@ -14,6 +14,15 @@ class EventNotificationService {
     try {
       console.log('🔔 Checking for upcoming event notifications...');
       
+      // Get users with notification preferences
+      const { getUsersWithNotifications } = require('../database');
+      const users = await getUsersWithNotifications();
+      
+      if (users.length === 0) {
+        console.log('📢 No users with notification preferences found');
+        return [];
+      }
+
       // Get upcoming events
       const events = await this.eventCollector.getUpcomingEvents(50);
       const now = moment();
@@ -24,9 +33,24 @@ class EventNotificationService {
         const daysUntilEvent = eventDate.diff(now, 'days');
         const hoursUntilEvent = eventDate.diff(now, 'hours');
 
-        // Check if event is within the notification window (3 days)
-        if (daysUntilEvent >= 0 && daysUntilEvent <= this.notificationWindow) {
-          const notification = await this.createEventNotification(event, daysUntilEvent, hoursUntilEvent);
+        // Filter users who want notifications for this event
+        const eligibleUsers = users.filter(user => {
+          // Check if user has event notifications enabled
+          if (!user.eventNotifications) return false;
+          
+          // Check if event is within user's notification windows (multi-select)
+          const userWindows = user.eventNotificationWindows || [3];
+          if (daysUntilEvent < 0 || !userWindows.includes(daysUntilEvent)) return false;
+          
+          // Check impact filter
+          if (user.eventImpactFilter === 'high' && event.impact !== 'high') return false;
+          if (user.eventImpactFilter === 'high_medium' && event.impact === 'low') return false;
+          
+          return true;
+        });
+
+        if (eligibleUsers.length > 0) {
+          const notification = await this.createEventNotification(event, daysUntilEvent, hoursUntilEvent, eligibleUsers);
           if (notification) {
             notificationsCreated.push(notification);
           }
@@ -42,7 +66,7 @@ class EventNotificationService {
   }
 
   // Create a notification for a specific event
-  async createEventNotification(event, daysUntilEvent, hoursUntilEvent) {
+  async createEventNotification(event, daysUntilEvent, hoursUntilEvent, eligibleUsers = null) {
     try {
       // Calculate time remaining
       const timeRemaining = this.formatTimeRemaining(daysUntilEvent, hoursUntilEvent);
@@ -64,10 +88,14 @@ class EventNotificationService {
       const wasInserted = await this.alertService.insertAlertIfNotExists(alert, 86400000); // 24 hour window
       
       if (wasInserted) {
-        console.log(`🔔 Created notification for event: ${event.title} (${timeRemaining} away)`);
+        console.log(`🔔 Created notification for event: ${event.title} (${timeRemaining} away) for ${eligibleUsers ? eligibleUsers.length : 'all'} users`);
         
-        // Send notifications to users
-        await this.alertService.sendNotifications(alert);
+        // Send notifications to users (if eligibleUsers provided, filter to only those users)
+        if (eligibleUsers) {
+          await this.alertService.sendNotificationsToUsers(alert, eligibleUsers);
+        } else {
+          await this.alertService.sendNotifications(alert);
+        }
         
         return alert;
       } else {

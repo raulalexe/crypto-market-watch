@@ -293,7 +293,7 @@ const Profile = ({ onProfileUpdate }) => {
             </div>
           </Link>
           <Link
-            to="/data-export"
+            to="/app/data-export"
             className="flex items-center space-x-3 p-4 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
           >
             <Download className="w-5 h-5 text-slate-300" />

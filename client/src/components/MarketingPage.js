@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   TrendingUp, 
@@ -16,10 +16,14 @@ import {
   Brain,
   Layers,
   Volume2,
-  History
+  History,
+  Menu,
+  X
 } from 'lucide-react';
 
 const MarketingPage = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const notificationFeatures = [
     {
       icon: Bell,
@@ -108,7 +112,11 @@ const MarketingPage = () => {
         'Fear & Greed Index',
         'Treasury yields & DXY',
         'VIX volatility index',
-        'Energy & equity markets'
+        'Energy & equity markets',
+        'Inflation data (CPI & PCE)',
+        'Exchange flow analysis',
+        'Stablecoin metrics (SSR)',
+        'Social sentiment analysis'
       ]
     },
     {
@@ -176,6 +184,45 @@ const MarketingPage = () => {
     }
   ];
 
+  const advancedFeatures = [
+    {
+      icon: Brain,
+      title: 'AI-Powered Backtesting',
+      description: 'Validate predictions with historical accuracy',
+      features: [
+        'Historical prediction validation',
+        'Accuracy scoring & metrics',
+        'Performance correlation analysis',
+        'Asset-specific backtesting',
+        'Continuous model improvement'
+      ]
+    },
+    {
+      icon: Layers,
+      title: 'Layer 1 Blockchain Analytics',
+      description: 'Deep insights into major blockchain networks',
+      features: [
+        'Bitcoin network metrics (hash rate, TPS)',
+        'Ethereum gas analysis & pricing',
+        'Solana performance tracking',
+        'Network health indicators',
+        'DeFi protocol monitoring'
+      ]
+    },
+    {
+      icon: BarChart3,
+      title: 'Inflation & Macro Analysis',
+      description: 'Track economic indicators that impact crypto',
+      features: [
+        'CPI & PCE inflation data',
+        'Year-over-year calculations',
+        'Federal Reserve impact analysis',
+        'Economic calendar tracking',
+        'Macro-crypto correlation insights'
+      ]
+    }
+  ];
+
   const plans = [
     {
       name: 'Free',
@@ -237,16 +284,18 @@ const MarketingPage = () => {
       <nav className="bg-gray-800 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-2">
+            <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
               <TrendingUp className="w-8 h-8 text-crypto-blue" />
               <span className="text-xl font-bold text-white">Crypto Market Monitor</span>
-            </div>
-            <div className="flex items-center space-x-4">
+            </Link>
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-4">
               <Link
-                to="/landing"
+                to="/about"
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                Home
+                About
               </Link>
               <button
                 onClick={() => {
@@ -266,7 +315,59 @@ const MarketingPage = () => {
                 Launch App
               </Link>
             </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Mobile Navigation */}
+          {mobileMenuOpen && (
+            <div className="md:hidden py-4 border-t border-gray-700">
+              <div className="flex flex-col space-y-4">
+                <Link
+                  to="/about"
+                  className="text-gray-300 hover:text-white transition-colors px-4 py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  About
+                </Link>
+                <button
+                  onClick={() => {
+                    const pricingSection = document.getElementById('pricing-section');
+                    if (pricingSection) {
+                      pricingSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-gray-300 hover:text-white transition-colors text-left px-4 py-2"
+                >
+                  Pricing
+                </button>
+              </div>
+              
+              {/* Separate row for Launch App button */}
+              <div className="pt-4 border-t border-gray-600">
+                <Link
+                  to="/app"
+                  className="block w-full px-4 py-3 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors text-center font-semibold"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Launch App
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -284,8 +385,8 @@ const MarketingPage = () => {
               Crypto Market Monitor
             </h1>
             <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-              Advanced cryptocurrency analytics with real-time notifications. Stay ahead of market movements 
-              with AI-powered insights and multi-channel alerts for impactful events.
+              Advanced cryptocurrency analytics with real-time notifications, AI-powered predictions, and comprehensive market data. 
+              Track 200+ cryptocurrencies, inflation data, Layer 1 blockchain metrics, and stay ahead with automated alerts.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
@@ -331,6 +432,30 @@ const MarketingPage = () => {
             <div>
               <div className="text-3xl font-bold text-crypto-blue mb-2">AI-Powered</div>
               <div className="text-gray-400">Analysis</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="text-3xl font-bold text-crypto-blue mb-2">200+</div>
+              <div className="text-gray-400">Cryptocurrencies</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-crypto-blue mb-2">24/7</div>
+              <div className="text-gray-400">Data Collection</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-crypto-blue mb-2">15+</div>
+              <div className="text-gray-400">Data Sources</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-crypto-blue mb-2">99.9%</div>
+              <div className="text-gray-400">Uptime</div>
             </div>
           </div>
         </div>
@@ -450,6 +575,40 @@ const MarketingPage = () => {
               const IconComponent = feature.icon;
               return (
                 <div key={index} className="bg-gray-900 p-8 rounded-lg border border-gray-700">
+                  <div className="p-4 bg-crypto-blue/20 rounded-lg w-fit mb-6">
+                    <IconComponent className="w-10 h-10 text-crypto-blue" />
+                  </div>
+                  <h3 className="text-2xl font-semibold mb-4">{feature.title}</h3>
+                  <p className="text-gray-400 mb-6">{feature.description}</p>
+                  <ul className="space-y-3">
+                    {feature.features.map((item, idx) => (
+                      <li key={idx} className="flex items-center text-gray-300">
+                        <Check className="w-4 h-4 text-green-400 mr-3 flex-shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Advanced Features Section */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">Advanced Features & Capabilities</h2>
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              Professional-grade tools for serious traders and analysts.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {advancedFeatures.map((feature, index) => {
+              const IconComponent = feature.icon;
+              return (
+                <div key={index} className="bg-gray-800 p-8 rounded-lg border border-gray-700">
                   <div className="p-4 bg-crypto-blue/20 rounded-lg w-fit mb-6">
                     <IconComponent className="w-10 h-10 text-crypto-blue" />
                   </div>

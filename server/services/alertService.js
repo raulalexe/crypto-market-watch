@@ -312,6 +312,35 @@ class AlertService {
     }
   }
 
+  // Send notifications to specific users (for event notifications with custom preferences)
+  async sendNotificationsToUsers(alert, users) {
+    try {
+      console.log(`📢 Sending notifications to ${users.length} specific users for alert: ${alert.type}`);
+
+      // Filter users based on their event notification channel preferences
+      const filteredUsers = users.filter(user => {
+        const userChannels = user.eventNotificationChannels || ['email', 'push'];
+        return userChannels.some(channel => {
+          if (channel === 'email') return user.emailNotifications && user.email;
+          if (channel === 'push') return user.pushNotifications && user.pushSubscriptions?.length > 0;
+          if (channel === 'telegram') return user.telegramNotifications;
+          return false;
+        });
+      });
+
+      if (filteredUsers.length === 0) {
+        console.log('📢 No users eligible for event notifications');
+        return;
+      }
+
+      // Send notifications to filtered users
+      await this.sendNotificationsByType(filteredUsers, alert, false);
+
+    } catch (error) {
+      console.error('❌ Error sending notifications to specific users:', error);
+    }
+  }
+
   // Send notifications by type with priority handling
   async sendNotificationsByType(users, alert, isPriority = false) {
     try {
@@ -343,13 +372,51 @@ class AlertService {
         }
       }
 
-      // Send Telegram notifications (admin controlled, always priority)
-      if (isPriority) {
-        await this.telegramService.sendBulkAlertMessages(alert);
+      // Send Telegram notifications to verified users only
+      const telegramUsers = users.filter(user => 
+        user.telegramNotifications && 
+        user.telegramChatId && 
+        user.telegramVerified
+      );
+      
+      if (telegramUsers.length > 0) {
+        if (isPriority) {
+          // Priority Telegram delivery (immediate)
+          await this.sendTelegramNotificationsToUsers(telegramUsers, alert);
+        } else {
+          // Standard Telegram delivery (with slight delay)
+          setTimeout(async () => {
+            await this.sendTelegramNotificationsToUsers(telegramUsers, alert);
+          }, 5000);
+        }
       }
 
     } catch (error) {
       console.error('❌ Error sending notifications by type:', error);
+    }
+  }
+
+  // Send Telegram notifications to specific verified users
+  async sendTelegramNotificationsToUsers(users, alert) {
+    try {
+      const results = { sent: 0, failed: 0 };
+      
+      for (const user of users) {
+        if (user.telegramChatId && user.telegramVerified) {
+          const success = await this.telegramService.sendAlertMessage(user.telegramChatId, alert);
+          if (success) {
+            results.sent++;
+          } else {
+            results.failed++;
+          }
+        }
+      }
+      
+      console.log(`📱 Telegram notifications sent to ${results.sent} verified users, ${results.failed} failed`);
+      return results;
+    } catch (error) {
+      console.error('❌ Error sending Telegram notifications to users:', error);
+      return { sent: 0, failed: users.length };
     }
   }
 

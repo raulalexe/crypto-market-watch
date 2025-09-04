@@ -246,18 +246,9 @@ const ContactForm = () => {
               <label className="block text-sm font-medium text-slate-300 mb-2">
                 Security Verification *
               </label>
-              <div className="flex items-center space-x-3">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={captcha.userAnswer}
-                    onChange={handleCaptchaChange}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-crypto-blue"
-                    placeholder="Enter the answer"
-                    required
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
+              <div className="space-y-3 md:space-y-0">
+                {/* Mobile: Captcha question above input */}
+                <div className="flex items-center space-x-2 md:hidden">
                   <span className="text-slate-300 text-sm font-medium">
                     {captcha.question}
                   </span>
@@ -269,6 +260,45 @@ const ContactForm = () => {
                   >
                     <RefreshCw className="w-4 h-4 text-slate-400" />
                   </button>
+                </div>
+                
+                {/* Desktop: Input and captcha side by side */}
+                <div className="hidden md:flex md:items-center md:space-x-3">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={captcha.userAnswer}
+                      onChange={handleCaptchaChange}
+                      className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-crypto-blue"
+                      placeholder="Enter the answer"
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-slate-300 text-sm font-medium">
+                      {captcha.question}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={generateCaptcha}
+                      className="p-2 rounded-lg hover:bg-slate-600 transition-colors"
+                      title="Generate new captcha"
+                    >
+                      <RefreshCw className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Mobile: Input field below question */}
+                <div className="md:hidden">
+                  <input
+                    type="text"
+                    value={captcha.userAnswer}
+                    onChange={handleCaptchaChange}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-crypto-blue"
+                    placeholder="Enter the answer"
+                    required
+                  />
                 </div>
               </div>
             </div>

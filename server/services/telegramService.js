@@ -332,6 +332,8 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
           await this.sendInfoMessage(chat.id);
         } else if (text.startsWith('/set_')) {
           await this.handleSettingsCommand(chat, text);
+        } else if (text.startsWith('/verify ')) {
+          await this.handleVerifyCommand(chat, text);
         } else {
           await this.sendUnknownCommandMessage(chat.id);
         }
@@ -351,15 +353,55 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
       firstName: from.first_name,
       lastName: from.last_name,
       chatId: chatId,
-      subscribed: true,
-      subscribedAt: new Date().toISOString()
+      subscribed: false, // Don't auto-subscribe anymore
+      subscribedAt: null
     };
 
     this.subscribers.set(chatId, userInfo);
-    this.chatIds.add(chatId);
 
     await this.sendWelcomeMessage(chatId);
-    console.log(`✅ New Telegram subscriber: ${from.first_name} (${chatId})`);
+    console.log(`👋 New Telegram user: ${from.first_name} (${chatId}) - needs verification`);
+  }
+
+  async handleVerifyCommand(chat, text) {
+    const chatId = chat.id.toString();
+    const code = text.replace('/verify ', '').trim();
+    
+    if (!code) {
+      await this.sendMessage(chatId, '❌ Please provide a verification code.\n\nUsage: /verify YOUR_CODE');
+      return;
+    }
+    
+    try {
+      const { verifyTelegramCode } = require('../database');
+      const result = await verifyTelegramCode(code, chatId);
+      
+      if (result.success) {
+        // Update local subscriber info
+        const userInfo = this.subscribers.get(chatId) || {};
+        userInfo.subscribed = true;
+        userInfo.subscribedAt = new Date().toISOString();
+        this.subscribers.set(chatId, userInfo);
+        this.chatIds.add(chatId);
+        
+        await this.sendMessage(chatId, 
+          '✅ <b>Verification Successful!</b>\n\n' +
+          'Your Telegram account has been linked to your Crypto Market Monitor account.\n' +
+          'You will now receive market alerts and notifications.\n\n' +
+          'Use /help to see available commands.'
+        );
+        console.log(`✅ Telegram verification successful for chat ID: ${chatId}, user ID: ${result.userId}`);
+      } else {
+        await this.sendMessage(chatId, 
+          `❌ <b>Verification Failed</b>\n\n${result.error}\n\n` +
+          'Please make sure you entered the correct verification code from your account settings.'
+        );
+        console.log(`❌ Telegram verification failed for chat ID: ${chatId}, error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Error verifying Telegram code:', error);
+      await this.sendMessage(chatId, '❌ An error occurred during verification. Please try again later.');
+    }
   }
 
   async handleStopCommand(chat) {
@@ -483,22 +525,27 @@ Use these commands:
     const message = `
 <b>🚀 Welcome to Crypto Market Monitor Bot!</b>
 
-You will now receive real-time market alerts for:
+To receive market alerts, you need to verify your account first.
+
+<b>How to verify:</b>
+1. Go to your Crypto Market Monitor account settings
+2. Navigate to Telegram notifications
+3. Click "Connect Telegram" to get a verification code
+4. Send the code using: <code>/verify YOUR_CODE</code>
+
+<b>Available Commands:</b>
+/verify [code] - Verify your account with a code
+/help - Show help message
+/info - Show bot information
+/status - Check verification status
+
+<b>After verification, you'll receive alerts for:</b>
 • SSR (Stablecoin Supply Ratio) changes
 • Bitcoin dominance shifts
 • Exchange flow movements
 • Stablecoin market cap changes
 • Market volatility spikes
 • Large whale movements
-
-<b>Commands:</b>
-/start - Start receiving alerts
-/stop - Stop receiving alerts
-/subscribe - Subscribe to alerts
-/unsubscribe - Unsubscribe from alerts
-/status - Check bot status
-/help - Show help message
-/info - Show bot information
 
 <b>Settings:</b>
 /set_frequency [high|medium|low] - Set alert frequency

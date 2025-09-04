@@ -449,14 +449,180 @@ const migrations = [
     name: 'fix_layer1_data_constraints',
     description: 'Add unique constraint to layer1_data table for ON CONFLICT support',
     sql: `
-      ALTER TABLE layer1_data ADD CONSTRAINT IF NOT EXISTS layer1_data_chain_id_unique UNIQUE (chain_id);
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'layer1_data_chain_id_unique'
+        ) THEN
+          ALTER TABLE layer1_data ADD CONSTRAINT layer1_data_chain_id_unique UNIQUE (chain_id);
+        END IF;
+      END $$;
     `
   },
   {
     name: 'fix_crypto_prices_constraints',
     description: 'Add unique constraint to crypto_prices table for ON CONFLICT support',
     sql: `
-      ALTER TABLE crypto_prices ADD CONSTRAINT IF NOT EXISTS crypto_prices_symbol_unique UNIQUE (symbol);
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'crypto_prices_symbol_unique'
+        ) THEN
+          ALTER TABLE crypto_prices ADD CONSTRAINT crypto_prices_symbol_unique UNIQUE (symbol);
+        END IF;
+      END $$;
+    `
+  },
+  {
+    name: 'fix_varchar_length_issues',
+    description: 'Fix varchar length constraints that are too short',
+    sql: `
+      -- Fix market_data source column
+      ALTER TABLE market_data ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix fear_greed_index source column
+      ALTER TABLE fear_greed_index ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix upcoming_events source column
+      ALTER TABLE upcoming_events ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix bitcoin_dominance source column
+      ALTER TABLE bitcoin_dominance ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix stablecoin_metrics source column
+      ALTER TABLE stablecoin_metrics ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix exchange_flows source column
+      ALTER TABLE exchange_flows ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix market_sentiment source column
+      ALTER TABLE market_sentiment ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix derivatives_data source column
+      ALTER TABLE derivatives_data ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix onchain_data source column
+      ALTER TABLE onchain_data ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix inflation_data source column
+      ALTER TABLE inflation_data ALTER COLUMN source TYPE VARCHAR(255);
+      
+      -- Fix inflation_releases source column
+      ALTER TABLE inflation_releases ALTER COLUMN source TYPE VARCHAR(255);
+    `
+  },
+  {
+    name: 'add_missing_email_notifications_column',
+    description: 'Add missing email_notifications column to users table if it does not exist',
+    sql: `
+      DO $$ 
+      BEGIN
+        -- Add email_notifications column if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'email_notifications'
+        ) THEN
+          ALTER TABLE users ADD COLUMN email_notifications BOOLEAN DEFAULT FALSE;
+        END IF;
+        
+        -- Add push_notifications column if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'push_notifications'
+        ) THEN
+          ALTER TABLE users ADD COLUMN push_notifications BOOLEAN DEFAULT FALSE;
+        END IF;
+        
+        -- Add telegram_notifications column if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'telegram_notifications'
+        ) THEN
+          ALTER TABLE users ADD COLUMN telegram_notifications BOOLEAN DEFAULT FALSE;
+        END IF;
+        
+        -- Add notification_preferences column if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'notification_preferences'
+        ) THEN
+          ALTER TABLE users ADD COLUMN notification_preferences TEXT DEFAULT '{}';
+        END IF;
+      END $$;
+    `
+  },
+  {
+    name: 'add_event_notification_preferences',
+    description: 'Add event notification preference columns to users table',
+    sql: `
+      DO $$ 
+      BEGIN
+        -- Add event_notifications column if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'event_notifications'
+        ) THEN
+          ALTER TABLE users ADD COLUMN event_notifications BOOLEAN DEFAULT TRUE;
+        END IF;
+        
+        -- Add event_notification_windows column if it doesn't exist (JSON array for multi-select)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'event_notification_windows'
+        ) THEN
+          ALTER TABLE users ADD COLUMN event_notification_windows TEXT DEFAULT '[3]';
+        END IF;
+        
+        -- Add event_notification_channels column if it doesn't exist (JSON array for channel selection)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'event_notification_channels'
+        ) THEN
+          ALTER TABLE users ADD COLUMN event_notification_channels TEXT DEFAULT '["email","push"]';
+        END IF;
+        
+        -- Add event_impact_filter column if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'event_impact_filter'
+        ) THEN
+          ALTER TABLE users ADD COLUMN event_impact_filter TEXT DEFAULT 'all';
+        END IF;
+      END $$;
+    `
+  },
+  {
+    name: 'add_telegram_verification_system',
+    description: 'Add Telegram verification code system to users table',
+    sql: `
+      DO $$ 
+      BEGIN
+        -- Add telegram_verification_code column if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'telegram_verification_code'
+        ) THEN
+          ALTER TABLE users ADD COLUMN telegram_verification_code VARCHAR(10);
+        END IF;
+        
+        -- Add telegram_verification_expires_at column if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'telegram_verification_expires_at'
+        ) THEN
+          ALTER TABLE users ADD COLUMN telegram_verification_expires_at TIMESTAMP;
+        END IF;
+        
+        -- Add telegram_verified column if it doesn't exist
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'telegram_verified'
+        ) THEN
+          ALTER TABLE users ADD COLUMN telegram_verified BOOLEAN DEFAULT FALSE;
+        END IF;
+      END $$;
     `
   }
 ];

@@ -558,7 +558,7 @@ const HistoricalData = ({ userData }) => {
       {predictions && (
         <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-6">
           <h3 className="text-lg font-semibold text-white mb-4">AI Market Predictions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Short Term */}
             <div className="bg-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">

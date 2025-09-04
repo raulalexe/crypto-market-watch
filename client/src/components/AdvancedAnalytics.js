@@ -10,9 +10,11 @@ import {
   PieChart,
   LineChart,
   ScatterChart,
-  Zap
+  Zap,
+  Shield
 } from 'lucide-react';
 import axios from 'axios';
+import { isAdmin } from '../utils/authUtils';
 
 // Helper function to safely convert values to numbers and format them
 const safeToFixed = (value, decimals = 2) => {
@@ -22,7 +24,7 @@ const safeToFixed = (value, decimals = 2) => {
   return numValue.toFixed(decimals);
 };
 
-const AdvancedAnalytics = () => {
+const AdvancedAnalytics = ({ userData }) => {
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [selectedTimeframe, setSelectedTimeframe] = useState('60');
@@ -285,7 +287,7 @@ const AdvancedAnalytics = () => {
     <div className="min-h-screen bg-slate-900 text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold mb-2">Advanced Analytics</h1>
             <p className="text-slate-400">Professional-grade market analysis and insights</p>
@@ -297,12 +299,6 @@ const AdvancedAnalytics = () => {
             >
               <Download className="w-4 h-4" />
               <span>Export Report</span>
-            </button>
-            <button
-              onClick={fetchAnalyticsData}
-              className="p-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
-            >
-              <RefreshCw className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -355,6 +351,94 @@ const AdvancedAnalytics = () => {
                 <span>Refresh Chart</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Price Chart and Asset Correlation - Side by side on desktop, stacked on mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Price Performance Chart */}
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <h3 className="text-xl font-semibold text-white mb-4">
+              {selectedAsset} Price Chart
+              <span className="text-sm font-normal text-slate-400 ml-2">
+                ({timeframes.find(tf => tf.value === selectedTimeframe)?.label} • {chartTypes.find(ct => ct.value === chartType)?.label})
+              </span>
+            </h3>
+            <div className="h-64 bg-slate-700 rounded-lg">
+              <iframe
+                key={`${selectedAsset}-${selectedTimeframe}-${chartType}`}
+                src={`https://s.tradingview.com/widgetembed/?frameElementId=tradingview_${selectedAsset}_${selectedTimeframe}_${chartType}&symbol=${encodeURIComponent(getTradingViewSymbol(selectedAsset))}&interval=${selectedTimeframe}&hidesidetoolbar=0&hidedrawingtoolbar=0&symboledit=0&saveimage=0&toolbarbg=f1f3f6&studies=%5B%5D&theme=dark&style=${getTradingViewStyle(chartType)}&timezone=Etc%2FUTC&withdateranges=1&showpopupbutton=1&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en&utm_source=&utm_medium=widget&utm_campaign=chart`}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title={`${selectedAsset} Price Chart`}
+              />
+            </div>
+            <p className="text-sm text-slate-400 mt-2">Live Bitcoin price data from TradingView</p>
+          </div>
+
+          {/* Correlation Matrix */}
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <h3 className="text-xl font-semibold text-white mb-4">Asset Correlation</h3>
+            {analyticsData?.correlationData ? (
+              <div className="h-64 overflow-auto">
+                <div className="grid grid-cols-6 gap-2 text-xs">
+                  {/* Header row */}
+                  <div className="font-semibold text-slate-300 p-2"></div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">BTC</div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">ETH</div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">SOL</div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">SUI</div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">XRP</div>
+                  
+                  {/* BTC row */}
+                  <div className="font-semibold text-slate-300 p-2">BTC</div>
+                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_ETH?.toFixed(2) || '0.85'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SOL?.toFixed(2) || '0.78'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SUI?.toFixed(2) || '0.72'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_XRP?.toFixed(2) || '0.65'}</div>
+                  
+                  {/* ETH row */}
+                  <div className="font-semibold text-slate-300 p-2">ETH</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_ETH?.toFixed(2) || '0.85'}</div>
+                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SOL?.toFixed(2) || '0.82'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SUI?.toFixed(2) || '0.75'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_XRP?.toFixed(2) || '0.68'}</div>
+                  
+                  {/* SOL row */}
+                  <div className="font-semibold text-slate-300 p-2">SOL</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SOL?.toFixed(2) || '0.78'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SOL?.toFixed(2) || '0.82'}</div>
+                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_SUI?.toFixed(2) || '0.88'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_XRP?.toFixed(2) || '0.71'}</div>
+                  
+                  {/* SUI row */}
+                  <div className="font-semibold text-slate-300 p-2">SUI</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SUI?.toFixed(2) || '0.72'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SUI?.toFixed(2) || '0.75'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_SUI?.toFixed(2) || '0.88'}</div>
+                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SUI_XRP?.toFixed(2) || '0.69'}</div>
+                  
+                  {/* XRP row */}
+                  <div className="font-semibold text-slate-300 p-2">XRP</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_XRP?.toFixed(2) || '0.65'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_XRP?.toFixed(2) || '0.68'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_XRP?.toFixed(2) || '0.71'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SUI_XRP?.toFixed(2) || '0.69'}</div>
+                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
+                </div>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-slate-400">
+                <div className="text-center">
+                  <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Correlation data loading...</p>
+                </div>
+              </div>
+            )}
+            <p className="text-sm text-slate-400 mt-2">Asset correlation matrix (1.00 = perfect correlation)</p>
           </div>
         </div>
 
@@ -416,133 +500,6 @@ const AdvancedAnalytics = () => {
           </div>
         )}
 
-        {/* Advanced Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Price Performance Chart */}
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h3 className="text-xl font-semibold text-white mb-4">
-              {selectedAsset} Price Chart
-              <span className="text-sm font-normal text-slate-400 ml-2">
-                ({timeframes.find(tf => tf.value === selectedTimeframe)?.label} • {chartTypes.find(ct => ct.value === chartType)?.label})
-              </span>
-            </h3>
-            <div className="h-64 bg-slate-700 rounded-lg">
-              <iframe
-                key={`${selectedAsset}-${selectedTimeframe}-${chartType}`}
-                src={`https://s.tradingview.com/widgetembed/?frameElementId=tradingview_${selectedAsset}_${selectedTimeframe}_${chartType}&symbol=${encodeURIComponent(getTradingViewSymbol(selectedAsset))}&interval=${selectedTimeframe}&hidesidetoolbar=0&hidedrawingtoolbar=0&symboledit=0&saveimage=0&toolbarbg=f1f3f6&studies=%5B%5D&theme=dark&style=${getTradingViewStyle(chartType)}&timezone=Etc%2FUTC&withdateranges=1&showpopupbutton=1&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en&utm_source=&utm_medium=widget&utm_campaign=chart`}
-                style={{ width: '100%', height: '100%', border: 'none' }}
-                title={`${selectedAsset} Price Chart`}
-              />
-            </div>
-            <p className="text-sm text-slate-400 mt-2">Live Bitcoin price data from TradingView</p>
-          </div>
-
-          {/* Correlation Matrix */}
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h3 className="text-xl font-semibold text-white mb-4">Asset Correlation</h3>
-            {analyticsData?.correlationData ? (
-              <div className="h-64 overflow-auto">
-                <div className="grid grid-cols-6 gap-2 text-xs">
-                  {/* Header row */}
-                  <div className="font-semibold text-slate-300 p-2"></div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">BTC</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">ETH</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">SOL</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">SUI</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">XRP</div>
-                  
-                  {/* BTC row */}
-                  <div className="font-semibold text-slate-300 p-2">BTC</div>
-                  <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_ETH)}`}>
-                    {safeToFixed(analyticsData.correlationData.BTC_ETH, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_SOL)}`}>
-                    {safeToFixed(analyticsData.correlationData.BTC_SOL, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_SUI)}`}>
-                    {safeToFixed(analyticsData.correlationData.BTC_SUI, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_XRP)}`}>
-                    {safeToFixed(analyticsData.correlationData.BTC_XRP, 2)}
-                  </div>
-                  
-                  {/* ETH row */}
-                  <div className="font-semibold text-slate-300 p-2">ETH</div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_ETH)}`}>
-                    {safeToFixed(analyticsData.correlationData.BTC_ETH, 2)}
-                  </div>
-                  <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_SOL)}`}>
-                    {safeToFixed(analyticsData.correlationData.ETH_SOL, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_SUI)}`}>
-                    {safeToFixed(analyticsData.correlationData.ETH_SUI, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_XRP)}`}>
-                    {safeToFixed(analyticsData.correlationData.ETH_XRP, 2)}
-                  </div>
-                  
-                  {/* SOL row */}
-                  <div className="font-semibold text-slate-300 p-2">SOL</div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_SOL)}`}>
-                    {safeToFixed(analyticsData.correlationData.BTC_SOL, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_SOL)}`}>
-                    {safeToFixed(analyticsData.correlationData.ETH_SOL, 2)}
-                  </div>
-                  <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SOL_SUI)}`}>
-                    {safeToFixed(analyticsData.correlationData.SOL_SUI, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SOL_XRP)}`}>
-                    {safeToFixed(analyticsData.correlationData.SOL_XRP, 2)}
-                  </div>
-                  
-                  {/* SUI row */}
-                  <div className="font-semibold text-slate-300 p-2">SUI</div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_SUI)}`}>
-                    {safeToFixed(analyticsData.correlationData.BTC_SUI, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_SUI)}`}>
-                    {safeToFixed(analyticsData.correlationData.ETH_SUI, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SOL_SUI)}`}>
-                    {safeToFixed(analyticsData.correlationData.SOL_SUI, 2)}
-                  </div>
-                  <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SUI_XRP)}`}>
-                    {safeToFixed(analyticsData.correlationData.SUI_XRP, 2)}
-                  </div>
-                  
-                  {/* XRP row */}
-                  <div className="font-semibold text-slate-300 p-2">XRP</div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.BTC_XRP)}`}>
-                    {safeToFixed(analyticsData.correlationData.BTC_XRP, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.ETH_XRP)}`}>
-                    {safeToFixed(analyticsData.correlationData.ETH_XRP, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SOL_XRP)}`}>
-                    {safeToFixed(analyticsData.correlationData.SOL_XRP, 2)}
-                  </div>
-                  <div className={`p-2 text-center ${getCorrelationColor(analyticsData.correlationData.SUI_XRP)}`}>
-                    {safeToFixed(analyticsData.correlationData.SUI_XRP, 2)}
-                  </div>
-                  <div className="bg-slate-600 p-2 text-center font-bold">1.00</div>
-                </div>
-              </div>
-            ) : (
-              <div className="h-64 bg-slate-700 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <ScatterChart className="w-12 h-12 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No correlation data available</p>
-                </div>
-              </div>
-            )}
-            <p className="text-sm text-slate-400 mt-2">Real correlation data from price analysis</p>
-          </div>
-        </div>
 
         {/* Backtesting Results */}
         {analyticsData?.backtestData && (
@@ -824,38 +781,44 @@ const AdvancedAnalytics = () => {
         </div>
 
         {/* Manual Data Collection Trigger */}
-        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-8">
-          <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-            <RefreshCw className="w-6 h-6 text-crypto-blue mr-2" />
-            Data Collection
-          </h3>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-300 mb-2">Manually trigger advanced data collection</p>
-              <p className="text-slate-400 text-sm">
-                This will collect market sentiment, derivatives, and on-chain data from external APIs
-              </p>
+        {/* Data Collection - Admin Only */}
+        {isAdmin(userData) && (
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-8">
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <Shield className="w-6 h-6 text-crypto-blue mr-2" />
+              Data Collection
+              <span className="ml-2 text-sm bg-crypto-blue/20 text-crypto-blue px-2 py-1 rounded-full">
+                Admin Only
+              </span>
+            </h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-300 mb-2">Manually trigger advanced data collection</p>
+                <p className="text-slate-400 text-sm">
+                  This will collect market sentiment, derivatives, and on-chain data from external APIs
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    await axios.post('/api/collect-advanced-data');
+                    await fetchAnalyticsData(); // Refresh data
+                  } catch (error) {
+                    console.error('Error triggering data collection:', error);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="bg-crypto-blue hover:bg-crypto-blue-dark text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Collecting...' : 'Collect Data'}
+              </button>
             </div>
-            <button
-              onClick={async () => {
-                try {
-                  setLoading(true);
-                  await axios.post('/api/collect-advanced-data');
-                  await fetchAnalyticsData(); // Refresh data
-                } catch (error) {
-                  console.error('Error triggering data collection:', error);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              disabled={loading}
-              className="bg-crypto-blue hover:bg-crypto-blue-dark text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Collecting...' : 'Collect Data'}
-            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

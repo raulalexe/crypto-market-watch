@@ -227,7 +227,7 @@ const InflationDataCard = ({ userData }) => {
             <Activity className="w-4 h-4 text-blue-400" />
             <span>Consumer Price Index (CPI)</span>
           </h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-slate-600 p-3 rounded-lg">
               <div className="text-sm text-slate-400">Headline CPI (YoY %)</div>
               <div className="text-lg font-semibold text-white">
@@ -270,7 +270,7 @@ const InflationDataCard = ({ userData }) => {
             <DollarSign className="w-4 h-4 text-green-400" />
             <span>Personal Consumption Expenditures (PCE)</span>
           </h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
             <div className="bg-slate-600 p-3 rounded-lg">
               <div className="text-sm text-slate-400">Headline PCE (YoY %)</div>
               <div className="text-lg font-semibold text-white">
@@ -320,7 +320,7 @@ const InflationDataCard = ({ userData }) => {
           <div className="text-xs text-slate-400 mb-3">
             Sources: {expectations.sources.join(', ')}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-slate-600 p-3 rounded-lg">
               <div className="text-sm font-medium text-white">CPI Consensus</div>
               <div className="text-sm text-slate-300">

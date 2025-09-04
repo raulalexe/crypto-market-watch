@@ -17,7 +17,7 @@ import AdvancedDataExport from './components/AdvancedDataExport';
 import CustomAlertThresholds from './components/CustomAlertThresholds';
 import HistoricalData from './components/HistoricalData';
 import SubscriptionPlans from './components/SubscriptionPlans';
-import LandingPage from './components/LandingPage';
+
 import AdminDashboard from './components/AdminDashboard';
 import AuthRequired from './components/AuthRequired';
 import PrivacyPolicy from './components/PrivacyPolicy';
@@ -151,7 +151,8 @@ function App() {
                 {/* Marketing page as index - no header/sidebar */}
         <Routes>
           <Route path="/" element={<MarketingPage />} />
-          <Route path="/landing" element={<LandingPage />} />
+
+          <Route path="/about" element={<About />} />
           <Route path="/unsubscribe-success" element={<UnsubscribeSuccess />} />
           
 
@@ -207,7 +208,7 @@ function App() {
                     />
                     <Route 
                       path="advanced-analytics" 
-                      element={<AdvancedAnalytics />} 
+                      element={<AdvancedAnalytics userData={userData} />} 
                     />
                     <Route 
                       path="advanced-export" 

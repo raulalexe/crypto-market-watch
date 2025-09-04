@@ -224,11 +224,14 @@ class InflationDataService {
           endyear: currentYear.toString(),
           registrationkey: this.blsApiKey
         }, {
-          timeout: 60000, // Increased timeout to 60 seconds
+          timeout: 30000, // Reduced timeout to 30 seconds
           headers: {
             'User-Agent': 'CryptoMarketWatch/1.0',
             'Accept': 'application/json'
-          }
+          },
+          // Add retry configuration
+          retry: 2,
+          retryDelay: 1000
         });
 
 

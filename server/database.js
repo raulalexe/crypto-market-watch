@@ -445,7 +445,10 @@ const dbAdapter = {
   run: (query, params = []) => {
     return new Promise((resolve, reject) => {
       db.query(query, params)
-        .then(result => resolve({ lastID: result.rows[0]?.id || result.rowCount }))
+        .then(result => resolve({ 
+          lastID: result.rows[0]?.id || result.rowCount,
+          changes: result.rowCount 
+        }))
         .catch(reject);
     });
   },
@@ -1129,31 +1132,66 @@ const deletePushSubscription = (userId, endpoint) => {
 // Notification preference functions
 const updateNotificationPreferences = (userId, preferences) => {
   return new Promise((resolve, reject) => {
-    const { emailNotifications, pushNotifications, telegramNotifications, notificationPreferences } = preferences;
+    const { 
+      emailNotifications, 
+      pushNotifications, 
+      telegramNotifications, 
+      notificationPreferences,
+      eventNotifications,
+      eventNotificationWindows,
+      eventNotificationChannels,
+      eventImpactFilter
+    } = preferences;
+    
+    console.log('🔧 [DEBUG] Database: Updating preferences for user:', userId);
+    console.log('🔧 [DEBUG] Database: Preferences data:', {
+      emailNotifications,
+      pushNotifications,
+      telegramNotifications,
+      eventNotifications,
+      eventNotificationWindows,
+      eventNotificationChannels,
+      eventImpactFilter
+    });
     
     dbAdapter.run(
       `UPDATE users SET 
         email_notifications = $1, 
         push_notifications = $2, 
         telegram_notifications = $3,
-        notification_preferences = $4
-       WHERE id = $5`,
+        notification_preferences = $4,
+        event_notifications = $5,
+        event_notification_windows = $6,
+        event_notification_channels = $7,
+        event_impact_filter = $8
+       WHERE id = $9`,
       [
         emailNotifications,
         pushNotifications,
         telegramNotifications,
         JSON.stringify(notificationPreferences || {}),
+        eventNotifications,
+        JSON.stringify(eventNotificationWindows || [3]),
+        JSON.stringify(eventNotificationChannels || ['email', 'push']),
+        eventImpactFilter,
         userId
       ]
-    ).then(result => resolve(result.lastID))
-     .catch(reject);
+    ).then(result => {
+      console.log('🔧 [DEBUG] Database: Update result:', result);
+      console.log('🔧 [DEBUG] Database: Changes made:', result.changes);
+      resolve(result.changes);
+    })
+     .catch(error => {
+       console.error('❌ [ERROR] Database: Update failed:', error);
+       reject(error);
+     });
   });
 };
 
 const getNotificationPreferences = (userId) => {
   return new Promise((resolve, reject) => {
     dbAdapter.get(
-      'SELECT email_notifications, push_notifications, telegram_notifications, notification_preferences FROM users WHERE id = $1',
+      'SELECT email_notifications, push_notifications, telegram_notifications, notification_preferences, event_notifications, event_notification_windows, event_notification_channels, event_impact_filter FROM users WHERE id = $1',
       [userId]
     ).then(row => {
       if (row) {
@@ -1161,7 +1199,11 @@ const getNotificationPreferences = (userId) => {
           emailNotifications: Boolean(row.email_notifications),
           pushNotifications: Boolean(row.push_notifications),
           telegramNotifications: Boolean(row.telegram_notifications),
-          notificationPreferences: JSON.parse(row.notification_preferences || '{}')
+          notificationPreferences: JSON.parse(row.notification_preferences || '{}'),
+          eventNotifications: Boolean(row.event_notifications),
+          eventNotificationWindows: JSON.parse(row.event_notification_windows || '[3]'),
+          eventNotificationChannels: JSON.parse(row.event_notification_channels || '["email","push"]'),
+          eventImpactFilter: row.event_impact_filter || 'all'
         });
       } else {
         resolve(null);
@@ -1174,6 +1216,8 @@ const getUsersWithNotifications = () => {
   return new Promise((resolve, reject) => {
     dbAdapter.all(
       `SELECT u.id, u.email, u.email_notifications, u.push_notifications, u.telegram_notifications,
+              u.event_notifications, u.event_notification_windows, u.event_notification_channels, u.event_impact_filter,
+              u.telegram_chat_id, u.telegram_verified,
               ps.endpoint, ps.p256dh, ps.auth
        FROM users u
        LEFT JOIN push_subscriptions ps ON u.id = ps.user_id
@@ -1190,6 +1234,12 @@ const getUsersWithNotifications = () => {
             emailNotifications: Boolean(row.email_notifications),
             pushNotifications: Boolean(row.push_notifications),
             telegramNotifications: Boolean(row.telegram_notifications),
+            eventNotifications: Boolean(row.event_notifications),
+            eventNotificationWindows: JSON.parse(row.event_notification_windows || '[3]'),
+            eventNotificationChannels: JSON.parse(row.event_notification_channels || '["email","push"]'),
+            eventImpactFilter: row.event_impact_filter || 'all',
+            telegramChatId: row.telegram_chat_id,
+            telegramVerified: Boolean(row.telegram_verified),
             pushSubscriptions: []
           };
         }
@@ -1206,6 +1256,91 @@ const getUsersWithNotifications = () => {
       });
       
       resolve(Object.values(users));
+    }).catch(reject);
+  });
+};
+
+// Telegram verification functions
+const generateTelegramVerificationCode = (userId) => {
+  return new Promise((resolve, reject) => {
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+    
+    dbAdapter.run(
+      'UPDATE users SET telegram_verification_code = $1, telegram_verification_expires_at = $2 WHERE id = $3',
+      [code, expiresAt.toISOString(), userId]
+    ).then(result => {
+      console.log('🔧 [DEBUG] Generated Telegram verification code for user:', userId);
+      resolve({ code, expiresAt });
+    }).catch(reject);
+  });
+};
+
+const verifyTelegramCode = (code, chatId) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.get(
+      'SELECT id, telegram_verification_expires_at FROM users WHERE telegram_verification_code = $1',
+      [code]
+    ).then(user => {
+      if (!user) {
+        resolve({ success: false, error: 'Invalid verification code' });
+        return;
+      }
+      
+      const now = new Date();
+      const expiresAt = new Date(user.telegram_verification_expires_at);
+      
+      if (now > expiresAt) {
+        resolve({ success: false, error: 'Verification code has expired' });
+        return;
+      }
+      
+      // Link the chat ID to the user and mark as verified
+      dbAdapter.run(
+        'UPDATE users SET telegram_chat_id = $1, telegram_verified = true, telegram_verification_code = NULL, telegram_verification_expires_at = NULL WHERE id = $2',
+        [chatId, user.id]
+      ).then(result => {
+        console.log('🔧 [DEBUG] Telegram verification successful for user:', user.id, 'chat ID:', chatId);
+        resolve({ success: true, userId: user.id });
+      }).catch(reject);
+    }).catch(reject);
+  });
+};
+
+const disconnectTelegram = (userId) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.run(
+      'UPDATE users SET telegram_chat_id = NULL, telegram_verified = false, telegram_verification_code = NULL, telegram_verification_expires_at = NULL WHERE id = $1',
+      [userId]
+    ).then(result => {
+      console.log('🔧 [DEBUG] Telegram disconnected for user:', userId);
+      resolve({ success: true, changes: result.changes });
+    }).catch(reject);
+  });
+};
+
+const getTelegramStatus = (userId) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.get(
+      'SELECT telegram_chat_id, telegram_verified, telegram_verification_code, telegram_verification_expires_at FROM users WHERE id = $1',
+      [userId]
+    ).then(user => {
+      if (!user) {
+        resolve(null);
+        return;
+      }
+      
+      const now = new Date();
+      const expiresAt = user.telegram_verification_expires_at ? new Date(user.telegram_verification_expires_at) : null;
+      const hasValidCode = user.telegram_verification_code && expiresAt && now < expiresAt;
+      
+      resolve({
+        chatId: user.telegram_chat_id,
+        verified: Boolean(user.telegram_verified),
+        hasValidCode,
+        code: hasValidCode ? user.telegram_verification_code : null,
+        expiresAt: expiresAt
+      });
     }).catch(reject);
   });
 };
@@ -1751,6 +1886,11 @@ module.exports = {
   updateNotificationPreferences,
   getNotificationPreferences,
   getUsersWithNotifications,
+  // Telegram verification
+  generateTelegramVerificationCode,
+  verifyTelegramCode,
+  disconnectTelegram,
+  getTelegramStatus,
   // Admin functions
   getTableData,
   // Upcoming Events

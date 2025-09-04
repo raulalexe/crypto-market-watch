@@ -172,12 +172,14 @@ const Dashboard = ({ isAuthenticated, userData }) => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       {/* Header with Subscription Button */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">Market Dashboard</h1>
           <p className="text-gray-400">Real-time cryptocurrency market insights and analysis</p>
         </div>
-        {renderSubscriptionButton()}
+        <div className="md:self-end">
+          {renderSubscriptionButton()}
+        </div>
       </div>
 
       {/* Dashboard Cards - Single Column Layout */}
