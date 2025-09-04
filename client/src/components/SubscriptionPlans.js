@@ -8,7 +8,9 @@ import {
   Check,
   X,
   Clock,
-  Bitcoin
+  Bitcoin,
+  Tag,
+  AlertTriangle
 } from 'lucide-react';
 import ToastNotification from './ToastNotification';
 
@@ -19,10 +21,13 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
   const [alert, setAlert] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [pricing, setPricing] = useState(null);
+  const [discountActive, setDiscountActive] = useState(false);
 
   useEffect(() => {
     fetchPlans();
     fetchSubscriptionStatus();
+    fetchPricing();
     // Check if we're in launch phase
     setIsLaunchPhase(process.env.REACT_APP_LAUNCH_PHASE === 'true');
   }, []);
@@ -32,7 +37,6 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
       // eslint-disable-next-line no-unused-vars
       const response = await fetch('/api/subscription/plans');
       // plans data is available but not used in current implementation
-      console.log('Plans loaded successfully');
     } catch (error) {
       console.error('Error fetching plans:', error);
     } finally {
@@ -44,7 +48,6 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) {
-        console.log('No auth token found, skipping subscription status fetch');
         return;
       }
       
@@ -59,6 +62,19 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
       }
     } catch (error) {
       console.error('Error fetching subscription status:', error);
+    }
+  };
+
+  const fetchPricing = async () => {
+    try {
+      const response = await fetch('/api/subscription/pricing');
+      if (response.ok) {
+        const data = await response.json();
+        setPricing(data.pricing);
+        setDiscountActive(data.discountActive);
+      }
+    } catch (error) {
+      console.error('Error fetching pricing:', error);
     }
   };
 
@@ -169,6 +185,7 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
       id: 'free',
       name: 'Free',
       price: 0,
+      originalPrice: 0,
       period: 'month',
       description: 'Basic access to crypto market data',
       features: [
@@ -187,12 +204,14 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
       ],
       popular: false,
       icon: BarChart3,
-      comingSoon: false
+      comingSoon: false,
+      hasDiscount: false
     },
     {
       id: 'pro',
       name: 'Pro',
-      price: 29,
+      price: pricing?.pro?.currentPrice || 29,
+      originalPrice: pricing?.pro?.originalPrice || 29,
       period: 'month',
       description: 'Advanced features for serious traders',
       features: [
@@ -215,12 +234,15 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
       ],
       popular: true,
       icon: Zap,
-      comingSoon: isLaunchPhase
+      comingSoon: isLaunchPhase,
+      hasDiscount: pricing?.pro?.hasDiscount || false,
+      discountPercentage: pricing?.pro?.discountPercentage || 0
     },
     {
       id: 'premium',
       name: 'Premium+',
-      price: 99,
+      price: pricing?.premium?.currentPrice || 99,
+      originalPrice: pricing?.premium?.originalPrice || 99,
       period: 'month',
       description: 'Professional tools for institutions',
       features: [
@@ -236,7 +258,9 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
       limitations: [],
       popular: false,
       icon: Star,
-      comingSoon: isLaunchPhase
+      comingSoon: isLaunchPhase,
+      hasDiscount: pricing?.premium?.hasDiscount || false,
+      discountPercentage: pricing?.premium?.discountPercentage || 0
     }
   ];
 
@@ -257,6 +281,16 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
             Unlock powerful crypto market insights and advanced analytics to make informed trading decisions
           </p>
+          {discountActive && (
+            <div className="mt-4 p-4 bg-red-900/20 border border-red-500/30 rounded-lg max-w-2xl mx-auto animate-pulse">
+              <div className="flex items-center justify-center space-x-2">
+                <Tag className="w-5 h-5 text-red-400" />
+                <span className="text-red-400 font-medium">
+                  🔥 LIMITED TIME OFFER: Pro plan now ${pricing?.pro?.currentPrice} (Save {pricing?.pro?.discountPercentage}%!)
+                </span>
+              </div>
+            </div>
+          )}
           {isLaunchPhase && (
             <div className="mt-4 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg max-w-2xl mx-auto">
               <div className="flex items-center justify-center space-x-2">
@@ -351,7 +385,16 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
                     : 'border-gray-700 hover:border-gray-600'
                 } ${plan.comingSoon ? 'opacity-75' : ''}`}
               >
-                {plan.popular && !plan.comingSoon && (
+                {plan.hasDiscount && !plan.comingSoon && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <span className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center space-x-1 animate-pulse">
+                      <Tag className="w-3 h-3" />
+                      <span>LIMITED OFFER</span>
+                    </span>
+                  </div>
+                )}
+
+                {plan.popular && !plan.comingSoon && !plan.hasDiscount && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <span className="bg-crypto-blue text-white px-4 py-2 rounded-full text-sm font-semibold">
                       Most Popular
@@ -378,10 +421,36 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
                   
                   {/* Price */}
                   <div className="mb-6">
-                    <span className="text-4xl font-bold">
-                      ${plan.price}
-                    </span>
-                    <span className="text-gray-400">/{plan.period}</span>
+                    {plan.hasDiscount ? (
+                      <div className="text-center">
+                        <div className="flex items-center justify-center space-x-2 mb-1">
+                          <span className="text-2xl text-gray-400 line-through">
+                            ${plan.originalPrice}
+                          </span>
+                          <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
+                            -{plan.discountPercentage}%
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-center space-x-1">
+                          <span className="text-4xl font-bold text-red-400">
+                            ${plan.price}
+                          </span>
+                          <span className="text-gray-400">/{plan.period}</span>
+                        </div>
+                        <div className="mt-1">
+                          <span className="text-xs text-red-400 font-medium">
+                            🔥 Limited Time Offer!
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center space-x-1">
+                        <span className="text-4xl font-bold">
+                          ${plan.price}
+                        </span>
+                        <span className="text-gray-400">/{plan.period}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -498,6 +567,11 @@ const SubscriptionPlans = ({ setAuthModalOpen }) => {
               </h3>
               <p className="text-gray-400">
                 Subscribe to {selectedPlan.name} plan for ${selectedPlan.price}/{selectedPlan.period}
+                {selectedPlan.hasDiscount && (
+                  <span className="block text-sm text-red-400 mt-1">
+                    🔥 Limited Time Offer! Save {selectedPlan.discountPercentage}% (was ${selectedPlan.originalPrice})
+                  </span>
+                )}
               </p>
             </div>
 

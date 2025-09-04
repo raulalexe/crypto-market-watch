@@ -1143,16 +1143,6 @@ const updateNotificationPreferences = (userId, preferences) => {
       eventImpactFilter
     } = preferences;
     
-    console.log('🔧 [DEBUG] Database: Updating preferences for user:', userId);
-    console.log('🔧 [DEBUG] Database: Preferences data:', {
-      emailNotifications,
-      pushNotifications,
-      telegramNotifications,
-      eventNotifications,
-      eventNotificationWindows,
-      eventNotificationChannels,
-      eventImpactFilter
-    });
     
     dbAdapter.run(
       `UPDATE users SET 
@@ -1177,8 +1167,6 @@ const updateNotificationPreferences = (userId, preferences) => {
         userId
       ]
     ).then(result => {
-      console.log('🔧 [DEBUG] Database: Update result:', result);
-      console.log('🔧 [DEBUG] Database: Changes made:', result.changes);
       resolve(result.changes);
     })
      .catch(error => {
@@ -1270,7 +1258,6 @@ const generateTelegramVerificationCode = (userId) => {
       'UPDATE users SET telegram_verification_code = $1, telegram_verification_expires_at = $2 WHERE id = $3',
       [code, expiresAt.toISOString(), userId]
     ).then(result => {
-      console.log('🔧 [DEBUG] Generated Telegram verification code for user:', userId);
       resolve({ code, expiresAt });
     }).catch(reject);
   });
@@ -1300,7 +1287,6 @@ const verifyTelegramCode = (code, chatId) => {
         'UPDATE users SET telegram_chat_id = $1, telegram_verified = true, telegram_verification_code = NULL, telegram_verification_expires_at = NULL WHERE id = $2',
         [chatId, user.id]
       ).then(result => {
-        console.log('🔧 [DEBUG] Telegram verification successful for user:', user.id, 'chat ID:', chatId);
         resolve({ success: true, userId: user.id });
       }).catch(reject);
     }).catch(reject);
@@ -1313,7 +1299,6 @@ const disconnectTelegram = (userId) => {
       'UPDATE users SET telegram_chat_id = NULL, telegram_verified = false, telegram_verification_code = NULL, telegram_verification_expires_at = NULL WHERE id = $1',
       [userId]
     ).then(result => {
-      console.log('🔧 [DEBUG] Telegram disconnected for user:', userId);
       resolve({ success: true, changes: result.changes });
     }).catch(reject);
   });

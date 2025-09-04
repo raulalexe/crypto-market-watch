@@ -1163,13 +1163,8 @@ app.post('/api/notifications/preferences', authenticateToken, async (req, res) =
     const userId = req.user.userId;
     const preferences = req.body;
 
-    console.log('🔧 [DEBUG] Updating notification preferences for user:', userId);
-    console.log('🔧 [DEBUG] Preferences received:', JSON.stringify(preferences, null, 2));
-
     const { updateNotificationPreferences } = require('./database');
     const result = await updateNotificationPreferences(userId, preferences);
-    
-    console.log('🔧 [DEBUG] Database update result:', result);
     res.json({ success: true, changes: result });
   } catch (error) {
     console.error('❌ [ERROR] Error updating notification preferences:', error);
@@ -1187,6 +1182,39 @@ app.get('/api/notifications/preferences', authenticateToken, async (req, res) =>
   } catch (error) {
     console.error('Error getting notification preferences:', error);
     res.status(500).json({ error: 'Failed to get notification preferences' });
+  }
+});
+
+// Get subscription pricing information
+app.get('/api/subscription/pricing', (req, res) => {
+  try {
+    const discountOffer = process.env.DISCOUNT_OFFER;
+    const hasDiscount = !!discountOffer;
+    
+    const pricing = {
+      pro: {
+        originalPrice: 29,
+        currentPrice: hasDiscount ? parseFloat(discountOffer) : 29,
+        hasDiscount,
+        discountPercentage: hasDiscount ? Math.round(((29 - parseFloat(discountOffer)) / 29) * 100) : 0
+      },
+      premium: {
+        originalPrice: 99,
+        currentPrice: 99,
+        hasDiscount: false,
+        discountPercentage: 0
+      }
+    };
+    
+    res.json({ 
+      success: true, 
+      pricing,
+      discountActive: hasDiscount,
+      discountOffer: discountOffer || null
+    });
+  } catch (error) {
+    console.error('Error getting pricing information:', error);
+    res.status(500).json({ error: 'Failed to get pricing information' });
   }
 });
 
@@ -2158,7 +2186,6 @@ app.get('/api/history/:dataType', async (req, res) => {
 // Manual data collection trigger - Admin only
 app.post('/api/collect-data', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    console.log('Manual data collection triggered by admin user:', req.user.id);
     const success = await dataCollector.collectAllData();
     
     if (success) {
@@ -2254,7 +2281,6 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
       lastCollectionTime,
       timestamp: lastCollectionTime || new Date().toISOString()
     };
-    console.log('dashboard request has subscription status:', dashboardData.subscriptionStatus?.planName || 'null');
     res.json(dashboardData);
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
@@ -3019,14 +3045,11 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    console.log('Login attempt for:', email);
-    
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
     
     const user = await getUserByEmail(email);
-    console.log('User found:', user ? 'Yes' : 'No');
     
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -3041,22 +3064,18 @@ app.post('/api/auth/login', async (req, res) => {
     }
     
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    console.log('Password valid:', isValidPassword);
     
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    console.log('JWT Secret length:', jwtSecret.length);
     
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       jwtSecret,
       { expiresIn: '24h' }
     );
-    
-    console.log('Token generated successfully');
     
     res.json({ 
       token, 

@@ -32,7 +32,6 @@ const NotificationSettings = () => {
   const loadPreferences = async () => {
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-      console.log('Loading preferences with token:', token ? 'exists' : 'missing');
       if (!token) {
         setMessage({ type: 'error', text: 'Authentication required. Please log in to access notification settings.' });
         return;
@@ -44,10 +43,8 @@ const NotificationSettings = () => {
         }
       });
 
-      console.log('API response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('Loaded preferences:', data.preferences);
         setPreferences(data.preferences || {
           emailNotifications: false,
           pushNotifications: false,
@@ -154,7 +151,6 @@ const NotificationSettings = () => {
         return;
       }
 
-      console.log('Auto-saving preferences:', preferencesToSave);
       const response = await fetch('/api/notifications/preferences', {
         method: 'POST',
         headers: {
@@ -164,10 +160,8 @@ const NotificationSettings = () => {
         body: JSON.stringify(preferencesToSave)
       });
 
-      console.log('Auto-save API response status:', response.status);
       if (response.ok) {
         const result = await response.json();
-        console.log('Auto-save response:', result);
         setMessage({ type: 'success', text: 'Notification preferences saved successfully!' });
       } else {
         const errorData = await response.json();
