@@ -378,6 +378,28 @@ const initDatabase = async () => {
       )
     `);
     
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS economic_data (
+        id SERIAL PRIMARY KEY,
+        series_id VARCHAR(50) NOT NULL,
+        date DATE NOT NULL,
+        value DECIMAL,
+        previous_value DECIMAL,
+        change_value DECIMAL,
+        core_value DECIMAL,
+        previous_core_value DECIMAL,
+        source VARCHAR(10),
+        description TEXT,
+        ai_analysis JSONB,
+        market_alert_sent BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(series_id, date)
+      )
+    `);
+    
+    
+    
     // Market Sentiment Data
     await client.query(`
       CREATE TABLE IF NOT EXISTS market_sentiment (
@@ -537,7 +559,14 @@ const getLatestAIAnalysis = () => {
 const insertCryptoPrice = (symbol, price, volume24h, marketCap, change24h) => {
   return new Promise((resolve, reject) => {
     dbAdapter.run(
-      'INSERT INTO crypto_prices (symbol, price, volume_24h, market_cap, change_24h) VALUES ($1, $2, $3, $4, $5)',
+      `INSERT INTO crypto_prices (symbol, price, volume_24h, market_cap, change_24h) 
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (symbol) DO UPDATE SET
+         price = EXCLUDED.price,
+         volume_24h = EXCLUDED.volume_24h,
+         market_cap = EXCLUDED.market_cap,
+         change_24h = EXCLUDED.change_24h,
+         timestamp = CURRENT_TIMESTAMP`,
       [symbol, price, volume24h, marketCap, change24h]
     ).then(result => resolve(result.lastID))
      .catch(reject);
@@ -1364,11 +1393,27 @@ const cleanupDuplicateAlerts = () => {
 // Upcoming Events functions
 const insertUpcomingEvent = (title, description, category, impact, date, source) => {
   return new Promise((resolve, reject) => {
-    dbAdapter.run(
-      'INSERT INTO upcoming_events (title, description, category, impact, date, source) VALUES ($1, $2, $3, $4, $5, $6)',
-      [title, description, category, impact, date, source]
-    ).then(result => resolve(result.lastID))
-     .catch(reject);
+    // First check if event already exists (deduplication)
+    dbAdapter.get(
+      'SELECT id FROM upcoming_events WHERE title = $1 AND date = $2 AND source = $3',
+      [title, date, source]
+    ).then(existingEvent => {
+      if (existingEvent) {
+        // Event already exists, return existing ID
+        console.log(`Event already exists: ${title} on ${date}`);
+        resolve(existingEvent.id);
+      } else {
+        // Event doesn't exist, insert it
+        return dbAdapter.run(
+          'INSERT INTO upcoming_events (title, description, category, impact, date, source) VALUES ($1, $2, $3, $4, $5, $6)',
+          [title, description, category, impact, date, source]
+        );
+      }
+    }).then(result => {
+      if (result && result.lastID) {
+        resolve(result.lastID);
+      }
+    }).catch(reject);
   });
 };
 
@@ -1378,6 +1423,24 @@ const getUpcomingEvents = (limit = 20) => {
       'SELECT * FROM upcoming_events WHERE date > NOW() AND ignored = false ORDER BY date ASC LIMIT $1',
       [limit]
     ).then(resolve).catch(reject);
+  });
+};
+
+// Clean up duplicate events
+const cleanupDuplicateEvents = () => {
+  return new Promise((resolve, reject) => {
+    // Delete duplicates, keeping only the oldest one for each unique combination
+    dbAdapter.run(`
+      DELETE FROM upcoming_events 
+      WHERE id NOT IN (
+        SELECT MIN(id) 
+        FROM upcoming_events 
+        GROUP BY title, date, source
+      )
+    `).then(result => {
+      console.log(`Cleaned up ${result.changes} duplicate events`);
+      resolve(result.changes);
+    }).catch(reject);
   });
 };
 
@@ -1536,6 +1599,13 @@ const insertInflationData = (data) => {
       INSERT INTO inflation_data (
         type, date, value, core_value, yoy_change, core_yoy_change, source, created_at
       ) VALUES ($1::VARCHAR(10), $2::DATE, $3::NUMERIC, $4::NUMERIC, $5::NUMERIC, $6::NUMERIC, $7::VARCHAR(10), CURRENT_TIMESTAMP)
+      ON CONFLICT (type, date) DO UPDATE SET
+        value = EXCLUDED.value,
+        core_value = EXCLUDED.core_value,
+        yoy_change = EXCLUDED.yoy_change,
+        core_yoy_change = EXCLUDED.core_yoy_change,
+        source = EXCLUDED.source,
+        created_at = CURRENT_TIMESTAMP
       RETURNING id
     `;
     
@@ -1603,12 +1673,12 @@ const insertInflationRelease = (release) => {
 
 const getInflationReleases = (date) => {
   return new Promise((resolve, reject) => {
-    dbAdapter.all(`
+    db.query(`
       SELECT * FROM inflation_releases 
       WHERE date = $1 AND status = 'scheduled'
       ORDER BY time
     `, [date])
-    .then(resolve)
+    .then(result => resolve(result.rows))
     .catch(reject);
   });
 };
@@ -1682,6 +1752,118 @@ const unsubscribeFromEmailNotifications = (email, token) => {
         resolve({ success: false, error: 'Email not found' });
       }
     }).catch(reject);
+  });
+};
+
+// Economic Data Functions
+const insertEconomicData = (data) => {
+  return new Promise((resolve, reject) => {
+    const query = `
+      INSERT INTO economic_data (
+        series_id, date, value, previous_value, change_value, core_value, 
+        previous_core_value, source, description, created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+      ON CONFLICT (series_id, date) DO UPDATE SET
+        value = EXCLUDED.value,
+        previous_value = EXCLUDED.previous_value,
+        change_value = EXCLUDED.change_value,
+        core_value = EXCLUDED.core_value,
+        previous_core_value = EXCLUDED.previous_core_value,
+        source = EXCLUDED.source,
+        description = EXCLUDED.description,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING id
+    `;
+    
+    const params = [
+      data.seriesId,
+      data.date,
+      data.value,
+      data.previousValue,
+      data.change,
+      data.coreValue,
+      data.previousCoreValue,
+      data.source,
+      data.description
+    ];
+    
+    db.query(query, params)
+    .then(result => {
+      const id = result.rows[0]?.id;
+      resolve(id);
+    })
+    .catch(reject);
+  });
+};
+
+const getLatestEconomicData = (seriesId) => {
+  return new Promise((resolve, reject) => {
+    db.query(`
+      SELECT * FROM economic_data 
+      WHERE series_id = $1 
+      ORDER BY date DESC 
+      LIMIT 1
+    `, [seriesId])
+    .then(result => resolve(result.rows[0] || null))
+    .catch(reject);
+  });
+};
+
+const getEconomicDataHistory = (seriesId, months = 12) => {
+  return new Promise((resolve, reject) => {
+    db.query(`
+      SELECT * FROM economic_data 
+      WHERE series_id = $1 
+      AND date >= CURRENT_DATE - INTERVAL '${months} months'
+      ORDER BY date DESC
+    `, [seriesId])
+    .then(result => resolve(result.rows))
+    .catch(reject);
+  });
+};
+
+
+const getEconomicEventsForAnalysis = () => {
+  return new Promise((resolve, reject) => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    
+    db.query(`
+      SELECT ed.*, ec.title, ec.impact, ec.category
+      FROM economic_data ed
+      LEFT JOIN economic_calendar ec ON ed.series_id = ec.event_id
+      WHERE ed.created_at >= $1 
+        AND ed.ai_analysis IS NULL
+        AND ed.market_alert_sent = FALSE
+      ORDER BY ed.created_at DESC
+    `, [oneHourAgo])
+    .then(result => resolve(result.rows))
+    .catch(reject);
+  });
+};
+
+const updateEconomicDataAnalysis = (id, analysis) => {
+  return new Promise((resolve, reject) => {
+    db.query(`
+      UPDATE economic_data 
+      SET ai_analysis = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+    `, [JSON.stringify(analysis), id])
+    .then(result => resolve(result.rowCount))
+    .catch(reject);
+  });
+};
+
+const markEconomicDataAlertSent = (id) => {
+  return new Promise((resolve, reject) => {
+    db.query(`
+      UPDATE economic_data 
+      SET market_alert_sent = TRUE, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `, [id])
+    .then(result => resolve(result.rowCount))
+    .catch(reject);
   });
 };
 
@@ -1882,6 +2064,7 @@ module.exports = {
   insertUpcomingEvent,
   getUpcomingEvents,
   getAllUpcomingEvents,
+  cleanupDuplicateEvents,
   ignoreUpcomingEvent,
   unignoreUpcomingEvent,
   deleteUpcomingEvent,
@@ -1897,6 +2080,14 @@ module.exports = {
   insertInflationData,
   getLatestInflationData,
   getInflationDataHistory,
+  
+  // Economic data functions
+  insertEconomicData,
+  getLatestEconomicData,
+  getEconomicDataHistory,
+  getEconomicEventsForAnalysis,
+  updateEconomicDataAnalysis,
+  markEconomicDataAlertSent,
   
   // Inflation release functions
   insertInflationRelease,

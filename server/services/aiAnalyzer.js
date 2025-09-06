@@ -8,17 +8,26 @@ const {
   getCryptoPrices
 } = require('../database');
 
+const HuggingFaceService = require('./huggingFaceService');
+const GroqService = require('./groqService');
+
 class AIAnalyzer {
   constructor() {
     this.veniceApiKey = process.env.VENICE_AI_API_KEY;
     this.veniceApiUrl = 'https://api.venice.ai/api/v1/chat/completions';
     this.openaiApiUrl = 'https://api.openai.com/v1/chat/completions';
     
+    // Initialize AI services
+    this.huggingFaceService = new HuggingFaceService();
+    this.groqService = new GroqService();
+    
     // Log API configuration for debugging
     console.log('🔧 AI Configuration:');
     console.log('  Venice AI Key:', this.veniceApiKey ? '✅ Configured' : '❌ Missing');
     console.log('  Venice AI URL:', this.veniceApiUrl);
     console.log('  OpenAI Key:', process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing');
+    console.log('  Hugging Face Key:', process.env.HUGGING_FACE_TOKEN ? '✅ Configured' : '❌ Missing');
+    console.log('  Groq Key:', process.env.GROQ_TOKEN ? '✅ Configured' : '❌ Missing');
   }
 
   // Analyze market data using AI with inflation integration
@@ -37,23 +46,87 @@ class AIAnalyzer {
     }
   }
 
-  // Get inflation data and sentiment
+  // Get inflation data and sentiment - DATABASE ONLY, NO API CALLS
   async getInflationData() {
     try {
-      const inflationService = require('./inflationDataService');
-      const data = await inflationService.fetchLatestData();
-      const sentiment = await inflationService.analyzeInflationData(data);
+      console.log('📊 Getting inflation data from database (no API calls)...');
       
+      // Use cached data from database instead of fetching fresh data
+      const { getLatestInflationData } = require('../database');
+      const cpiData = await getLatestInflationData('CPI');
+      const pceData = await getLatestInflationData('PCE');
+      
+      if (!cpiData && !pceData) {
+        console.log('⚠️ No inflation data available in database for AI analysis');
+        return null;
+      }
+      
+      // Format the data for AI analysis
+      const data = {
+        cpi: cpiData ? {
+          value: cpiData.value,
+          core_value: cpiData.core_value,
+          yoy_change: cpiData.yoy_change,
+          core_yoy_change: cpiData.core_yoy_change,
+          date: cpiData.date
+        } : null,
+        pce: pceData ? {
+          value: pceData.value,
+          core_value: pceData.core_value,
+          yoy_change: pceData.yoy_change,
+          core_yoy_change: pceData.core_yoy_change,
+          date: pceData.date
+        } : null
+      };
+      
+      // Simple sentiment analysis based on the data
+      const sentiment = this.analyzeInflationSentiment(data);
+      
+      console.log('✅ Inflation data retrieved from database successfully');
       return {
         data,
         sentiment: sentiment.overallSentiment,
         marketImpact: sentiment.marketImpact,
-        description: sentiment.marketImpact?.description || 'No inflation impact data'
+        description: sentiment.description
       };
     } catch (error) {
-      console.log('Inflation data not available for AI analysis:', error.message);
+      console.log('⚠️ Inflation data not available for AI analysis:', error.message);
       return null;
     }
+  }
+
+  // Simple inflation sentiment analysis
+  analyzeInflationSentiment(data) {
+    let overallSentiment = 'neutral';
+    let description = 'Inflation data shows neutral impact on markets.';
+    
+    if (data.cpi || data.pce) {
+      const cpiYoY = data.cpi?.yoy_change || 0;
+      const pceYoY = data.pce?.yoy_change || 0;
+      const avgInflation = (cpiYoY + pceYoY) / 2;
+      
+      if (avgInflation > 3.5) {
+        overallSentiment = 'bearish';
+        description = 'High inflation may pressure risk assets and crypto markets.';
+      } else if (avgInflation < 2.0) {
+        overallSentiment = 'bullish';
+        description = 'Low inflation supports risk assets and crypto markets.';
+      } else {
+        overallSentiment = 'neutral';
+        description = 'Moderate inflation has neutral impact on crypto markets.';
+      }
+    }
+    
+    return {
+      overallSentiment,
+      marketImpact: {
+        crypto: overallSentiment,
+        stocks: overallSentiment,
+        bonds: overallSentiment === 'bearish' ? 'bullish' : overallSentiment === 'bullish' ? 'bearish' : 'neutral',
+        dollar: overallSentiment === 'bearish' ? 'bullish' : overallSentiment === 'bullish' ? 'bearish' : 'neutral'
+      },
+      description
+    };
   }
 
 
@@ -61,15 +134,52 @@ class AIAnalyzer {
   // AI-powered market analysis - complete analysis by AI
   async aiAnalysis(marketData, inflationData = null) {
     try {
-      console.log('🤖 Starting AI-powered market analysis...');
+      console.log('🤖 Starting multi-AI market analysis...');
       
       // Get upcoming events data
       const upcomingEvents = await this.getUpcomingEvents();
       
+      // Run Venice AI analysis (primary)
+      const veniceAnalysis = await this.getVeniceAnalysis(marketData, inflationData, upcomingEvents);
+      
+      // Hugging Face analysis disabled temporarily
+      let huggingFaceAnalysis = null;
+      console.log('⚠️ Hugging Face analysis disabled temporarily');
+      
+      // Try Groq analysis (optional)
+      let groqAnalysis = null;
+      try {
+        groqAnalysis = await this.getGroqAnalysis(marketData, inflationData, upcomingEvents);
+      } catch (error) {
+        console.log('⚠️ Groq analysis skipped:', error.message);
+        // Continue with other AI providers
+      }
+      
+      // Combine results
+      const combinedAnalysis = this.combineAnalysisResults(veniceAnalysis, huggingFaceAnalysis, groqAnalysis);
+      
+      // Add timestamp
+      combinedAnalysis.timestamp = new Date().toISOString();
+      
+      await this.saveAnalysis(combinedAnalysis);
+      console.log('✅ Multi-AI analysis completed successfully');
+      
+      return combinedAnalysis;
+    } catch (error) {
+      console.error('❌ Multi-AI analysis failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Get Venice AI analysis
+  async getVeniceAnalysis(marketData, inflationData, upcomingEvents) {
+    try {
+      console.log('🔮 Getting Venice AI analysis...');
+      
       // Create comprehensive prompt for AI analysis
       const prompt = this.createAnalysisPrompt(marketData, inflationData, upcomingEvents);
       
-      // Call AI for complete analysis
+      // Call Venice AI for complete analysis
       const response = await this.callAI(prompt);
       
       if (response && response.choices && response.choices[0] && response.choices[0].message) {
@@ -98,50 +208,172 @@ class AIAnalyzer {
             cleanContent += '}'.repeat(missingBraces);
           }
           
-          // If JSON is cut off mid-string, try to complete it
-          if (cleanContent.includes('"time_horizon"') && !cleanContent.includes('"long_term"')) {
-            // Complete the long_term section if it's cut off
-            cleanContent = cleanContent.replace(/"time_horizon"[^}]*$/, '"time_horizon": "1-6 months", "key_factors": ["Factor 1", "Factor 2", "Factor 3"], "risk_factors": ["Risk 1", "Risk 2", "Risk 3"], "reasoning": "Long-term outlook based on fundamental factors" } } }');
-          }
-          
-          // If JSON is cut off, try to find the last complete object and close it
-          if (cleanContent.includes('"inflation_impact": {')) {
-            const inflationStart = cleanContent.indexOf('"inflation_impact": {');
-            if (inflationStart !== -1) {
-              // Find the last complete object before inflation_impact
-              const beforeInflation = cleanContent.substring(0, inflationStart);
-              const lastCompleteObject = beforeInflation.lastIndexOf('},');
-              if (lastCompleteObject !== -1) {
-                cleanContent = cleanContent.substring(0, lastCompleteObject + 1) + '}';
-              }
-            }
-          }
-          
           // Parse AI response
           const analysis = JSON.parse(cleanContent);
           
           // Validate and structure the response
           const structuredAnalysis = this.validateAndStructureAnalysis(analysis);
-          
-          // Add timestamp
-          structuredAnalysis.timestamp = new Date().toISOString();
-          
-          await this.saveAnalysis(structuredAnalysis);
-          console.log('✅ AI analysis completed successfully');
+          structuredAnalysis.provider = 'Venice AI';
           
           return structuredAnalysis;
         } catch (parseError) {
-          console.error('❌ Failed to parse AI response:', parseError.message);
-          console.error('Raw content:', content);
-          throw new Error('AI response format invalid');
+          console.error('❌ Failed to parse Venice AI response:', parseError.message);
+          throw new Error('Venice AI response format invalid');
         }
       } else {
-        throw new Error('Invalid AI response structure');
+        throw new Error('Invalid Venice AI response structure');
       }
     } catch (error) {
-      console.error('❌ AI analysis failed:', error.message);
+      console.error('❌ Venice AI analysis failed:', error.message);
       throw error;
     }
+  }
+
+  // Get Hugging Face analysis
+  async getHuggingFaceAnalysis(marketData, inflationData, upcomingEvents) {
+    try {
+      console.log('🤗 Getting Hugging Face analysis...');
+      
+      const analysis = await this.huggingFaceService.generateMarketAnalysis(
+        marketData, 
+        inflationData, 
+        upcomingEvents
+      );
+      
+      analysis.provider = 'Hugging Face';
+      return analysis;
+    } catch (error) {
+      console.error('❌ Hugging Face analysis failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Get Groq analysis
+  async getGroqAnalysis(marketData, inflationData, upcomingEvents) {
+    try {
+      console.log('🚀 Getting Groq analysis...');
+      
+      const analysis = await this.groqService.generateMarketAnalysis(
+        marketData, 
+        inflationData, 
+        upcomingEvents
+      );
+      
+      analysis.provider = 'Groq';
+      return analysis;
+    } catch (error) {
+      console.error('❌ Groq analysis failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Combine analysis results from multiple AI providers
+  combineAnalysisResults(veniceAnalysis, huggingFaceAnalysis, groqAnalysis) {
+    const combined = {
+      overall_direction: this.getConsensusDirection(veniceAnalysis, huggingFaceAnalysis, groqAnalysis),
+      overall_confidence: this.getConsensusConfidence(veniceAnalysis, huggingFaceAnalysis, groqAnalysis),
+      overall_reasoning: this.combineReasoning(veniceAnalysis, huggingFaceAnalysis, groqAnalysis),
+      short_term: this.combineTimeframe(veniceAnalysis?.short_term, huggingFaceAnalysis?.short_term, groqAnalysis?.short_term),
+      medium_term: this.combineTimeframe(veniceAnalysis?.medium_term, huggingFaceAnalysis?.medium_term, groqAnalysis?.medium_term),
+      long_term: this.combineTimeframe(veniceAnalysis?.long_term, huggingFaceAnalysis?.long_term, groqAnalysis?.long_term),
+      providers: {
+        venice: veniceAnalysis,
+        huggingface: huggingFaceAnalysis,
+        groq: groqAnalysis
+      }
+    };
+
+    return combined;
+  }
+
+  // Get consensus direction from multiple analyses
+  getConsensusDirection(veniceAnalysis, huggingFaceAnalysis, groqAnalysis) {
+    const analyses = [veniceAnalysis, huggingFaceAnalysis, groqAnalysis].filter(Boolean);
+    if (analyses.length === 0) return 'NEUTRAL';
+    if (analyses.length === 1) return analyses[0].overall_direction;
+    
+    // Count directions
+    const directions = analyses.map(a => a.overall_direction);
+    const bullishCount = directions.filter(d => d === 'BULLISH').length;
+    const bearishCount = directions.filter(d => d === 'BEARISH').length;
+    const neutralCount = directions.filter(d => d === 'NEUTRAL').length;
+    
+    // If majority agree, use that direction
+    if (bullishCount > bearishCount && bullishCount > neutralCount) return 'BULLISH';
+    if (bearishCount > bullishCount && bearishCount > neutralCount) return 'BEARISH';
+    if (neutralCount > bullishCount && neutralCount > bearishCount) return 'NEUTRAL';
+    
+    // If tied, use the one with highest confidence
+    const highestConfidence = Math.max(...analyses.map(a => a.overall_confidence || 0));
+    const bestAnalysis = analyses.find(a => a.overall_confidence === highestConfidence);
+    return bestAnalysis.overall_direction;
+  }
+
+  // Get consensus confidence from multiple analyses
+  getConsensusConfidence(veniceAnalysis, huggingFaceAnalysis, groqAnalysis) {
+    const analyses = [veniceAnalysis, huggingFaceAnalysis, groqAnalysis].filter(Boolean);
+    if (analyses.length === 0) return 50;
+    if (analyses.length === 1) return analyses[0].overall_confidence || 50;
+    
+    // Average confidence when multiple are available
+    const totalConfidence = analyses.reduce((sum, analysis) => sum + (analysis.overall_confidence || 50), 0);
+    return Math.round(totalConfidence / analyses.length);
+  }
+
+  // Combine reasoning from multiple analyses
+  combineReasoning(veniceAnalysis, huggingFaceAnalysis, groqAnalysis) {
+    const analyses = [veniceAnalysis, huggingFaceAnalysis, groqAnalysis].filter(Boolean);
+    if (analyses.length === 0) return 'Multi-AI analysis completed with consensus prediction.';
+    if (analyses.length === 1) return analyses[0].overall_reasoning || 'Analysis completed.';
+    
+    // Combine reasoning from all available analyses
+    const reasoningParts = analyses.map((analysis, index) => {
+      const provider = analysis.provider || `AI ${index + 1}`;
+      const reasoning = analysis.overall_reasoning || 'Analysis completed.';
+      return `${provider}: ${reasoning.substring(0, 150)}...`;
+    });
+    
+    return reasoningParts.join(' ');
+  }
+
+  // Combine timeframe analysis from multiple providers
+  combineTimeframe(veniceTimeframe, huggingFaceTimeframe, groqTimeframe) {
+    const timeframes = [veniceTimeframe, huggingFaceTimeframe, groqTimeframe].filter(Boolean);
+    if (timeframes.length === 0) {
+      return {
+        market_direction: 'NEUTRAL',
+        confidence: 50,
+        time_horizon: '1-7 days',
+        key_factors: [],
+        risk_factors: [],
+        reasoning: 'No analysis available'
+      };
+    }
+    
+    if (timeframes.length === 1) return timeframes[0];
+    
+    // Combine multiple timeframes
+    const directions = timeframes.map(t => t.market_direction);
+    const bullishCount = directions.filter(d => d === 'BULLISH').length;
+    const bearishCount = directions.filter(d => d === 'BEARISH').length;
+    const neutralCount = directions.filter(d => d === 'NEUTRAL').length;
+    
+    let consensusDirection = 'NEUTRAL';
+    if (bullishCount > bearishCount && bullishCount > neutralCount) consensusDirection = 'BULLISH';
+    else if (bearishCount > bullishCount && bearishCount > neutralCount) consensusDirection = 'BEARISH';
+    
+    const avgConfidence = Math.round(timeframes.reduce((sum, t) => sum + (t.confidence || 50), 0) / timeframes.length);
+    const allKeyFactors = [...new Set(timeframes.flatMap(t => t.key_factors || []))].slice(0, 6);
+    const allRiskFactors = [...new Set(timeframes.flatMap(t => t.risk_factors || []))].slice(0, 5);
+    
+    return {
+      market_direction: consensusDirection,
+      confidence: avgConfidence,
+      time_horizon: timeframes[0].time_horizon || '1-7 days',
+      key_factors: allKeyFactors,
+      risk_factors: allRiskFactors,
+      reasoning: `Multi-AI consensus: ${consensusDirection} with ${avgConfidence}% confidence based on ${timeframes.length} AI providers.`
+    };
   }
 
   // Get upcoming events data
@@ -188,30 +420,30 @@ Please provide a structured JSON response with detailed reasoning:
 {
   "overall_direction": "BEARISH|BULLISH|NEUTRAL",
   "overall_confidence": 85,
-  "overall_reasoning": "COMPREHENSIVE explanation including: 1) Current BTC price analysis and significance, 2) Bitcoin dominance implications, 3) Key macro factors driving the market, 4) Technical and fundamental analysis, 5) Risk assessment and market sentiment. Minimum 3-4 sentences with specific data points.",
+  "overall_reasoning": "CLEAR, USER-FRIENDLY explanation in simple terms: 1) What the current Bitcoin price means for investors, 2) How Bitcoin's market dominance affects other cryptocurrencies, 3) The main economic factors influencing crypto right now, 4) Whether this is a good time to buy, sell, or hold, 5) What investors should watch out for. Use everyday language, avoid jargon, and focus on practical implications.",
   "short_term": {
     "market_direction": "BEARISH|BULLISH|NEUTRAL",
     "confidence": 75,
     "time_horizon": "1-7 days",
-    "key_factors": ["Factor 1", "Factor 2", "Factor 3", "Factor 4", "Factor 5", "Factor 6"],
-    "risk_factors": ["Risk 1", "Risk 2", "Risk 3", "Risk 4", "Risk 5"],
-    "reasoning": "DETAILED explanation including: 1) Immediate price action expectations, 2) Key support/resistance levels, 3) Volume analysis, 4) Short-term catalysts, 5) Intraday volatility expectations. Minimum 4-5 sentences with specific technical and fundamental analysis."
+    "key_factors": ["Clear, simple factor 1", "Clear, simple factor 2", "Clear, simple factor 3", "Clear, simple factor 4", "Clear, simple factor 5", "Clear, simple factor 6"],
+    "risk_factors": ["Clear risk 1", "Clear risk 2", "Clear risk 3", "Clear risk 4", "Clear risk 5"],
+    "reasoning": "SIMPLE, PRACTICAL explanation: 1) What to expect in the next few days, 2) Key price levels to watch, 3) Trading volume insights, 4) Upcoming events that matter, 5) How much volatility to expect. Use plain language and focus on actionable insights."
   },
   "medium_term": {
     "market_direction": "BEARISH|BULLISH|NEUTRAL",
     "confidence": 80,
     "time_horizon": "1-4 weeks",
-    "key_factors": ["Factor 1", "Factor 2", "Factor 3", "Factor 4", "Factor 5", "Factor 6"],
-    "risk_factors": ["Risk 1", "Risk 2", "Risk 3", "Risk 4", "Risk 5"],
-    "reasoning": "DETAILED explanation including: 1) Weekly trend analysis, 2) Key events impact assessment, 3) Market structure analysis, 4) Institutional flow expectations, 5) Regulatory environment impact. Minimum 4-5 sentences with specific analysis."
+    "key_factors": ["Clear, simple factor 1", "Clear, simple factor 2", "Clear, simple factor 3", "Clear, simple factor 4", "Clear, simple factor 5", "Clear, simple factor 6"],
+    "risk_factors": ["Clear risk 1", "Clear risk 2", "Clear risk 3", "Clear risk 4", "Clear risk 5"],
+    "reasoning": "SIMPLE, PRACTICAL explanation: 1) What to expect over the next few weeks, 2) Important events coming up, 3) How the market structure looks, 4) Whether big investors are buying or selling, 5) How regulations might affect prices. Use plain language and focus on what matters to regular investors."
   },
   "long_term": {
     "market_direction": "BEARISH|BULLISH|NEUTRAL",
     "confidence": 70,
     "time_horizon": "1-6 months",
-    "key_factors": ["Factor 1", "Factor 2", "Factor 3", "Factor 4", "Factor 5", "Factor 6"],
-    "risk_factors": ["Risk 1", "Risk 2", "Risk 3", "Risk 4", "Risk 5"],
-    "reasoning": "DETAILED explanation including: 1) Fundamental trend analysis, 2) Adoption and institutional adoption trends, 3) Macroeconomic cycle positioning, 4) Regulatory landscape evolution, 5) Technology and network development impact. Minimum 4-5 sentences with specific analysis."
+    "key_factors": ["Clear, simple factor 1", "Clear, simple factor 2", "Clear, simple factor 3", "Clear, simple factor 4", "Clear, simple factor 5", "Clear, simple factor 6"],
+    "risk_factors": ["Clear risk 1", "Clear risk 2", "Clear risk 3", "Clear risk 4", "Clear risk 5"],
+    "reasoning": "SIMPLE, PRACTICAL explanation: 1) Long-term trend outlook, 2) How adoption is growing, 3) Where we are in the economic cycle, 4) How regulations are evolving, 5) Technology improvements coming. Use plain language and focus on what long-term investors need to know."
   },
   "inflation_impact": {
     "sentiment": "very_bearish|bearish|slightly_bearish|neutral|slightly_bullish|bullish|very_bullish",
@@ -226,6 +458,7 @@ Please provide a structured JSON response with detailed reasoning:
 }
 
 ANALYSIS REQUIREMENTS:
+- **MUST** check news and other sources for any major events that could impact the market
 - **MUST** analyze BTC price levels and 24h changes specifically
 - **MUST** evaluate Bitcoin dominance (BTC.D) percentage and implications
 - **MUST** consider Fear & Greed Index for market sentiment
@@ -234,6 +467,7 @@ ANALYSIS REQUIREMENTS:
 - **MUST** analyze Treasury yield impact on risk assets
 - **MUST** consider equity market correlation (SP500, NASDAQ)
 - **MUST** assess oil price impact on inflation and crypto
+- **MUST** assess future planned economic events and their impact on the crypto market
 - Provide realistic confidence scores (0-100) based on data strength
 - Include specific price levels, percentages, and data points in reasoning
 - Key factors should be the most important drivers of market direction
@@ -418,47 +652,75 @@ ANALYSIS REQUIREMENTS:
       const backtestResults = [];
 
       for (const symbol of cryptoSymbols) {
-        const prices = await getCryptoPrices(symbol, 2);
-        if (prices && prices.length >= 2) {
-          const currentPrice = prices[0].price;
-          const previousPrice = prices[1].price;
+        // Get current price
+        const currentPrices = await getCryptoPrices(symbol, 1);
+        if (currentPrices && currentPrices.length > 0) {
+          const currentPrice = parseFloat(currentPrices[0].price);
           
-          // Determine actual direction
-          const actualDirection = currentPrice > previousPrice ? 'BULLISH' : 'BEARISH';
+          // Get price at the time of prediction (or closest available)
+          const predictionTime = new Date(latestAnalysis.timestamp);
+          const timeDiff = Date.now() - predictionTime.getTime();
           
-          // Calculate accuracy
-          const accuracy = predictedDirection === actualDirection ? 100 : 0;
+          // If prediction was made more than 1 hour ago, we can do a meaningful backtest
+          if (timeDiff > 60 * 60 * 1000) {
+            // Get historical price data around prediction time
+            const historicalPrices = await getCryptoPrices(symbol, 10);
+            let predictionPrice = currentPrice; // fallback
+            
+            if (historicalPrices && historicalPrices.length > 1) {
+              // Find the price closest to prediction time
+              const predictionPriceData = historicalPrices.find(p => 
+                Math.abs(new Date(p.timestamp).getTime() - predictionTime.getTime()) < 24 * 60 * 60 * 1000
+              );
+              if (predictionPriceData) {
+                predictionPrice = parseFloat(predictionPriceData.price);
+              } else {
+                // Use the oldest available price as prediction price
+                predictionPrice = parseFloat(historicalPrices[historicalPrices.length - 1].price);
+              }
+            }
+            
+            // Determine actual direction based on price change since prediction
+            const actualDirection = currentPrice > predictionPrice ? 'BULLISH' : 'BEARISH';
+            
+            // Calculate accuracy
+            const accuracy = predictedDirection === actualDirection ? 100 : 0;
+            
+            // Calculate correlation score
+            const priceChange = ((currentPrice - predictionPrice) / predictionPrice) * 100;
+            const correlationScore = this.calculateCorrelationScore(predictedDirection, priceChange);
           
-          // Calculate correlation score
-          const priceChange = ((currentPrice - previousPrice) / previousPrice) * 100;
-          const correlationScore = this.calculateCorrelationScore(predictedDirection, priceChange);
-          
-          const result = {
-            prediction_date: latestAnalysis.timestamp,
-            actual_date: new Date().toISOString(),
-            predicted_direction: predictedDirection,
-            actual_direction: actualDirection,
-            accuracy: accuracy,
-            crypto_symbol: symbol,
-            price_at_prediction: previousPrice,
-            price_at_actual: currentPrice,
-            correlation_score: correlationScore
-          };
-          
-          backtestResults.push(result);
-          
-          // Save to database
-          await insertBacktestResult(
-            result.prediction_date,
-            result.actual_date,
-            result.predicted_direction,
-            result.actual_direction,
-            result.accuracy,
-            result.crypto_symbol,
-            result.price_at_prediction,
-            result.price_at_actual,
-            result.correlation_score
-          );
+            const result = {
+              prediction_date: latestAnalysis.timestamp,
+              actual_date: new Date().toISOString(),
+              predicted_direction: predictedDirection,
+              actual_direction: actualDirection,
+              accuracy: accuracy,
+              crypto_symbol: symbol,
+              price_at_prediction: predictionPrice,
+              price_at_actual: currentPrice,
+              correlation_score: correlationScore
+            };
+            
+            backtestResults.push(result);
+            
+            // Save to database
+            await insertBacktestResult(
+              result.prediction_date,
+              result.actual_date,
+              result.predicted_direction,
+              result.actual_direction,
+              result.accuracy,
+              result.crypto_symbol,
+              result.price_at_prediction,
+              result.price_at_actual,
+              result.correlation_score
+            );
+            
+            console.log(`✅ Backtest for ${symbol}: ${predictedDirection} → ${actualDirection} (${accuracy}% accuracy, ${correlationScore}% correlation)`);
+          } else {
+            console.log(`⏳ Skipping backtest for ${symbol}: prediction too recent (${Math.round(timeDiff / (60 * 1000))} minutes ago)`);
+          }
         }
       }
 
@@ -480,6 +742,10 @@ ANALYSIS REQUIREMENTS:
       score = Math.min(Math.abs(priceChange) * 2, 100);
     } else if (predictedDirection === 'NEUTRAL') {
       score = Math.max(50 - Math.abs(priceChange) * 5, 0);
+    } else if (priceChange === 0) {
+      // If price didn't change, give partial credit based on prediction accuracy
+      // This handles the case where prediction is correct but price is stable
+      score = 25; // Base score for correct direction with no price movement
     }
     
     return Math.round(score);
@@ -508,7 +774,7 @@ ANALYSIS REQUIREMENTS:
         }
       }
 
-      // Return the multi-timeframe format only
+      // Return the multi-timeframe format with providers data
       if (analysisData && (analysisData.short_term || analysisData.medium_term || analysisData.long_term)) {
         return {
           timestamp: latestAnalysis.timestamp,
@@ -516,7 +782,8 @@ ANALYSIS REQUIREMENTS:
           overall_confidence: analysisData.overall_confidence,
           short_term: analysisData.short_term,
           medium_term: analysisData.medium_term,
-          long_term: analysisData.long_term
+          long_term: analysisData.long_term,
+          providers: analysisData.providers // Include providers data for multi-model display
         };
       }
 
@@ -540,11 +807,11 @@ ANALYSIS REQUIREMENTS:
 
       // Calculate overall accuracy
       const totalPredictions = results.length;
-      const correctPredictions = results.filter(r => r.accuracy === 100).length;
+      const correctPredictions = results.filter(r => parseInt(r.accuracy) === 100).length;
       const overallAccuracy = (correctPredictions / totalPredictions) * 100;
 
       // Calculate average correlation score
-      const avgCorrelation = results.reduce((sum, r) => sum + r.correlation_score, 0) / totalPredictions;
+      const avgCorrelation = results.reduce((sum, r) => sum + parseInt(r.correlation_score), 0) / totalPredictions;
 
       // Group by crypto symbol
       const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
@@ -553,8 +820,8 @@ ANALYSIS REQUIREMENTS:
         const symbolResults = results.filter(r => r.crypto_symbol === symbol);
         if (symbolResults.length > 0) {
           bySymbol[symbol] = {
-            accuracy: (symbolResults.filter(r => r.accuracy === 100).length / symbolResults.length) * 100,
-            avgCorrelation: symbolResults.reduce((sum, r) => sum + r.correlation_score, 0) / symbolResults.length,
+            accuracy: (symbolResults.filter(r => parseInt(r.accuracy) === 100).length / symbolResults.length) * 100,
+            avgCorrelation: symbolResults.reduce((sum, r) => sum + parseInt(r.correlation_score), 0) / symbolResults.length,
             totalPredictions: symbolResults.length
           };
         }

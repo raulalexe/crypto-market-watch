@@ -254,7 +254,7 @@ class AdvancedDataCollector {
               'cryptocompare'
             );
             
-            console.log(`📱 ${crypto} Social Sentiment: ${data.Sentiment}`);
+            console.log(`📱 ${crypto} Social Sentiment: ${data.Sentiment || 'N/A'}`);
           }
           
           // Small delay between requests
@@ -476,7 +476,7 @@ class AdvancedDataCollector {
         await insertOnchainData(
           'bitcoin',
           'transaction_count',
-          data.tx_count,
+          data.tx_count || 0,
           {
             timestamp: new Date().toISOString()
           },
@@ -494,7 +494,7 @@ class AdvancedDataCollector {
           'blockchain.info'
         );
         
-        console.log(`⛓️ Bitcoin - Hash Rate: ${(data.hash_rate / 1e18).toFixed(2)} EH/s, TX Count: ${data.tx_count}`);
+        console.log(`⛓️ Bitcoin - Hash Rate: ${(data.hash_rate / 1e18).toFixed(2)} EH/s, TX Count: ${data.tx_count || 'N/A'}`);
       }
     } catch (error) {
       console.error('Error collecting Bitcoin on-chain data:', error.message);
@@ -521,6 +521,12 @@ class AdvancedDataCollector {
       if (supplyResponse.data && supplyResponse.data.result) {
         const ethSupply = parseFloat(supplyResponse.data.result) / 1e18;
         
+        // Check if the result is valid
+        if (isNaN(ethSupply) || ethSupply <= 0) {
+          console.warn('⚠️ Invalid Ethereum supply data received');
+          return;
+        }
+        
         await insertOnchainData(
           'ethereum',
           'total_supply',
@@ -531,7 +537,7 @@ class AdvancedDataCollector {
           'etherscan'
         );
         
-        console.log(`⛓️ Ethereum - Total Supply: ${ethSupply.toFixed(2)} ETH`);
+        console.log(`⛓️ Ethereum - Total Supply: ${ethSupply ? ethSupply.toFixed(2) : 'N/A'} ETH`);
       }
       
       // Get gas price
@@ -562,7 +568,7 @@ class AdvancedDataCollector {
           'etherscan'
         );
         
-        console.log(`⛓️ Ethereum - Gas Price: ${gasData.ProposeGasPrice} Gwei`);
+        console.log(`⛓️ Ethereum - Gas Price: ${gasData.ProposeGasPrice || 'N/A'} Gwei`);
       }
     } catch (error) {
       console.error('Error collecting Ethereum on-chain data:', error.message);

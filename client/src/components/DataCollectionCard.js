@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Database, RefreshCw, CheckCircle, AlertCircle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { Database, RefreshCw, CheckCircle, AlertCircle, Clock, ChevronDown, ChevronRight, Brain } from 'lucide-react';
 import moment from 'moment';
 
 /**
@@ -8,6 +8,7 @@ import moment from 'moment';
  */
 const DataCollectionCard = ({ lastCollectionTime, onCollectData, expanded = false, onToggleExpanded }) => {
   const [isCollecting, setIsCollecting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [collectionStatus, setCollectionStatus] = useState({
     marketData: true,
     aiAnalysis: true,
@@ -56,6 +57,38 @@ const DataCollectionCard = ({ lastCollectionTime, onCollectData, expanded = fals
     }
   };
 
+  const handleRunAIAnalysis = async () => {
+    setIsAnalyzing(true);
+    setCollectionStatus(prev => ({ ...prev, aiAnalysis: false }));
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/ai-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Simulate AI analysis progress
+        setTimeout(() => setCollectionStatus(prev => ({ ...prev, aiAnalysis: true })), 3000);
+        
+        if (onCollectData) {
+          setTimeout(() => onCollectData(), 4000);
+        }
+      } else {
+        throw new Error('Failed to run AI analysis');
+      }
+    } catch (error) {
+      console.error('Error running AI analysis:', error);
+      setCollectionStatus(prev => ({ ...prev, aiAnalysis: false }));
+    } finally {
+      setTimeout(() => setIsAnalyzing(false), 4000);
+    }
+  };
+
   const getStatusIcon = (status) => {
     if (status) {
       return <CheckCircle className="w-6 h-6 text-green-500" />;
@@ -94,18 +127,32 @@ const DataCollectionCard = ({ lastCollectionTime, onCollectData, expanded = fals
                 : 'Never'
               }
             </span>
-            <button
-              onClick={handleCollectData}
-              disabled={isCollecting}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors duration-300 flex items-center space-x-2 ${
-                isCollecting
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  : 'bg-crypto-blue hover:bg-blue-600 text-white'
-              }`}
-            >
-              <RefreshCw className={`w-4 h-4 ${isCollecting ? 'animate-spin' : ''}`} />
-              <span>{isCollecting ? 'Collecting...' : 'Collect Data'}</span>
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={handleRunAIAnalysis}
+                disabled={isAnalyzing || isCollecting}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors duration-300 flex items-center space-x-2 ${
+                  isAnalyzing || isCollecting
+                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                }`}
+              >
+                <Brain className={`w-4 h-4 ${isAnalyzing ? 'animate-pulse' : ''}`} />
+                <span>{isAnalyzing ? 'Analyzing...' : 'AI Analysis'}</span>
+              </button>
+              <button
+                onClick={handleCollectData}
+                disabled={isCollecting || isAnalyzing}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors duration-300 flex items-center space-x-2 ${
+                  isCollecting || isAnalyzing
+                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    : 'bg-crypto-blue hover:bg-blue-600 text-white'
+                }`}
+              >
+                <RefreshCw className={`w-4 h-4 ${isCollecting ? 'animate-spin' : ''}`} />
+                <span>{isCollecting ? 'Collecting...' : 'Collect Data'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

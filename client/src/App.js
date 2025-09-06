@@ -122,10 +122,30 @@ function App() {
     }
   };
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = async () => {
     setIsAuthenticated(true);
+    await fetchUserData();
+    
+    // Check if user is admin and refresh page to ensure all components update properly
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        const response = await axios.get('/api/subscription', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // If user is admin, refresh the page to ensure all UI components update
+        if (response.data && response.data.role === 'admin') {
+          console.log('Admin user detected, refreshing page to update UI...');
+          window.location.reload();
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking user role after login:', error);
+      }
+    }
+    
     fetchDashboardData();
-    fetchUserData();
   };
 
   const handleLogout = () => {

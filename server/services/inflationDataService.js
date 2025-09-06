@@ -919,6 +919,7 @@ class InflationDataService {
   // Manual data fetch (for testing)
   async fetchLatestData() {
     try {
+      console.log('📊 Fetching latest inflation data from APIs...');
       
       const results = {};
       
@@ -944,6 +945,7 @@ class InflationDataService {
         return null;
       }
       
+      console.log('✅ Inflation data fetch completed');
       return results;
     } catch (error) {
       console.error('Error fetching latest data:', error);

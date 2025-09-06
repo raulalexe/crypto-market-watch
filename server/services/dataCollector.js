@@ -1268,6 +1268,18 @@ class DataCollector {
       const analysis = await aiAnalyzer.analyzeMarketDirection(comprehensiveData);
       
       if (analysis) {
+        // Run backtest analysis after AI analysis is complete
+        console.log('🔄 Running backtest analysis...');
+        try {
+          const backtestResults = await aiAnalyzer.backtestPredictions();
+          if (backtestResults && backtestResults.length > 0) {
+            console.log(`✅ Backtest completed for ${backtestResults.length} assets`);
+          } else {
+            console.log('ℹ️ No backtest results generated');
+          }
+        } catch (error) {
+          console.error('❌ Error running backtest:', error.message);
+        }
 
         return analysis;
       } else {
@@ -1537,8 +1549,17 @@ class DataCollector {
         this.collectBitcoinDominanceOptimized(), // Uses data from collectCryptoPrices
         this.collectLayer1DataOptimized(), // Uses data from collectCryptoPrices
         this.collectExchangeFlows(), // Collect exchange flows from Binance
-        this.collectInflationData() // Collect and store inflation data
+        this.collectInflationData(), // Collect and store inflation data
+        this.collectEconomicCalendarData() // Collect and analyze economic calendar data
       ]);
+      
+      // Clean up duplicate events before collecting new ones
+      try {
+        const { cleanupDuplicateEvents } = require('../database');
+        await cleanupDuplicateEvents();
+      } catch (error) {
+        console.error('Error cleaning up duplicate events:', error.message);
+      }
       
       // Collect advanced data (market sentiment, derivatives, on-chain)
       console.log('Collecting advanced data...');
@@ -1556,6 +1577,7 @@ class DataCollector {
         const alerts = await this.alertService.checkAllAlerts(advancedMetrics);
         if (alerts.length > 0) {
           console.log(`Generated ${alerts.length} new alerts`);
+          // Note: Alert service automatically sends notifications when alerts are generated
         }
         
         // Cleanup old alerts (keep last 7 days)
@@ -1566,6 +1588,28 @@ class DataCollector {
       } catch (error) {
         console.error('Error checking alerts:', error.message);
       }
+      
+      // Check for upcoming event notifications
+      try {
+        const EventNotificationService = require('./eventNotificationService');
+        const eventNotificationService = new EventNotificationService();
+        const eventNotifications = await eventNotificationService.checkUpcomingEventNotifications();
+        if (eventNotifications.length > 0) {
+          console.log(`📅 Generated ${eventNotifications.length} event notifications`);
+        }
+      } catch (error) {
+        console.error('Error checking event notifications:', error.message);
+      }
+      
+      console.log('🎉 ============================================');
+      console.log('🎉 DATA COLLECTION COMPLETED SUCCESSFULLY! 🎉');
+      console.log('🎉 ============================================');
+      console.log(`📊 All data sources collected and processed`);
+      console.log(`🤖 AI analysis completed`);
+      console.log(`🔔 Alerts and notifications processed`);
+      console.log(`📅 Events and calendar data updated`);
+      console.log(`⏰ Finished at: ${new Date().toLocaleString()}`);
+      console.log('🎉 ============================================');
       
       return true;
     } catch (error) {
@@ -2339,6 +2383,25 @@ class DataCollector {
     }
   }
 
+  // Collect economic calendar data
+  async collectEconomicCalendarData() {
+    try {
+      console.log('📅 Starting economic calendar data collection...');
+      
+      const EconomicCalendarCollector = require('./economicCalendarCollector');
+      const collector = new EconomicCalendarCollector();
+      
+      const result = await collector.collectAndAnalyze();
+      
+      console.log(`✅ Economic calendar collection completed: ${result.calendarEvents} events, ${result.storedData} data points, ${result.analyzedEvents} analyzed`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error collecting economic calendar data:', error.message);
+      await this.errorLogger.logError('economic_calendar_collection', error.message);
+      return null;
+    }
+  }
+
   // Collect and store inflation data
   async collectInflationData() {
     try {
@@ -2371,6 +2434,7 @@ class DataCollector {
       return null;
     }
   }
+
 }
 
 module.exports = DataCollector;

@@ -20,13 +20,17 @@ const UpcomingEventsCard = ({ events }) => {
   const getEventIcon = (category) => {
     switch (category) {
       case 'fed':
+      case 'monetary_policy':
         return <DollarSign className="w-4 h-4" />;
       case 'crypto':
         return <TrendingUp className="w-4 h-4" />;
       case 'regulation':
         return <AlertTriangle className="w-4 h-4" />;
       case 'earnings':
+      case 'employment':
         return <Users className="w-4 h-4" />;
+      case 'inflation':
+        return <TrendingUp className="w-4 h-4" />;
       default:
         return <Calendar className="w-4 h-4" />;
     }

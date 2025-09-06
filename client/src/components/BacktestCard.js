@@ -1,7 +1,7 @@
 import React from 'react';
 import { BarChart3, Target, TrendingUp } from 'lucide-react';
 
-const BacktestCard = ({ backtestMetrics }) => {
+const BacktestCard = ({ data: backtestMetrics }) => {
   if (!backtestMetrics) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">

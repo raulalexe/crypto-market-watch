@@ -127,9 +127,9 @@ const emailService = new BrevoEmailService();
 const pushService = new PushService();
 const telegramService = new TelegramService();
 
-// Setup cron jobs for data collection (only in development or when explicitly enabled)
+// Setup cron jobs for data collection (only when explicitly enabled)
 const setupDataCollectionCron = () => {
-  if (process.env.ENABLE_CRON_JOBS === 'true' || process.env.NODE_ENV === 'development') {
+  if (process.env.ENABLE_CRON_JOBS === 'true') {
     console.log('Setting up data collection cron jobs...');
     
     // Run data collection every 30 minutes in development
@@ -711,13 +711,13 @@ app.get('/api/advanced-data', async (req, res) => {
   }
 });
 
-// Manual trigger for advanced data collection (for testing)
-app.post('/api/collect-advanced-data', async (req, res) => {
+// Manual trigger for advanced data collection - ADMIN ONLY
+app.post('/api/collect-advanced-data', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const AdvancedDataCollector = require('./services/advancedDataCollector');
     const advancedCollector = new AdvancedDataCollector();
     
-    console.log('🚀 Manual trigger: Starting advanced data collection...');
+    console.log('🚀 Admin triggered advanced data collection...');
     await advancedCollector.collectAllAdvancedData();
     
     res.json({ 
@@ -2195,13 +2195,161 @@ app.post('/api/collect-data', authenticateToken, requireAdmin, async (req, res) 
       // Collect upcoming events
       await eventCollector.collectUpcomingEvents();
       
-      res.json({ success: true, message: 'Data collection and analysis completed' });
+      console.log('🎉 ============================================');
+      console.log('🎉 API: DATA COLLECTION COMPLETED SUCCESSFULLY! 🎉');
+      console.log('🎉 ============================================');
+      
+      res.json({ 
+        success: true, 
+        message: '🎉 Data collection completed successfully! All data sources collected, AI analysis completed, and alerts processed.',
+        timestamp: new Date().toISOString(),
+        status: 'completed'
+      });
     } else {
+      console.log('❌ ============================================');
+      console.log('❌ API: DATA COLLECTION FAILED! ❌');
+      console.log('❌ ============================================');
       res.status(500).json({ success: false, message: 'Data collection failed' });
     }
   } catch (error) {
     console.error('Error in manual data collection:', error);
     res.status(500).json({ error: 'Failed to collect data' });
+  }
+});
+
+
+app.get('/api/economic-data/latest', async (req, res) => {
+  try {
+    const { getLatestEconomicData } = require('./database');
+    const seriesId = req.query.series_id;
+    
+    if (!seriesId) {
+      return res.status(400).json({ error: 'series_id parameter is required' });
+    }
+    
+    const data = await getLatestEconomicData(seriesId);
+    
+    res.json({
+      success: true,
+      data,
+      seriesId
+    });
+  } catch (error) {
+    console.error('Error fetching economic data:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch economic data'
+    });
+  }
+});
+
+app.get('/api/economic-data/history', async (req, res) => {
+  try {
+    const { getEconomicDataHistory } = require('./database');
+    const seriesId = req.query.series_id;
+    const months = parseInt(req.query.months) || 12;
+    
+    if (!seriesId) {
+      return res.status(400).json({ error: 'series_id parameter is required' });
+    }
+    
+    const data = await getEconomicDataHistory(seriesId, months);
+    
+    res.json({
+      success: true,
+      data,
+      seriesId,
+      months
+    });
+  } catch (error) {
+    console.error('Error fetching economic data history:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch economic data history'
+    });
+  }
+});
+
+// Economic Calendar data collection trigger - Admin only
+app.post('/api/economic-calendar/collect', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    console.log('📅 Admin triggered economic calendar data collection...');
+    
+    const EconomicCalendarCollector = require('./services/economicCalendarCollector');
+    const collector = new EconomicCalendarCollector();
+    
+    const result = await collector.collectAndAnalyze();
+    
+    console.log('🎉 ============================================');
+    console.log('🎉 ECONOMIC CALENDAR COLLECTION COMPLETED! 🎉');
+    console.log('🎉 ============================================');
+    
+    res.json({
+      success: true,
+      message: '🎉 Economic calendar data collection completed successfully!',
+      result: {
+        calendarEvents: result.calendarEvents,
+        storedData: result.storedData,
+        analyzedEvents: result.analyzedEvents,
+        newReleases: result.newReleases
+      },
+      timestamp: new Date().toISOString(),
+      status: 'completed'
+    });
+  } catch (error) {
+    console.error('Error in economic calendar data collection:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to collect economic calendar data',
+      message: error.message
+    });
+  }
+});
+
+// AI Analysis only trigger - Admin only (uses existing data, no new collection)
+app.post('/api/ai-analysis', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    console.log('🤖 Admin triggered AI analysis only...');
+    
+    // Get current market data without collecting new data
+    const marketDataSummary = await dataCollector.getMarketDataSummary();
+    if (!marketDataSummary) {
+      return res.status(400).json({ error: 'No market data available for AI analysis' });
+    }
+
+    // Get advanced metrics for comprehensive analysis
+    const advancedMetrics = await dataCollector.getAdvancedMetricsSummary();
+    
+    // Get upcoming events for AI analysis
+    const upcomingEvents = await eventCollector.getUpcomingEvents(10);
+
+    // Get Fear & Greed Index
+    const { getLatestFearGreedIndex } = require('./database');
+    const fearGreed = await getLatestFearGreedIndex();
+
+    // Prepare comprehensive data for AI analysis
+    const comprehensiveData = {
+      ...marketDataSummary,
+      bitcoin_dominance: advancedMetrics?.bitcoinDominance?.value,
+      stablecoin_metrics: advancedMetrics?.stablecoinMetrics,
+      exchange_flows: advancedMetrics?.exchangeFlows,
+      market_sentiment: advancedMetrics?.marketSentiment,
+      derivatives: advancedMetrics?.derivatives,
+      onchain: advancedMetrics?.onchain,
+      upcoming_events: upcomingEvents,
+      fear_greed: fearGreed,
+      regulatory_news: null
+    };
+
+    // Run AI analysis with existing data
+    const analysis = await aiAnalyzer.analyzeMarketDirection(comprehensiveData);
+    
+    if (analysis) {
+      res.json({ success: true, message: 'AI analysis completed successfully', analysis });
+    } else {
+      res.status(500).json({ success: false, message: 'AI analysis failed' });
+    }
+  } catch (error) {
+    console.error('Error in AI analysis:', error);
+    res.status(500).json({ error: 'Failed to run AI analysis' });
   }
 });
 
@@ -2411,7 +2559,9 @@ app.get('/api/inflation/releases', async (req, res) => {
       const dateStr = date.toISOString().split('T')[0];
       
       const dayReleases = await getInflationReleases(dateStr);
-      releases.push(...dayReleases);
+      if (Array.isArray(dayReleases)) {
+        releases.push(...dayReleases);
+      }
     }
     
     res.json({
@@ -2445,17 +2595,19 @@ app.get('/api/inflation/forecasts', async (req, res) => {
   }
 });
 
-// Manual trigger for inflation data fetch
-app.post('/api/inflation/fetch', authenticateToken, requireSubscription('pro'), async (req, res) => {
+// Manual trigger for inflation data fetch - ADMIN ONLY
+app.post('/api/inflation/fetch', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const inflationService = require('./services/inflationDataService');
+    console.log('🔄 Admin triggered manual inflation data fetch...');
     
-    const data = await inflationService.fetchLatestData();
+    // Use data collector to fetch fresh data (single entry point)
+    const dataCollector = require('./services/dataCollector');
+    const data = await dataCollector.collectInflationData();
     
     res.json({
       success: true,
       data,
-      message: 'Inflation data fetched successfully'
+      message: 'Inflation data fetched successfully via data collection'
     });
   } catch (error) {
     console.error('Error fetching inflation data:', error);
@@ -2497,18 +2649,31 @@ app.post('/api/inflation/generate-forecasts', authenticateToken, requireSubscrip
   }
 });
 
-// Get inflation data with market expectations and analysis
+// Get inflation data with market expectations and analysis - DATABASE ONLY
 app.get('/api/inflation/analysis', async (req, res) => {
   try {
-    const inflationService = require('./services/inflationDataService');
-    const result = await inflationService.fetchLatestDataWithAnalysis();
+    // Use database data only, no API calls
+    const { getLatestInflationData } = require('./database');
+    const cpiData = await getLatestInflationData('CPI');
+    const pceData = await getLatestInflationData('PCE');
+    
+    const result = {
+      data: {
+        cpi: cpiData,
+        pce: pceData
+      },
+      expectations: null, // Would need separate implementation
+      analysis: null, // Would need separate implementation
+      timestamp: new Date().toISOString()
+    };
     
     res.json({
       success: true,
-      data: result
+      data: result,
+      message: 'Inflation analysis retrieved from database'
     });
   } catch (error) {
-    console.error('Error fetching inflation analysis:', error);
+    console.error('Error getting inflation analysis:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch inflation analysis',
@@ -2517,18 +2682,18 @@ app.get('/api/inflation/analysis', async (req, res) => {
   }
 });
 
-// Get market expectations only
+// Get market expectations only - DISABLED (would require API calls)
 app.get('/api/inflation/expectations', async (req, res) => {
   try {
-    const inflationService = require('./services/inflationDataService');
-    const expectations = await inflationService.fetchMarketExpectations();
-    
+    // This endpoint would require external API calls, so we'll return null
+    // Only data collection should fetch fresh data
     res.json({
       success: true,
-      data: expectations
+      data: null,
+      message: 'Market expectations not available (use data collection for fresh data)'
     });
   } catch (error) {
-    console.error('Error fetching market expectations:', error);
+    console.error('Error getting market expectations:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch market expectations',
@@ -2537,24 +2702,63 @@ app.get('/api/inflation/expectations', async (req, res) => {
   }
 });
 
-// Get inflation sentiment analysis
+// Get inflation sentiment analysis - DATABASE ONLY
 app.get('/api/inflation/sentiment', async (req, res) => {
   try {
-    const inflationService = require('./services/inflationDataService');
-    const data = await inflationService.fetchLatestData();
-    const analysis = await inflationService.analyzeInflationData(data);
+    // Use database data only, no API calls
+    const { getLatestInflationData } = require('./database');
+    const cpiData = await getLatestInflationData('CPI');
+    const pceData = await getLatestInflationData('PCE');
+    
+    // Simple sentiment analysis based on database data
+    let sentiment = 'neutral';
+    let marketImpact = {
+      crypto: 'neutral',
+      stocks: 'neutral',
+      bonds: 'neutral',
+      dollar: 'neutral'
+    };
+    
+    if (cpiData || pceData) {
+      const cpiYoY = cpiData?.yoy_change || 0;
+      const pceYoY = pceData?.yoy_change || 0;
+      const avgInflation = (cpiYoY + pceYoY) / 2;
+      
+      if (avgInflation > 3.5) {
+        sentiment = 'bearish';
+        marketImpact = {
+          crypto: 'bearish',
+          stocks: 'bearish',
+          bonds: 'bullish',
+          dollar: 'bullish'
+        };
+      } else if (avgInflation < 2.0) {
+        sentiment = 'bullish';
+        marketImpact = {
+          crypto: 'bullish',
+          stocks: 'bullish',
+          bonds: 'bearish',
+          dollar: 'bearish'
+        };
+      }
+    }
     
     res.json({
       success: true,
       data: {
-        sentiment: analysis.overallSentiment,
-        marketImpact: analysis.marketImpact,
-        details: analysis,
+        sentiment,
+        marketImpact,
+        details: {
+          cpi: cpiData,
+          pce: pceData,
+          analysis: 'Simple sentiment analysis based on database data'
+        },
         timestamp: new Date().toISOString()
-      }
+      },
+      message: 'Inflation sentiment retrieved from database'
     });
   } catch (error) {
-    console.error('Error fetching inflation sentiment:', error);
+    console.error('Error getting inflation sentiment:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch inflation sentiment',

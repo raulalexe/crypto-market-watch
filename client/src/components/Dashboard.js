@@ -100,6 +100,19 @@ const Dashboard = ({ isAuthenticated, userData }) => {
     const subscriptionStatus = dashboardData?.subscriptionStatus;
     const isLaunchPhase = process.env.REACT_APP_LAUNCH_PHASE === 'true';
     
+    // Check if user is admin from userData props (more reliable than dashboardData)
+    const isAdminUser = userData && (userData.role === 'admin' || userData.isAdmin === true);
+    
+    if (isAdminUser) {
+      // Admin user - show ADMIN badge
+      return (
+        <div className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2">
+          <Zap className="w-5 h-5" />
+          <span>ADMIN</span>
+        </div>
+      );
+    }
+    
     if (!subscriptionStatus) {
       // No subscription - show upgrade to Pro
       if (isLaunchPhase) {
@@ -122,7 +135,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
     }
 
     if (subscriptionStatus.plan === 'admin') {
-      // Admin user - show ADMIN badge
+      // Admin user - show ADMIN badge (fallback check)
       return (
         <div className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2">
           <Zap className="w-5 h-5" />
@@ -185,7 +198,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
       {/* Dashboard Cards - Single Column Layout */}
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Data Collection Card - Admin only */}
-        {dashboardData?.subscriptionStatus?.plan === 'admin' && (
+        {userData?.isAdmin && (
           <DataCollectionCard 
             lastCollectionTime={dashboardData?.lastCollectionTime}
             onCollectData={fetchDashboardData}
