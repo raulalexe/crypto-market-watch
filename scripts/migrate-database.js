@@ -624,6 +624,52 @@ const migrations = [
         END IF;
       END $$;
     `
+  },
+  {
+    name: 'create_economic_calendar_table',
+    description: 'Create economic_calendar table for economic events',
+    sql: `
+      CREATE TABLE IF NOT EXISTS economic_calendar (
+        id SERIAL PRIMARY KEY,
+        event_id VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(50),
+        impact VARCHAR(20),
+        date DATE NOT NULL,
+        time TIME,
+        timezone VARCHAR(50),
+        source VARCHAR(100),
+        status VARCHAR(20) DEFAULT 'scheduled',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(event_id, date)
+      )
+    `
+  },
+  {
+    name: 'fix_crypto_prices_constraint',
+    description: 'Fix crypto_prices table constraint to include timestamp',
+    sql: `
+      DO $migration$
+      BEGIN
+        -- Drop the old constraint if it exists
+        IF EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'crypto_prices_symbol_unique'
+        ) THEN
+          ALTER TABLE crypto_prices DROP CONSTRAINT crypto_prices_symbol_unique;
+        END IF;
+        
+        -- Add the new constraint with symbol and timestamp
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'crypto_prices_symbol_timestamp_unique'
+        ) THEN
+          ALTER TABLE crypto_prices ADD CONSTRAINT crypto_prices_symbol_timestamp_unique UNIQUE (symbol, timestamp);
+        END IF;
+      END $migration$;
+    `
   }
 ];
 

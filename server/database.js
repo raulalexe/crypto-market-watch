@@ -81,7 +81,8 @@ const initDatabase = async () => {
         price DECIMAL,
         volume_24h DECIMAL,
         market_cap DECIMAL,
-        change_24h DECIMAL
+        change_24h DECIMAL,
+        UNIQUE(symbol, timestamp)
       )
     `);
     
@@ -395,6 +396,25 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(series_id, date)
+      )
+    `);
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS economic_calendar (
+        id SERIAL PRIMARY KEY,
+        event_id VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(50),
+        impact VARCHAR(20),
+        date DATE NOT NULL,
+        time TIME,
+        timezone VARCHAR(50),
+        source VARCHAR(100),
+        status VARCHAR(20) DEFAULT 'scheduled',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(event_id, date)
       )
     `);
     

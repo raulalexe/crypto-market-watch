@@ -42,7 +42,7 @@ class EconomicDataService {
         registrationkey: this.blsApiKey
       }, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 10000
+        timeout: 30000 // Increased to 30 seconds for BLS API
       });
 
       if (response.data.status === 'REQUEST_SUCCEEDED' && response.data.Results.series.length > 0) {
@@ -103,7 +103,7 @@ class EconomicDataService {
         registrationkey: this.blsApiKey
       }, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 10000
+        timeout: 30000 // Increased to 30 seconds for BLS API
       });
 
       if (response.data.status === 'REQUEST_SUCCEEDED' && response.data.Results.series.length > 0) {
@@ -166,7 +166,7 @@ class EconomicDataService {
           limit: 2,
           sort_order: 'desc'
         },
-        timeout: 10000
+        timeout: 30000 // Increased to 30 seconds for BLS API
       });
 
       if (response.data.observations && response.data.observations.length > 0) {
@@ -357,7 +357,7 @@ class EconomicDataService {
         registrationkey: this.blsApiKey
       }, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 10000
+        timeout: 30000 // Increased to 30 seconds for BLS API
       });
 
       if (response.data.status === 'REQUEST_SUCCEEDED' && response.data.Results.series.length > 0) {
