@@ -731,24 +731,8 @@ class DataCollector {
       }
     } catch (error) {
       console.error('Error collecting Fear & Greed Index:', error.message);
-      // Fallback: create a synthetic fear/greed index based on VIX and market data
-      const vix = await this.collectVIX();
-      if (vix) {
-        let value, classification;
-        if (vix < 15) {
-          value = 80; // Greed
-          classification = 'Greed';
-        } else if (vix < 25) {
-          value = 60; // Neutral
-          classification = 'Neutral';
-        } else {
-          value = 30; // Fear
-          classification = 'Fear';
-        }
-        
-        await insertFearGreedIndex(value, classification, 'Synthetic (VIX-based)');
-        return { value, classification };
-      }
+      console.log('⚠️ No synthetic fallback data generated - only real data is used');
+      return null;
     }
   }
 

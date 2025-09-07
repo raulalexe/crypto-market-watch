@@ -7,6 +7,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LoadingSpinner from './components/LoadingSpinner';
 import AuthModal from './components/AuthModal';
+import UmamiAnalytics from './components/UmamiAnalytics';
 
 import About from './components/About';
 import ErrorLogs from './components/ErrorLogs';
@@ -68,25 +69,6 @@ function App() {
       setUserData(null);
     }
   };
-
-  // Unused data collection function - commented out
-  // const handleDataCollection = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const token = localStorage.getItem('authToken');
-  //     await axios.post('/api/collect-data', {}, {
-  //       headers: {
-  //         'Authorization': `Bearer ${token}`,
-  //       },
-  //     });
-  //     await fetchDashboardData();
-  //   } catch (err) {
-  //     console.error('Error triggering data collection:', err);
-  //     setError('Failed to trigger data collection');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   useEffect(() => {
     // Check for existing auth token
@@ -170,6 +152,7 @@ function App() {
 
   return (
     <Router>
+      <UmamiAnalytics />
       <div className="min-h-screen bg-slate-900">
                 {/* Marketing page as index - no header/sidebar */}
         <Routes>

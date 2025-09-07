@@ -165,12 +165,22 @@ class EventCollector {
   }
 
   getNextCPIDate() {
-    // CPI is typically released around the 13th of each month
+    // CPI is typically released around the 13th of each month at 8:30 AM ET
     const now = moment();
-    let nextCPI = moment().date(13);
+    let nextCPI = moment().date(13).hour(8).minute(30).second(0).millisecond(0);
+    
+    // If the 13th has passed this month, move to next month
     if (nextCPI.isBefore(now)) {
-      nextCPI = nextCPI.add(1, 'month');
+      nextCPI = nextCPI.add(1, 'month').date(13).hour(8).minute(30).second(0).millisecond(0);
     }
+    
+    // If the 13th falls on a weekend, move to the following Monday
+    if (nextCPI.day() === 0) { // Sunday
+      nextCPI = nextCPI.add(1, 'day');
+    } else if (nextCPI.day() === 6) { // Saturday
+      nextCPI = nextCPI.add(2, 'days');
+    }
+    
     return nextCPI.format('YYYY-MM-DD HH:mm:ss');
   }
 

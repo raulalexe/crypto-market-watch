@@ -448,59 +448,19 @@ app.get('/api/advanced-metrics', async (req, res) => {
     const hasRealData = bitcoinDominance || (totalMarketCapData && totalMarketCapData.length > 0) || (btcFlows.length > 0) || (derivativesData && derivativesData.length > 0) || (onchainData && onchainData.length > 0);
     
     if (!hasRealData) {
-      // Return fallback data if no real data is available
+      // Return honest response when no real data is available
       return res.json({
-        bitcoinDominance: {
-          value: 52.5,
-          change_24h: 1.2
-        },
-        totalMarketCap: {
-          value: 2500000000000,
-          change_24h: 2.8
-        },
-        altcoinSeason: {
-          indicator: 45.2,
-          season: 'Bitcoin Season',
-          metadata: { season: 'Bitcoin Season', strength: 'Moderate' }
-        },
-        stablecoinMetrics: {
-          totalMarketCap: 125000000000,
-          ssr: 3.2,
-          change_24h: -0.5
-        },
-        exchangeFlows: null, // No fake data - will be replaced with real data
-        marketSentiment: {
-          score: 68,
-          interpretation: 'Bullish'
-        },
-        derivatives: {
-          openInterest: {
-            value: 18500000000,
-            metadata: { btc_oi: 12500000000, eth_oi: 6000000000 }
-          },
-          fundingRate: {
-            value: 0.0125,
-            metadata: { btc_funding: 0.015, eth_funding: 0.008 }
-          },
-          liquidations: {
-            value: 85000000,
-            metadata: { long_liquidations: 45000000, short_liquidations: 40000000 }
-          }
-        },
-        onchain: {
-          whaleTransactions: {
-            value: 1250,
-            metadata: { large_transfers: 850, exchange_deposits: 400 }
-          },
-          hashRate: {
-            value: 450,
-            metadata: { difficulty: 68000000000000, network_health: 'Strong' }
-          },
-          activeAddresses: {
-            value: 850000,
-            metadata: { new_addresses: 125000, returning_addresses: 725000 }
-          }
-        }
+        message: 'No real advanced metrics data available yet. Data collection is in progress.',
+        status: 'no_data',
+        note: 'All data sources are being collected from real APIs. No synthetic data is used.',
+        bitcoinDominance: null,
+        totalMarketCap: null,
+        altcoinSeason: null,
+        stablecoinMetrics: null,
+        exchangeFlows: null,
+        marketSentiment: null,
+        derivatives: null,
+        onchain: null
       });
     }
 

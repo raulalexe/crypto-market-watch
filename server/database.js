@@ -1393,11 +1393,36 @@ const cleanupDuplicateAlerts = () => {
 // Upcoming Events functions
 const insertUpcomingEvent = (title, description, category, impact, date, source) => {
   return new Promise((resolve, reject) => {
-    // First check if event already exists (deduplication)
-    dbAdapter.get(
-      'SELECT id FROM upcoming_events WHERE title = $1 AND date = $2 AND source = $3',
-      [title, date, source]
-    ).then(existingEvent => {
+    // Enhanced deduplication logic for CPI and other economic events
+    let deduplicationQuery;
+    let queryParams;
+    
+    // For CPI events, check for similar events within a 7-day window
+    if (title.toLowerCase().includes('cpi') || title.toLowerCase().includes('consumer price index')) {
+      const eventDate = new Date(date);
+      const startDate = new Date(eventDate.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days before
+      const endDate = new Date(eventDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days after
+      
+      deduplicationQuery = `
+        SELECT id FROM upcoming_events 
+        WHERE (title ILIKE $1 OR title ILIKE $2) 
+        AND date BETWEEN $3 AND $4 
+        AND category = $5
+      `;
+      queryParams = [
+        '%cpi%', 
+        '%consumer price index%', 
+        startDate.toISOString(), 
+        endDate.toISOString(), 
+        category
+      ];
+    } else {
+      // For other events, use exact matching
+      deduplicationQuery = 'SELECT id FROM upcoming_events WHERE title = $1 AND date = $2 AND source = $3';
+      queryParams = [title, date, source];
+    }
+    
+    dbAdapter.get(deduplicationQuery, queryParams).then(existingEvent => {
       if (existingEvent) {
         // Event already exists, return existing ID
         console.log(`Event already exists: ${title} on ${date}`);
@@ -1429,17 +1454,41 @@ const getUpcomingEvents = (limit = 20) => {
 // Clean up duplicate events
 const cleanupDuplicateEvents = () => {
   return new Promise((resolve, reject) => {
-    // Delete duplicates, keeping only the oldest one for each unique combination
-    dbAdapter.run(`
+    // Enhanced cleanup for CPI and other economic events
+    // First, clean up CPI duplicates specifically
+    const cleanupCPIQuery = `
       DELETE FROM upcoming_events 
       WHERE id NOT IN (
         SELECT MIN(id) 
         FROM upcoming_events 
+        WHERE (title ILIKE '%cpi%' OR title ILIKE '%consumer price index%')
+        AND category = 'fed'
+        GROUP BY DATE_TRUNC('month', date), category
+      )
+      AND (title ILIKE '%cpi%' OR title ILIKE '%consumer price index%')
+      AND category = 'fed'
+    `;
+    
+    // Then clean up other duplicates
+    const cleanupGeneralQuery = `
+      DELETE FROM upcoming_events 
+      WHERE id NOT IN (
+        SELECT MIN(id) 
+        FROM upcoming_events 
+        WHERE NOT (title ILIKE '%cpi%' OR title ILIKE '%consumer price index%')
         GROUP BY title, date, source
       )
-    `).then(result => {
-      console.log(`Cleaned up ${result.changes} duplicate events`);
-      resolve(result.changes);
+      AND NOT (title ILIKE '%cpi%' OR title ILIKE '%consumer price index%')
+    `;
+    
+    // Execute both cleanup queries
+    Promise.all([
+      dbAdapter.run(cleanupCPIQuery),
+      dbAdapter.run(cleanupGeneralQuery)
+    ]).then(results => {
+      const totalCleaned = results.reduce((sum, result) => sum + (result.changes || 0), 0);
+      console.log(`Cleaned up ${totalCleaned} duplicate events (${results[0].changes || 0} CPI events, ${results[1].changes || 0} other events)`);
+      resolve(totalCleaned);
     }).catch(reject);
   });
 };

@@ -315,22 +315,29 @@ class AdvancedDataCollector {
 
   async collectAdditionalSentiment() {
     try {
-      // Collect additional sentiment indicators
+      // Collect additional sentiment indicators from real market data
       const sentimentData = {
-        'market_momentum': this.calculateMarketMomentum(),
-        'volatility_sentiment': this.calculateVolatilitySentiment(),
-        'volume_sentiment': this.calculateVolumeSentiment()
+        'market_momentum': await this.calculateMarketMomentum(),
+        'volatility_sentiment': await this.calculateVolatilitySentiment(),
+        'volume_sentiment': await this.calculateVolumeSentiment()
       };
       
       for (const [type, value] of Object.entries(sentimentData)) {
-        if (value !== null) {
+        if (value !== null && value !== undefined) {
           await insertMarketSentiment(
             type,
             value,
             value > 0.6 ? 'Bullish' : value < 0.4 ? 'Bearish' : 'Neutral',
-            { calculated_at: new Date().toISOString() },
+            { 
+              calculated_at: new Date().toISOString(),
+              source: 'Real Market Data Analysis',
+              data_points_used: '7 days of historical data'
+            },
             'calculated'
           );
+          console.log(`📊 Calculated ${type}: ${value.toFixed(3)} from real market data`);
+        } else {
+          console.log(`⚠️ Could not calculate ${type} - insufficient real data available`);
         }
       }
     } catch (error) {
@@ -338,20 +345,83 @@ class AdvancedDataCollector {
     }
   }
 
-  calculateMarketMomentum() {
-    // This would be calculated based on recent price movements
-    // For now, return a placeholder value
-    return Math.random() * 0.4 + 0.3; // Random value between 0.3 and 0.7
+  async calculateMarketMomentum() {
+    // Calculate based on recent price movements from real market data
+    try {
+      const { getCryptoPrices } = require('../database');
+      const btcData = await getCryptoPrices('BTC', 7); // Get last 7 days
+      
+      if (!btcData || btcData.length < 2) {
+        return null; // No data available
+      }
+      
+      // Calculate momentum based on price changes
+      const recentPrices = btcData.slice(0, 3).map(d => d.price);
+      const olderPrices = btcData.slice(3, 6).map(d => d.price);
+      
+      const recentAvg = recentPrices.reduce((sum, price) => sum + price, 0) / recentPrices.length;
+      const olderAvg = olderPrices.reduce((sum, price) => sum + price, 0) / olderPrices.length;
+      
+      const momentum = (recentAvg - olderAvg) / olderAvg;
+      return Math.max(0, Math.min(1, (momentum + 0.1) / 0.2)); // Normalize to 0-1
+    } catch (error) {
+      console.error('Error calculating market momentum:', error.message);
+      return null;
+    }
   }
 
-  calculateVolatilitySentiment() {
-    // This would be calculated based on recent volatility
-    return Math.random() * 0.4 + 0.3;
+  async calculateVolatilitySentiment() {
+    // Calculate based on recent volatility from real market data
+    try {
+      const { getCryptoPrices } = require('../database');
+      const btcData = await getCryptoPrices('BTC', 7);
+      
+      if (!btcData || btcData.length < 3) {
+        return null;
+      }
+      
+      // Calculate volatility (standard deviation of daily returns)
+      const returns = [];
+      for (let i = 1; i < btcData.length; i++) {
+        const dailyReturn = (btcData[i-1].price - btcData[i].price) / btcData[i].price;
+        returns.push(dailyReturn);
+      }
+      
+      const avgReturn = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
+      const variance = returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0) / returns.length;
+      const volatility = Math.sqrt(variance);
+      
+      // Convert volatility to sentiment (higher volatility = more bearish sentiment)
+      return Math.max(0, Math.min(1, 1 - (volatility * 10))); // Normalize to 0-1
+    } catch (error) {
+      console.error('Error calculating volatility sentiment:', error.message);
+      return null;
+    }
   }
 
-  calculateVolumeSentiment() {
-    // This would be calculated based on recent volume trends
-    return Math.random() * 0.4 + 0.3;
+  async calculateVolumeSentiment() {
+    // Calculate based on recent volume trends from real market data
+    try {
+      const { getCryptoPrices } = require('../database');
+      const btcData = await getCryptoPrices('BTC', 7);
+      
+      if (!btcData || btcData.length < 3) {
+        return null;
+      }
+      
+      // Calculate volume trend
+      const recentVolumes = btcData.slice(0, 3).map(d => d.volume_24h);
+      const olderVolumes = btcData.slice(3, 6).map(d => d.volume_24h);
+      
+      const recentAvg = recentVolumes.reduce((sum, vol) => sum + vol, 0) / recentVolumes.length;
+      const olderAvg = olderVolumes.reduce((sum, vol) => sum + vol, 0) / olderVolumes.length;
+      
+      const volumeTrend = (recentAvg - olderAvg) / olderAvg;
+      return Math.max(0, Math.min(1, (volumeTrend + 0.5) / 1.0)); // Normalize to 0-1
+    } catch (error) {
+      console.error('Error calculating volume sentiment:', error.message);
+      return null;
+    }
   }
 
   // Fallback method for social sentiment using CoinGecko

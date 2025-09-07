@@ -113,91 +113,23 @@ const Layer1Card = () => {
     );
   }
 
-  // Sample Layer 1 data structure
-  const sampleLayer1Data = {
-    chains: [
-      {
-        id: 'bitcoin',
-        name: 'Bitcoin',
-        symbol: 'BTC',
-        price: 45000,
-        change_24h: 2.5,
-        market_cap: 850000000000,
-        volume_24h: 25000000000,
-        tps: 7,
-        active_addresses: 850000,
-        hash_rate: 450,
-        dominance: 48.5,
-        narrative: 'Store of Value',
-        sentiment: 'positive'
-      },
-      {
-        id: 'ethereum',
-        name: 'Ethereum',
-        symbol: 'ETH',
-        price: 2800,
-        change_24h: -1.2,
-        market_cap: 350000000000,
-        volume_24h: 18000000000,
-        tps: 15,
-        active_addresses: 650000,
-        hash_rate: 0,
-        dominance: 20.2,
-        narrative: 'Smart Contracts',
-        sentiment: 'neutral'
-      },
-      {
-        id: 'solana',
-        name: 'Solana',
-        symbol: 'SOL',
-        price: 95,
-        change_24h: 8.7,
-        market_cap: 45000000000,
-        volume_24h: 3500000000,
-        tps: 65000,
-        active_addresses: 120000,
-        hash_rate: 0,
-        dominance: 2.8,
-        narrative: 'High Performance',
-        sentiment: 'positive'
-      },
-      {
-        id: 'cardano',
-        name: 'Cardano',
-        symbol: 'ADA',
-        price: 0.45,
-        change_24h: -0.8,
-        market_cap: 16000000000,
-        volume_24h: 1200000000,
-        tps: 250,
-        active_addresses: 85000,
-        hash_rate: 0,
-        dominance: 1.0,
-        narrative: 'Academic Research',
-        sentiment: 'neutral'
-      },
-      {
-        id: 'polkadot',
-        name: 'Polkadot',
-        symbol: 'DOT',
-        price: 6.8,
-        change_24h: 3.2,
-        market_cap: 8500000000,
-        volume_24h: 800000000,
-        tps: 1000,
-        active_addresses: 45000,
-        hash_rate: 0,
-        dominance: 0.5,
-        narrative: 'Interoperability',
-        sentiment: 'positive'
-      }
-    ],
-    total_market_cap: 1750000000000,
-    total_volume_24h: 68000000000,
-    avg_change_24h: 2.48
-  };
+  // Only use real data - no fallback sample data
+  if (!layer1Data || !layer1Data.chains || layer1Data.chains.length === 0) {
+    return (
+      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <div className="flex items-center space-x-3 mb-6">
+          <Layers className="w-6 h-6 text-crypto-blue" />
+          <h2 className="text-xl font-bold text-white">Layer 1 Blockchains</h2>
+        </div>
+        <div className="text-center py-8">
+          <div className="text-gray-400 mb-2">No real Layer 1 data available</div>
+          <div className="text-sm text-gray-500">Data collection is in progress...</div>
+        </div>
+      </div>
+    );
+  }
 
-  const data = layer1Data || sampleLayer1Data;
+  const data = layer1Data;
 
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
