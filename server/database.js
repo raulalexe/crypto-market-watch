@@ -581,11 +581,12 @@ const insertCryptoPrice = (symbol, price, volume24h, marketCap, change24h) => {
     dbAdapter.run(
       `INSERT INTO crypto_prices (symbol, price, volume_24h, market_cap, change_24h) 
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (symbol, timestamp) DO UPDATE SET
+       ON CONFLICT (symbol) DO UPDATE SET
          price = EXCLUDED.price,
          volume_24h = EXCLUDED.volume_24h,
          market_cap = EXCLUDED.market_cap,
-         change_24h = EXCLUDED.change_24h`,
+         change_24h = EXCLUDED.change_24h,
+         timestamp = CURRENT_TIMESTAMP`,
       [symbol, price, volume24h, marketCap, change24h]
     ).then(result => resolve(result.lastID))
      .catch(reject);

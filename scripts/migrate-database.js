@@ -649,24 +649,24 @@ const migrations = [
   },
   {
     name: 'fix_crypto_prices_constraint',
-    description: 'Fix crypto_prices table constraint to include timestamp',
+    description: 'Ensure crypto_prices table has correct symbol constraint',
     sql: `
       DO $migration$
       BEGIN
-        -- Drop the old constraint if it exists
+        -- Drop any existing constraints
         IF EXISTS (
-          SELECT 1 FROM information_schema.table_constraints 
-          WHERE constraint_name = 'crypto_prices_symbol_unique'
-        ) THEN
-          ALTER TABLE crypto_prices DROP CONSTRAINT crypto_prices_symbol_unique;
-        END IF;
-        
-        -- Add the new constraint with symbol and timestamp
-        IF NOT EXISTS (
           SELECT 1 FROM information_schema.table_constraints 
           WHERE constraint_name = 'crypto_prices_symbol_timestamp_unique'
         ) THEN
-          ALTER TABLE crypto_prices ADD CONSTRAINT crypto_prices_symbol_timestamp_unique UNIQUE (symbol, timestamp);
+          ALTER TABLE crypto_prices DROP CONSTRAINT crypto_prices_symbol_timestamp_unique;
+        END IF;
+        
+        -- Add the correct constraint on symbol only (to match ON CONFLICT (symbol))
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'crypto_prices_symbol_unique'
+        ) THEN
+          ALTER TABLE crypto_prices ADD CONSTRAINT crypto_prices_symbol_unique UNIQUE (symbol);
         END IF;
       END $migration$;
     `
