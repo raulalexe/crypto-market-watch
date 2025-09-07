@@ -1,4 +1,4 @@
-const { insertAlert, checkAlertExists, getAlerts, cleanupOldAlerts, cleanupDuplicateAlerts, getUsersWithNotifications } = require('../database');
+const { insertAlert, checkAlertExists, getAlerts, cleanupOldAlerts, cleanupDuplicateAlerts, getUsersWithNotifications, getUserAlertThresholds } = require('../database');
 const EmailService = require('./emailService');
 const PushService = require('./pushService');
 const TelegramService = require('./telegramService');
@@ -243,6 +243,170 @@ class AlertService {
   // Get recent alerts
   async getRecentAlerts(limit = 10) {
     return await getAlerts(limit);
+  }
+
+  // Check custom user alert thresholds
+  async checkCustomUserThresholds(metrics, aiAnalysis) {
+    try {
+      // Get all users with custom thresholds
+      const users = await getUsersWithNotifications();
+      const allAlerts = [];
+
+      for (const user of users) {
+        const thresholds = await getUserAlertThresholds(user.id);
+        
+        for (const threshold of thresholds) {
+          if (!threshold.enabled) continue;
+
+          const alert = await this.checkSingleThreshold(threshold, metrics, aiAnalysis);
+          if (alert) {
+            alert.userId = user.id;
+            alert.userEmail = user.email;
+            allAlerts.push(alert);
+          }
+        }
+      }
+
+      return allAlerts;
+    } catch (error) {
+      console.error('Error checking custom user thresholds:', error);
+      return [];
+    }
+  }
+
+  // Check a single threshold against current data
+  async checkSingleThreshold(threshold, metrics, aiAnalysis) {
+    try {
+      const { metric, condition, value } = threshold;
+      let currentValue = null;
+      let previousValue = null;
+
+      // Get current value based on metric type
+      if (metric.startsWith('ai_prediction_')) {
+        const timeframe = metric.replace('ai_prediction_', '');
+        if (aiAnalysis && aiAnalysis[timeframe]) {
+          currentValue = aiAnalysis[timeframe].market_direction;
+        } else if (aiAnalysis && aiAnalysis.overall_direction && timeframe === 'overall') {
+          currentValue = aiAnalysis.overall_direction;
+        }
+      } else {
+        // Handle regular metrics
+        switch (metric) {
+          case 'btc_price':
+            currentValue = metrics.cryptoPrices?.btc?.price;
+            break;
+          case 'eth_price':
+            currentValue = metrics.cryptoPrices?.eth?.price;
+            break;
+          case 'sol_price':
+            currentValue = metrics.cryptoPrices?.sol?.price;
+            break;
+          case 'ssr':
+            currentValue = metrics.stablecoinMetrics?.ssr;
+            break;
+          case 'btc_dominance':
+            currentValue = metrics.bitcoinDominance?.value;
+            break;
+          case 'exchange_flow':
+            currentValue = metrics.exchangeFlows?.netFlow;
+            break;
+          case 'fear_greed':
+            currentValue = metrics.fearGreedIndex?.value;
+            break;
+          case 'vix':
+            currentValue = metrics.marketData?.vix;
+            break;
+          case 'dxy':
+            currentValue = metrics.marketData?.dxy;
+            break;
+          case 'volume_24h':
+            currentValue = metrics.cryptoPrices?.btc?.volume_24h;
+            break;
+        }
+      }
+
+      if (currentValue === null) return null;
+
+      // Check condition
+      const shouldTrigger = this.evaluateCondition(condition, currentValue, value, previousValue);
+      
+      if (shouldTrigger) {
+        return {
+          type: 'custom_threshold',
+          severity: 'medium',
+          title: threshold.name,
+          message: this.generateAlertMessage(threshold, currentValue, value),
+          data: {
+            thresholdId: threshold.threshold_id,
+            metric,
+            condition,
+            currentValue,
+            thresholdValue: value,
+            previousValue
+          }
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error checking single threshold:', error);
+      return null;
+    }
+  }
+
+  // Evaluate alert condition
+  evaluateCondition(condition, currentValue, thresholdValue, previousValue) {
+    switch (condition) {
+      case 'above':
+        return parseFloat(currentValue) > parseFloat(thresholdValue);
+      case 'below':
+        return parseFloat(currentValue) < parseFloat(thresholdValue);
+      case 'equals':
+        return currentValue === thresholdValue;
+      case 'changes_by':
+        if (previousValue === null) return false;
+        return Math.abs(parseFloat(currentValue) - parseFloat(previousValue)) >= parseFloat(thresholdValue);
+      
+      // AI prediction specific conditions
+      case 'changes_to_bullish':
+        return currentValue === 'BULLISH' && previousValue !== 'BULLISH';
+      case 'changes_to_bearish':
+        return currentValue === 'BEARISH' && previousValue !== 'BEARISH';
+      case 'changes_to_neutral':
+        return currentValue === 'NEUTRAL' && previousValue !== 'NEUTRAL';
+      case 'becomes_bullish':
+        return currentValue === 'BULLISH';
+      case 'becomes_bearish':
+        return currentValue === 'BEARISH';
+      case 'becomes_neutral':
+        return currentValue === 'NEUTRAL';
+      
+      default:
+        return false;
+    }
+  }
+
+  // Generate alert message
+  generateAlertMessage(threshold, currentValue, thresholdValue) {
+    const { metric, condition, name } = threshold;
+    
+    if (metric.startsWith('ai_prediction_')) {
+      const timeframe = metric.replace('ai_prediction_', '');
+      return `AI ${timeframe} prediction changed to ${currentValue}. ${name}`;
+    }
+    
+    switch (condition) {
+      case 'above':
+        return `${metric} is above ${thresholdValue} (current: ${currentValue}). ${name}`;
+      case 'below':
+        return `${metric} is below ${thresholdValue} (current: ${currentValue}). ${name}`;
+      case 'equals':
+        return `${metric} equals ${thresholdValue}. ${name}`;
+      case 'changes_by':
+        return `${metric} changed by ${thresholdValue} (current: ${currentValue}). ${name}`;
+      default:
+        return `${name}: ${metric} condition met`;
+    }
   }
 
   // Cleanup old alerts

@@ -28,6 +28,7 @@ import ContactForm from './components/ContactForm';
 import UpcomingEventsPage from './components/UpcomingEventsPage';
 import MarketingPage from './components/MarketingPage';
 import UnsubscribeSuccess from './components/UnsubscribeSuccess';
+import PasswordReset from './components/PasswordReset';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -160,6 +161,7 @@ function App() {
 
           <Route path="/about" element={<About />} />
           <Route path="/unsubscribe-success" element={<UnsubscribeSuccess />} />
+          <Route path="/reset-password" element={<PasswordReset />} />
           
 
           

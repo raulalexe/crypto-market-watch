@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Brain, TrendingUp, TrendingDown, Minus, Target, ChevronDown, ChevronRight, Clock, Calendar, CalendarDays, Users, Zap } from 'lucide-react';
+import ExpandableText from './ExpandableText';
 
 const AIAnalysisCard = ({ data }) => {
   const [expandedTimeframes, setExpandedTimeframes] = useState({});
@@ -171,11 +172,11 @@ const AIAnalysisCard = ({ data }) => {
                   )}
 
                   {/* Summary */}
-                  <div className="text-xs text-slate-300 leading-relaxed">
-                    {data.providers.venice.overall_reasoning && 
-                      data.providers.venice.overall_reasoning.substring(0, 300) + '...'
-                    }
-                  </div>
+                  <ExpandableText 
+                    text={data.providers.venice.overall_reasoning}
+                    maxLength={300}
+                    className="text-xs text-slate-300 leading-relaxed"
+                  />
                 </div>
               )}
 
@@ -221,11 +222,11 @@ const AIAnalysisCard = ({ data }) => {
                   )}
 
                   {/* Summary */}
-                  <div className="text-xs text-slate-300 leading-relaxed">
-                    {data.providers.groq.overall_reasoning && 
-                      data.providers.groq.overall_reasoning.substring(0, 300) + '...'
-                    }
-                  </div>
+                  <ExpandableText 
+                    text={data.providers.groq.overall_reasoning}
+                    maxLength={300}
+                    className="text-xs text-slate-300 leading-relaxed"
+                  />
                 </div>
               )}
 
@@ -271,11 +272,11 @@ const AIAnalysisCard = ({ data }) => {
                   )}
 
                   {/* Summary */}
-                  <div className="text-xs text-slate-300 leading-relaxed">
-                    {data.providers.huggingface.overall_reasoning && 
-                      data.providers.huggingface.overall_reasoning.substring(0, 300) + '...'
-                    }
-                  </div>
+                  <ExpandableText 
+                    text={data.providers.huggingface.overall_reasoning}
+                    maxLength={300}
+                    className="text-xs text-slate-300 leading-relaxed"
+                  />
                 </div>
               )}
             </div>
@@ -314,9 +315,11 @@ const AIAnalysisCard = ({ data }) => {
             {data.overall_reasoning && (
               <div className="mt-3">
                 <h4 className="text-sm font-medium text-slate-300 mb-2">Consensus Reasoning:</h4>
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  {data.overall_reasoning}
-                </p>
+                <ExpandableText 
+                  text={data.overall_reasoning}
+                  maxLength={400}
+                  className="text-sm text-slate-300 leading-relaxed"
+                />
               </div>
             )}
           </div>
@@ -361,9 +364,11 @@ const AIAnalysisCard = ({ data }) => {
                       {/* Multi-AI Consensus for this timeframe */}
                       <div className="bg-slate-600 rounded-lg p-3">
                         <h4 className="text-sm font-medium text-slate-300 mb-2">Multi-AI Consensus:</h4>
-                        <p className="text-sm text-slate-300 leading-relaxed">
-                          {timeframeData.reasoning}
-                        </p>
+                        <ExpandableText 
+                          text={timeframeData.reasoning}
+                          maxLength={400}
+                          className="text-sm text-slate-300 leading-relaxed"
+                        />
                       </div>
 
                       {/* Individual AI Predictions for this timeframe */}
@@ -387,9 +392,11 @@ const AIAnalysisCard = ({ data }) => {
                                   </span>
                                 </div>
                               </div>
-                              <p className="text-xs text-slate-300 leading-relaxed">
-                                {data.providers.venice[`${key}_term`].reasoning}
-                              </p>
+                              <ExpandableText 
+                                text={data.providers.venice[`${key}_term`].reasoning}
+                                maxLength={300}
+                                className="text-xs text-slate-300 leading-relaxed"
+                              />
                             </div>
                           )}
 
@@ -409,9 +416,11 @@ const AIAnalysisCard = ({ data }) => {
                                   </span>
                                 </div>
                               </div>
-                              <p className="text-xs text-slate-300 leading-relaxed">
-                                {data.providers.groq[`${key}_term`].reasoning}
-                              </p>
+                              <ExpandableText 
+                                text={data.providers.groq[`${key}_term`].reasoning}
+                                maxLength={300}
+                                className="text-xs text-slate-300 leading-relaxed"
+                              />
                             </div>
                           )}
 
@@ -431,9 +440,11 @@ const AIAnalysisCard = ({ data }) => {
                                   </span>
                                 </div>
                               </div>
-                              <p className="text-xs text-slate-300 leading-relaxed">
-                                {data.providers.huggingface[`${key}_term`].reasoning}
-                              </p>
+                              <ExpandableText 
+                                text={data.providers.huggingface[`${key}_term`].reasoning}
+                                maxLength={300}
+                                className="text-xs text-slate-300 leading-relaxed"
+                              />
                             </div>
                           )}
 
@@ -529,9 +540,11 @@ const AIAnalysisCard = ({ data }) => {
             {/* Reasoning */}
             <div>
               <h4 className="text-sm font-medium text-slate-400 mb-2">Analysis:</h4>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                {data.reasoning}
-              </p>
+              <ExpandableText 
+                text={data.reasoning}
+                maxLength={400}
+                className="text-sm text-slate-300 leading-relaxed"
+              />
             </div>
 
             {/* Key Factors */}

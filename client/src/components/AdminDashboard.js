@@ -11,7 +11,11 @@ import {
   EyeOff,
   Search,
   AlertTriangle,
-  MessageCircle
+  MessageCircle,
+  Trash2,
+  UserCheck,
+  UserX,
+  Mail
 } from 'lucide-react';
 import ToastNotification from './ToastNotification';
 import TelegramManagement from './TelegramManagement';
@@ -22,6 +26,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
   const [activeTab, setActiveTab] = useState('collections');
   const [collectionsData, setCollectionsData] = useState([]);
   const [aiAnalysisData, setAiAnalysisData] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,11 +35,13 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
   const [alerts, setAlerts] = useState([]);
   const [exporting, setExporting] = useState({});
   const [alert, setAlert] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(null);
 
   const tabs = [
     { id: 'collections', name: 'Database Collections', icon: Database },
     { id: 'ai-analysis', name: 'AI Analysis', icon: Brain },
     { id: 'overview', name: 'Overview', icon: BarChart3 },
+    { id: 'users', name: 'User Management', icon: Users },
     { id: 'telegram', name: 'Telegram Bot', icon: MessageCircle }
   ];
 
@@ -63,7 +70,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
       setLoading(true);
       setError(null);
 
-      const [collectionsResponse, aiResponse] = await Promise.all([
+      const [collectionsResponse, aiResponse, usersResponse] = await Promise.all([
         fetch('/api/admin/collections', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`
@@ -73,18 +80,25 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`
           }
+        }),
+        fetch('/api/admin/users', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
         })
       ]);
 
-      if (!collectionsResponse.ok || !aiResponse.ok) {
+      if (!collectionsResponse.ok || !aiResponse.ok || !usersResponse.ok) {
         throw new Error('Failed to fetch admin data');
       }
 
       const collectionsData = await collectionsResponse.json();
       const aiData = await aiResponse.json();
+      const usersData = await usersResponse.json();
 
       setCollectionsData(collectionsData);
       setAiAnalysisData(aiData);
+      setUsers(usersData);
     } catch (err) {
       console.error('Error fetching admin data:', err);
       setError('Failed to load admin data');
@@ -107,6 +121,36 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
       }
     } catch (error) {
       console.error('Error fetching alerts:', error);
+    }
+  };
+
+  const deleteUser = async (userId, userEmail) => {
+    if (!window.confirm(`Are you sure you want to delete user ${userEmail}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingUser(userId);
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete user');
+      }
+
+      // Remove user from local state
+      setUsers(users.filter(user => user.id !== userId));
+      showAlert(`User ${userEmail} deleted successfully`, 'success');
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      showAlert(`Failed to delete user: ${error.message}`, 'error');
+    } finally {
+      setDeletingUser(null);
     }
   };
 
@@ -588,6 +632,152 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
     </div>
   );
 
+  const renderUsersTab = () => {
+    const filteredUsers = users.filter(user => {
+      if (searchTerm && !user.email.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search users by email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+              />
+            </div>
+            <div className="text-sm text-gray-400">
+              {filteredUsers.length} of {users.length} users
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Plan
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Created
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-700/50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          {user.emailVerified ? (
+                            <UserCheck className="w-5 h-5 text-green-400" />
+                          ) : (
+                            <UserX className="w-5 h-5 text-red-400" />
+                          )}
+                        </div>
+                        <div className="ml-3">
+                          <div className="text-sm font-medium text-white">
+                            {user.email}
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            ID: {user.id}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.emailVerified 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {user.emailVerified ? 'Verified' : 'Unverified'}
+                        </span>
+                        {user.isAdmin && (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                            Admin
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.plan === 'admin' ? 'bg-purple-100 text-purple-800' :
+                          user.plan === 'premium' ? 'bg-yellow-100 text-yellow-800' :
+                          user.plan === 'pro' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {user.plan}
+                        </span>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.subscriptionStatus === 'active' ? 'bg-green-100 text-green-800' :
+                          user.subscriptionStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {user.subscriptionStatus}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {new Date(user.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => deleteUser(user.id, user.email)}
+                        disabled={deletingUser === user.id || user.isAdmin}
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                          user.isAdmin 
+                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                            : 'bg-red-600 hover:bg-red-700 text-white'
+                        }`}
+                        title={user.isAdmin ? 'Cannot delete admin users' : 'Delete user'}
+                      >
+                        {deletingUser === user.id ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
+                        {deletingUser === user.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {filteredUsers.length === 0 && (
+          <div className="text-center py-8">
+            <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-400">No users found</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -653,6 +843,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
           {activeTab === 'collections' && renderCollectionsTab()}
           {activeTab === 'ai-analysis' && renderAiAnalysisTab()}
           {activeTab === 'overview' && renderOverviewTab()}
+          {activeTab === 'users' && renderUsersTab()}
           {activeTab === 'telegram' && <TelegramManagement />}
         </div>
       </div>

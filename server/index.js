@@ -3473,6 +3473,35 @@ app.post('/api/setup/first-admin', async (req, res) => {
 });
 
 // Admin routes
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { getAllUsers } = require('./database');
+    const users = await getAllUsers();
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+app.delete('/api/admin/users/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { deleteUser } = require('./database');
+    
+    // Prevent admin from deleting themselves
+    if (parseInt(userId) === req.user.userId) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+    
+    await deleteUser(userId);
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 app.get('/api/admin/collections', authenticateToken, async (req, res) => {
   try {
     // Check if user is admin

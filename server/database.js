@@ -878,6 +878,68 @@ const isUserAdmin = (userId) => {
   });
 };
 
+const getAllUsers = () => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.all(
+      `SELECT u.id, u.email, u.is_admin, u.email_verified, u.created_at, u.updated_at,
+              s.plan_type, s.status, s.current_period_start, s.current_period_end
+       FROM users u
+       LEFT JOIN subscriptions s ON u.id = s.user_id
+       ORDER BY u.created_at DESC`
+    ).then(rows => {
+      const users = rows.map(row => ({
+        id: row.id,
+        email: row.email,
+        isAdmin: Boolean(row.is_admin),
+        emailVerified: Boolean(row.email_verified),
+        plan: row.plan_type || 'free',
+        subscriptionStatus: row.status || 'inactive',
+        startDate: row.current_period_start,
+        endDate: row.current_period_end,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+      resolve(users);
+    }).catch(reject);
+  });
+};
+
+const deleteUser = (userId) => {
+  return new Promise((resolve, reject) => {
+    // Start a transaction to delete user and related data
+    dbAdapter.run('BEGIN TRANSACTION')
+      .then(() => {
+        // Delete user's subscriptions
+        return dbAdapter.run('DELETE FROM subscriptions WHERE user_id = $1', [userId]);
+      })
+      .then(() => {
+        // Delete user's alert thresholds
+        return dbAdapter.run('DELETE FROM user_alert_thresholds WHERE user_id = $1', [userId]);
+      })
+      .then(() => {
+        // Delete user's push subscriptions
+        return dbAdapter.run('DELETE FROM push_subscriptions WHERE user_id = $1', [userId]);
+      })
+      .then(() => {
+        // Delete user's API keys
+        return dbAdapter.run('DELETE FROM api_keys WHERE user_id = $1', [userId]);
+      })
+      .then(() => {
+        // Finally delete the user
+        return dbAdapter.run('DELETE FROM users WHERE id = $1', [userId]);
+      })
+      .then(() => {
+        // Commit the transaction
+        return dbAdapter.run('COMMIT');
+      })
+      .then(() => resolve())
+      .catch(error => {
+        // Rollback on error
+        dbAdapter.run('ROLLBACK').then(() => reject(error));
+      });
+  });
+};
+
 // Subscription management functions
 const insertSubscription = (subscriptionData) => {
   return new Promise((resolve, reject) => {
@@ -2089,6 +2151,8 @@ module.exports = {
   getUserByEmail,
   updateUser,
   isUserAdmin,
+  getAllUsers,
+  deleteUser,
   // Subscription management
   insertSubscription,
   getActiveSubscription,

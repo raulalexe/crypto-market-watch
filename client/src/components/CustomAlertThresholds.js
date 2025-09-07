@@ -12,7 +12,8 @@ import {
   BarChart3,
   Settings,
   AlertTriangle,
-  Info
+  Info,
+  Brain
 } from 'lucide-react';
 import axios from 'axios';
 import { shouldShowPremiumUpgradePrompt, isAuthenticated, hasProAccess } from '../utils/authUtils';
@@ -48,9 +49,16 @@ const CustomAlertThresholds = () => {
 
       setIsAuthenticated(true);
 
-      // Check if user has access to custom thresholds using shared utility
-      const hasAccess = !shouldShowPremiumUpgradePrompt(response.data);
-      if (hasAccess) {
+      // Check if user has Pro access (Pro, Premium, or Admin)
+      const userData = response.data;
+      const hasProAccess = userData && (
+        userData.plan === 'pro' || 
+        userData.plan === 'premium' || 
+        userData.role === 'admin' || 
+        userData.isAdmin === true
+      );
+
+      if (hasProAccess) {
         await loadThresholds();
       }
     } catch (error) {
@@ -105,6 +113,21 @@ const CustomAlertThresholds = () => {
     setThresholds([newThreshold, ...thresholds]); // Add to the top
   };
 
+  const addAIThreshold = (metricType) => {
+    const newThreshold = {
+      id: `ai_${Date.now()}`,
+      name: `AI ${metricType} Alert`,
+      description: `Alert when AI prediction changes for ${metricType} term`,
+      metric: `ai_prediction_${metricType}`,
+      condition: 'changes_to_bullish',
+      value: 'BULLISH',
+      enabled: true,
+      icon: 'Brain',
+      unit: ''
+    };
+    setThresholds([newThreshold, ...thresholds]); // Add to the top
+  };
+
   const updateThreshold = (id, field, value) => {
     setThresholds(thresholds.map(threshold => 
       threshold.id === id ? { ...threshold, [field]: value } : threshold
@@ -131,15 +154,36 @@ const CustomAlertThresholds = () => {
     { value: 'fear_greed', label: 'Fear & Greed Index' },
     { value: 'vix', label: 'VIX Index' },
     { value: 'dxy', label: 'Dollar Index' },
-    { value: 'volume_24h', label: '24h Volume' }
+    { value: 'volume_24h', label: '24h Volume' },
+    { value: 'ai_prediction_short', label: 'AI Prediction (Short Term)' },
+    { value: 'ai_prediction_medium', label: 'AI Prediction (Medium Term)' },
+    { value: 'ai_prediction_long', label: 'AI Prediction (Long Term)' },
+    { value: 'ai_prediction_overall', label: 'AI Prediction (Overall)' }
   ];
 
-  const getConditionOptions = () => [
-    { value: 'above', label: 'Above' },
-    { value: 'below', label: 'Below' },
-    { value: 'equals', label: 'Equals' },
-    { value: 'changes_by', label: 'Changes by' }
-  ];
+  const getConditionOptions = (metric) => {
+    const baseOptions = [
+      { value: 'above', label: 'Above' },
+      { value: 'below', label: 'Below' },
+      { value: 'equals', label: 'Equals' },
+      { value: 'changes_by', label: 'Changes by' }
+    ];
+
+    // Add AI prediction-specific conditions
+    if (metric && metric.startsWith('ai_prediction_')) {
+      return [
+        ...baseOptions,
+        { value: 'changes_to_bullish', label: 'Changes to Bullish' },
+        { value: 'changes_to_bearish', label: 'Changes to Bearish' },
+        { value: 'changes_to_neutral', label: 'Changes to Neutral' },
+        { value: 'becomes_bullish', label: 'Becomes Bullish' },
+        { value: 'becomes_bearish', label: 'Becomes Bearish' },
+        { value: 'becomes_neutral', label: 'Becomes Neutral' }
+      ];
+    }
+
+    return baseOptions;
+  };
 
   // Function to get icon component from icon name or component
   const getIconComponent = (icon) => {
@@ -153,7 +197,8 @@ const CustomAlertThresholds = () => {
         'TrendingDown': TrendingDown,
         'Activity': Activity,
         'DollarSign': DollarSign,
-        'Target': Target
+        'Target': Target,
+        'Brain': Brain
       };
       const component = iconMap[icon];
       console.log('Icon mapping result:', icon, '->', component);
@@ -223,13 +268,49 @@ const CustomAlertThresholds = () => {
             <p className="text-slate-400">Set personalized alert thresholds based on your trading preferences</p>
           </div>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={addThreshold}
-              className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Threshold</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={addThreshold}
+                className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Threshold</span>
+              </button>
+              <div className="relative group">
+                <button className="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center space-x-2">
+                  <Brain className="w-4 h-4" />
+                  <span>AI Alerts</span>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-lg shadow-lg border border-slate-600 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                  <div className="py-2">
+                    <button
+                      onClick={() => addAIThreshold('short')}
+                      className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 transition-colors text-sm"
+                    >
+                      Short Term AI Alert
+                    </button>
+                    <button
+                      onClick={() => addAIThreshold('medium')}
+                      className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 transition-colors text-sm"
+                    >
+                      Medium Term AI Alert
+                    </button>
+                    <button
+                      onClick={() => addAIThreshold('long')}
+                      className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 transition-colors text-sm"
+                    >
+                      Long Term AI Alert
+                    </button>
+                    <button
+                      onClick={() => addAIThreshold('overall')}
+                      className="w-full px-4 py-2 text-left text-white hover:bg-slate-700 transition-colors text-sm"
+                    >
+                      Overall AI Alert
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
             <button
               onClick={saveThresholds}
               disabled={saving}
@@ -321,7 +402,7 @@ const CustomAlertThresholds = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className={`grid grid-cols-1 gap-4 ${threshold.metric && threshold.metric.startsWith('ai_prediction_') ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Metric</label>
                     <select
@@ -342,7 +423,7 @@ const CustomAlertThresholds = () => {
                       onChange={(e) => updateThreshold(threshold.id, 'condition', e.target.value)}
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
                     >
-                      {getConditionOptions().map(option => (
+                      {getConditionOptions(threshold.metric).map(option => (
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
@@ -350,25 +431,39 @@ const CustomAlertThresholds = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Value</label>
-                    <input
-                      type="number"
-                      value={threshold.value}
-                      onChange={(e) => updateThreshold(threshold.id, 'value', parseFloat(e.target.value))}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
-                      placeholder="0"
-                    />
+                    {threshold.metric && threshold.metric.startsWith('ai_prediction_') ? (
+                      <select
+                        value={threshold.value}
+                        onChange={(e) => updateThreshold(threshold.id, 'value', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
+                      >
+                        <option value="BULLISH">Bullish</option>
+                        <option value="BEARISH">Bearish</option>
+                        <option value="NEUTRAL">Neutral</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="number"
+                        value={threshold.value}
+                        onChange={(e) => updateThreshold(threshold.id, 'value', parseFloat(e.target.value))}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
+                        placeholder="0"
+                      />
+                    )}
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Unit</label>
-                    <input
-                      type="text"
-                      value={threshold.unit}
-                      onChange={(e) => updateThreshold(threshold.id, 'unit', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
-                      placeholder="USD"
-                    />
-                  </div>
+                  {!(threshold.metric && threshold.metric.startsWith('ai_prediction_')) && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">Unit</label>
+                      <input
+                        type="text"
+                        value={threshold.unit}
+                        onChange={(e) => updateThreshold(threshold.id, 'unit', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
+                        placeholder="USD"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4">
