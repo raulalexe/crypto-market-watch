@@ -176,6 +176,66 @@ class BrevoEmailService {
     }
   }
 
+  async sendAccountDeletedByAdminEmail(userEmail, userName = null) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Brevo email service not configured, skipping account deletion email');
+      return false;
+    }
+
+    try {
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      
+      sendSmtpEmail.subject = 'Your Crypto Market Monitor Account Has Been Deleted';
+      sendSmtpEmail.htmlContent = this.generateAccountDeletedByAdminEmailHTML(userName, userEmail);
+      sendSmtpEmail.textContent = this.generateAccountDeletedByAdminEmailText(userName, userEmail);
+      sendSmtpEmail.sender = {
+        name: 'Crypto Market Monitor',
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+      };
+      sendSmtpEmail.to = [{
+        email: userEmail,
+        name: userName || userEmail.split('@')[0]
+      }];
+
+      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log(`✅ Account deletion email sent to ${userEmail}: ${result.messageId}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error sending account deletion email:', error);
+      return false;
+    }
+  }
+
+  async sendAccountDeletedByUserEmail(userEmail, userName = null) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Brevo email service not configured, skipping account deletion email');
+      return false;
+    }
+
+    try {
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      
+      sendSmtpEmail.subject = 'Your Crypto Market Monitor Account Has Been Deleted';
+      sendSmtpEmail.htmlContent = this.generateAccountDeletedByUserEmailHTML(userName, userEmail);
+      sendSmtpEmail.textContent = this.generateAccountDeletedByUserEmailText(userName, userEmail);
+      sendSmtpEmail.sender = {
+        name: 'Crypto Market Monitor',
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+      };
+      sendSmtpEmail.to = [{
+        email: userEmail,
+        name: userName || userEmail.split('@')[0]
+      }];
+
+      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log(`✅ Account deletion confirmation email sent to ${userEmail}: ${result.messageId}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error sending account deletion confirmation email:', error);
+      return false;
+    }
+  }
+
   getSeverityEmoji(severity) {
     switch (severity) {
       case 'high':
@@ -558,6 +618,171 @@ Get started: ${websiteUrl}/dashboard
 Crypto Market Monitor
 Thank you for choosing us for your crypto market monitoring needs.
 ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}` : ''}
+    `.trim();
+  }
+
+  generateAccountDeletedByAdminEmailHTML(userName, userEmail = null) {
+    const displayName = userName || 'there';
+    const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+          .alert { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🚨 Account Deleted</h1>
+          <p>Crypto Market Monitor</p>
+        </div>
+        <div class="content">
+          <h2>Hello ${displayName},</h2>
+          
+          <div class="alert">
+            <strong>Important Notice:</strong> Your Crypto Market Monitor account has been deleted by an administrator.
+          </div>
+          
+          <p>We're writing to inform you that your account associated with <strong>${userEmail}</strong> has been permanently deleted from our system.</p>
+          
+          <h3>What this means:</h3>
+          <ul>
+            <li>All your account data has been permanently removed</li>
+            <li>You will no longer receive market alerts or notifications</li>
+            <li>Your subscription (if any) has been cancelled</li>
+            <li>You can no longer access your dashboard or account settings</li>
+          </ul>
+          
+          <h3>If you believe this was done in error:</h3>
+          <p>Please contact our support team immediately if you believe your account was deleted by mistake. We may be able to help restore your account if contacted within a reasonable timeframe.</p>
+          
+          <p>Thank you for using Crypto Market Monitor.</p>
+          
+          <div class="footer">
+            <p>Crypto Market Monitor Team</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `.trim();
+  }
+
+  generateAccountDeletedByAdminEmailText(userName, userEmail = null) {
+    const displayName = userName || 'there';
+    const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
+    
+    return `
+Hello ${displayName},
+
+IMPORTANT NOTICE: Your Crypto Market Monitor account has been deleted by an administrator.
+
+We're writing to inform you that your account associated with ${userEmail} has been permanently deleted from our system.
+
+What this means:
+- All your account data has been permanently removed
+- You will no longer receive market alerts or notifications
+- Your subscription (if any) has been cancelled
+- You can no longer access your dashboard or account settings
+
+If you believe this was done in error:
+Please contact our support team immediately if you believe your account was deleted by mistake. We may be able to help restore your account if contacted within a reasonable timeframe.
+
+Thank you for using Crypto Market Monitor.
+
+Crypto Market Monitor Team
+This is an automated message. Please do not reply to this email.
+    `.trim();
+  }
+
+  generateAccountDeletedByUserEmailHTML(userName, userEmail = null) {
+    const displayName = userName || 'there';
+    const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+          .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>✅ Account Deleted</h1>
+          <p>Crypto Market Monitor</p>
+        </div>
+        <div class="content">
+          <h2>Hello ${displayName},</h2>
+          
+          <div class="success">
+            <strong>Confirmation:</strong> Your Crypto Market Monitor account has been successfully deleted as requested.
+          </div>
+          
+          <p>We're writing to confirm that your account associated with <strong>${userEmail}</strong> has been permanently deleted from our system.</p>
+          
+          <h3>What has been removed:</h3>
+          <ul>
+            <li>All your account data and personal information</li>
+            <li>Your market alerts and notification preferences</li>
+            <li>Your subscription (if any) has been cancelled</li>
+            <li>Access to your dashboard and account settings</li>
+          </ul>
+          
+          <h3>We're sorry to see you go!</h3>
+          <p>If you change your mind in the future, you're always welcome to create a new account with us. We're constantly improving our platform and adding new features.</p>
+          
+          <p>Thank you for being part of the Crypto Market Monitor community.</p>
+          
+          <div class="footer">
+            <p>Crypto Market Monitor Team</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `.trim();
+  }
+
+  generateAccountDeletedByUserEmailText(userName, userEmail = null) {
+    const displayName = userName || 'there';
+    const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
+    
+    return `
+Hello ${displayName},
+
+CONFIRMATION: Your Crypto Market Monitor account has been successfully deleted as requested.
+
+We're writing to confirm that your account associated with ${userEmail} has been permanently deleted from our system.
+
+What has been removed:
+- All your account data and personal information
+- Your market alerts and notification preferences
+- Your subscription (if any) has been cancelled
+- Access to your dashboard and account settings
+
+We're sorry to see you go!
+
+If you change your mind in the future, you're always welcome to create a new account with us. We're constantly improving our platform and adding new features.
+
+Thank you for being part of the Crypto Market Monitor community.
+
+Crypto Market Monitor Team
+This is an automated message. Please do not reply to this email.
     `.trim();
   }
 

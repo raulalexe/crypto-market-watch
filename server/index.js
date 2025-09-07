@@ -1244,7 +1244,7 @@ app.post('/api/telegram/add-chat', authenticateToken, requireAdmin, async (req, 
   }
 });
 
-app.get('/api/telegram/status', authenticateToken, requireAdmin, async (req, res) => {
+app.get('/api/telegram/admin-status', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const status = await telegramService.testConnection();
     res.json(status);
@@ -2810,6 +2810,39 @@ app.post('/api/auth/reset-password', async (req, res) => {
   }
 });
 
+// Delete own account endpoint
+app.delete('/api/auth/delete-account', authenticateToken, async (req, res) => {
+  try {
+    const { deleteUser } = require('./database');
+    const userId = req.user.userId;
+    const userEmail = req.user.email;
+    
+    // Send deletion confirmation email before deleting
+    try {
+      const emailSent = await emailService.sendAccountDeletedByUserEmail(
+        userEmail, 
+        userEmail.split('@')[0]
+      );
+      if (emailSent) {
+        console.log(`📧 Account deletion confirmation sent to ${userEmail}`);
+      } else {
+        console.log(`⚠️ Failed to send deletion confirmation to ${userEmail}`);
+      }
+    } catch (emailError) {
+      console.error('Error sending deletion confirmation email:', emailError);
+      // Continue with deletion even if email fails
+    }
+    
+    // Delete the user
+    await deleteUser(userId);
+    
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 // ===== EMAIL TEST ROUTES =====
 
 // Test email service (admin only)
@@ -3487,13 +3520,36 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
 app.delete('/api/admin/users/:userId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
-    const { deleteUser } = require('./database');
+    const { deleteUser, getUserById } = require('./database');
     
     // Prevent admin from deleting themselves
     if (parseInt(userId) === req.user.userId) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
     
+    // Get user details before deletion
+    const userToDelete = await getUserById(userId);
+    if (!userToDelete) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Send deletion notification email before deleting
+    try {
+      const emailSent = await emailService.sendAccountDeletedByAdminEmail(
+        userToDelete.email, 
+        userToDelete.email.split('@')[0]
+      );
+      if (emailSent) {
+        console.log(`📧 Account deletion notification sent to ${userToDelete.email}`);
+      } else {
+        console.log(`⚠️ Failed to send deletion notification to ${userToDelete.email}`);
+      }
+    } catch (emailError) {
+      console.error('Error sending deletion notification email:', emailError);
+      // Continue with deletion even if email fails
+    }
+    
+    // Delete the user
     await deleteUser(userId);
     res.json({ message: 'User deleted successfully' });
   } catch (error) {

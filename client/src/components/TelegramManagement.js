@@ -31,7 +31,7 @@ const TelegramManagement = () => {
       
       // Fetch status
       try {
-        const statusResponse = await axios.get('/api/telegram/status', {
+        const statusResponse = await axios.get('/api/telegram/admin-status', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         setStatus(statusResponse.data);
@@ -226,8 +226,13 @@ const TelegramManagement = () => {
           <div className="bg-purple-50 p-4 rounded-lg">
             <h3 className="text-sm font-medium text-purple-800">Webhook</h3>
             <p className="text-2xl font-bold text-purple-900">
-              {process.env.REACT_APP_TELEGRAM_WEBHOOK_URL ? '✅ Set' : '❌ Not Set'}
+              {status?.webhookSet ? '✅ Set' : '❌ Not Set'}
             </p>
+            {status?.webhookUrl && (
+              <p className="text-xs text-purple-600 truncate" title={status.webhookUrl}>
+                {status.webhookUrl}
+              </p>
+            )}
             <button
               onClick={setupWebhook}
               className="text-sm text-purple-600 hover:text-purple-800"

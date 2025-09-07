@@ -40,6 +40,8 @@ const Profile = ({ onProfileUpdate }) => {
   const [newApiKey, setNewApiKey] = useState(null);
   const [showNewKey, setShowNewKey] = useState(false);
   const [toastAlert, setToastAlert] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -185,6 +187,34 @@ const Profile = ({ onProfileUpdate }) => {
     localStorage.removeItem('lastSeenAlertId');
     // Reload the page to clear any cached data and ensure clean state
     window.location.reload();
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setDeletingAccount(true);
+      const token = localStorage.getItem('authToken');
+      
+      const response = await axios.delete('/api/auth/delete-account', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.data.message) {
+        showAlert('Account deleted successfully. You will be redirected to the home page.', 'success');
+        
+        // Clear local storage and redirect after a short delay
+        setTimeout(() => {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('lastSeenAlertId');
+          window.location.href = '/';
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      showAlert('Failed to delete account. Please try again or contact support.', 'error');
+    } finally {
+      setDeletingAccount(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   const getPlanColor = (userData) => {
@@ -601,6 +631,27 @@ const Profile = ({ onProfileUpdate }) => {
       >
         {loading ? 'Saving...' : 'Update Security'}
       </button>
+
+      {/* Delete Account Section */}
+      <div className="border-t border-slate-700 pt-6">
+        <h3 className="text-lg font-medium text-red-400 mb-4">Danger Zone</h3>
+        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-white font-medium">Delete Account</h4>
+              <p className="text-slate-400 text-sm mt-1">
+                Permanently delete your account and all associated data. This action cannot be undone.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete Account
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -727,6 +778,50 @@ const Profile = ({ onProfileUpdate }) => {
                 className="flex-1 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0 w-10 h-10 mx-auto flex items-center justify-center rounded-full bg-red-100">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-white mb-2">Delete Account</h3>
+              <p className="text-slate-400 text-sm mb-4">
+                Are you sure you want to delete your account? This action cannot be undone and will permanently remove:
+              </p>
+              <ul className="text-slate-400 text-sm text-left mb-6 space-y-1">
+                <li>• All your account data and personal information</li>
+                <li>• Your market alerts and notification preferences</li>
+                <li>• Your subscription (if any) will be cancelled</li>
+                <li>• Access to your dashboard and account settings</li>
+              </ul>
+              <p className="text-slate-400 text-sm mb-6">
+                A confirmation email will be sent to <strong className="text-white">{userData?.email}</strong>
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deletingAccount}
+                className="flex-1 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deletingAccount ? 'Deleting...' : 'Delete Account'}
               </button>
             </div>
           </div>

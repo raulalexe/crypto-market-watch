@@ -292,15 +292,32 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
 
     try {
       const botInfo = await this.getBotInfo();
+      const webhookInfo = await this.getWebhookInfo();
+      
       if (botInfo.success) {
         return { 
           success: true, 
           botName: botInfo.bot.first_name,
-          chatCount: botInfo.chatCount
+          chatCount: botInfo.chatCount,
+          webhookSet: Boolean(webhookInfo.success && webhookInfo.webhook && webhookInfo.webhook.url),
+          webhookUrl: webhookInfo.webhook ? webhookInfo.webhook.url : null
         };
       } else {
         return botInfo;
       }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getWebhookInfo() {
+    if (!this.isConfigured) {
+      return { success: false, error: 'Telegram bot not configured' };
+    }
+
+    try {
+      const response = await axios.get(`https://api.telegram.org/bot${this.botToken}/getWebhookInfo`);
+      return { success: true, webhook: response.data.result };
     } catch (error) {
       return { success: false, error: error.message };
     }
