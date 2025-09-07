@@ -64,6 +64,32 @@ const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
     return `${diffDays}d ago`;
   };
 
+  const formatEventTime = (alert) => {
+    // For upcoming events, show when the event is happening, not when the alert was created
+    if (alert.type === 'UPCOMING_EVENT' && alert.eventDate) {
+      const eventDate = new Date(alert.eventDate);
+      const now = new Date();
+      const diffMs = eventDate - now;
+      
+      if (diffMs < 0) {
+        // Event has passed
+        return 'Past event';
+      }
+      
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 60) return `in ${diffMins}m`;
+      if (diffHours < 24) return `in ${diffHours}h`;
+      if (diffDays < 7) return `in ${diffDays}d`;
+      return eventDate.toLocaleDateString();
+    }
+    
+    // For other alerts, show when the alert was created
+    return formatTimestamp(alert.timestamp);
+  };
+
   const handleAcknowledge = async (alertId) => {
     try {
       if (onAcknowledge) {
@@ -187,7 +213,7 @@ const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
                 {getSeverityIcon(alert.severity)}
                 <span className="text-sm font-medium break-words leading-relaxed">{alert.message}</span>
               </div>
-              <span className="text-xs opacity-70 flex-shrink-0 ml-2">{formatTimestamp(alert.timestamp)}</span>
+              <span className="text-xs opacity-70 flex-shrink-0 ml-2">{formatEventTime(alert)}</span>
             </div>
           ))}
           {unacknowledgedAlerts.length > 2 && (
@@ -227,7 +253,7 @@ const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
-                  <span className="text-xs opacity-70">{formatTimestamp(alert.timestamp)}</span>
+                  <span className="text-xs opacity-70">{formatEventTime(alert)}</span>
                   <button
                     onClick={() => handleAcknowledge(alert.id)}
                     className="text-green-400 hover:text-green-300 transition-colors"
@@ -259,7 +285,7 @@ const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
                     <CheckCircle className="w-3 h-3 text-green-400 flex-shrink-0" />
                     <span className="text-xs text-slate-400 break-words leading-relaxed">{alert.message}</span>
                   </div>
-                  <span className="text-xs text-slate-500 flex-shrink-0 ml-2">{formatTimestamp(alert.timestamp)}</span>
+                  <span className="text-xs text-slate-500 flex-shrink-0 ml-2">{formatEventTime(alert)}</span>
                 </div>
               ))}
           </div>

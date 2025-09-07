@@ -225,19 +225,45 @@ class AdvancedDataCollector {
       await this.waitForRateLimit('cryptocompare');
       
       // Get social sentiment for major cryptocurrencies
-      const cryptos = ['BTC', 'ETH', 'SOL'];
+      const cryptos = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
       
       for (const crypto of cryptos) {
         try {
-          const response = await axios.get(`https://min-api.cryptocompare.com/data/social/sentiment/latest`, {
-            params: {
-              fsym: crypto,
-              tsym: 'USD'
-            },
-            timeout: 10000
-          });
+          // Try the new CryptoCompare API endpoint first
+          let response;
+          try {
+            response = await axios.get(`https://min-api.cryptocompare.com/data/v2/social/sentiment/latest`, {
+              params: {
+                fsym: crypto,
+                tsym: 'USD'
+              },
+              timeout: 10000
+            });
+          } catch (apiError) {
+            // If new endpoint fails, try alternative approach
+            console.warn(`CryptoCompare sentiment API failed for ${crypto}, using fallback:`, apiError.message);
+            
+            // Fallback: Use CoinGecko for social sentiment data
+            const fallbackSentiment = await this.getCoinGeckoSocialSentiment(crypto);
+            if (fallbackSentiment) {
+              await insertMarketSentiment(
+                'social_sentiment',
+                fallbackSentiment.score,
+                fallbackSentiment.sentiment,
+                {
+                  crypto: crypto,
+                  source: 'coingecko_fallback',
+                  social_volume: fallbackSentiment.socialVolume || 0
+                },
+                'coingecko_fallback'
+              );
+              console.log(`📱 ${crypto} Social Sentiment (Fallback): ${fallbackSentiment.sentiment}`);
+            }
+            continue;
+          }
           
-          if (response.data && response.data.Data) {
+          // Check if the response is successful and has valid data
+          if (response.data && response.data.Response === 'Success' && response.data.Data && response.data.Data.Sentiment !== undefined) {
             const data = response.data.Data;
             
             await insertMarketSentiment(
@@ -254,7 +280,26 @@ class AdvancedDataCollector {
               'cryptocompare'
             );
             
-            console.log(`📱 ${crypto} Social Sentiment: ${data.Sentiment || 'N/A'}`);
+            console.log(`📱 ${crypto} Social Sentiment: ${data.Sentiment}`);
+          } else {
+            // API returned error or no data, use fallback
+            console.warn(`CryptoCompare API returned error or no data for ${crypto}:`, response.data?.Message || 'No data');
+            
+            const fallbackSentiment = await this.getCoinGeckoSocialSentiment(crypto);
+            if (fallbackSentiment) {
+              await insertMarketSentiment(
+                'social_sentiment',
+                fallbackSentiment.score,
+                fallbackSentiment.sentiment,
+                {
+                  crypto: crypto,
+                  source: 'coingecko_fallback',
+                  social_volume: fallbackSentiment.socialVolume || 0
+                },
+                'coingecko_fallback'
+              );
+              console.log(`📱 ${crypto} Social Sentiment (Fallback): ${fallbackSentiment.sentiment}`);
+            }
           }
           
           // Small delay between requests
@@ -307,6 +352,48 @@ class AdvancedDataCollector {
   calculateVolumeSentiment() {
     // This would be calculated based on recent volume trends
     return Math.random() * 0.4 + 0.3;
+  }
+
+  // Fallback method for social sentiment using CoinGecko
+  async getCoinGeckoSocialSentiment(crypto) {
+    try {
+      // Use CoinGecko's trending data as a proxy for social sentiment
+      const response = await axios.get('https://api.coingecko.com/api/v3/search/trending', {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; CryptoMarketWatch/1.0)'
+        }
+      });
+      
+      if (response.data && response.data.coins) {
+        const trendingCoins = response.data.coins;
+        const cryptoData = trendingCoins.find(coin => 
+          coin.item.symbol.toLowerCase() === crypto.toLowerCase()
+        );
+        
+        if (cryptoData) {
+          // Calculate sentiment based on trending score
+          const score = cryptoData.item.score || 0;
+          const sentiment = score > 50 ? 'Bullish' : score > 20 ? 'Neutral' : 'Bearish';
+          
+          return {
+            score: Math.min(1, score / 100), // Normalize to 0-1
+            sentiment: sentiment,
+            socialVolume: score
+          };
+        }
+      }
+      
+      // If not trending, return neutral sentiment
+      return {
+        score: 0.5,
+        sentiment: 'Neutral',
+        socialVolume: 0
+      };
+    } catch (error) {
+      console.error(`Error getting CoinGecko social sentiment for ${crypto}:`, error.message);
+      return null;
+    }
   }
 
   // Derivatives Data Collection
@@ -391,13 +478,23 @@ class AdvancedDataCollector {
     try {
       await this.waitForRateLimit('cryptocompare');
       
-      const response = await axios.get('https://min-api.cryptocompare.com/data/v2/derivatives', {
-        params: {
-          fsym: 'BTC',
-          tsym: 'USD'
-        },
-        timeout: 10000
-      });
+      let response;
+      try {
+        // Try the new CryptoCompare API endpoint
+        response = await axios.get('https://min-api.cryptocompare.com/data/v2/derivatives', {
+          params: {
+            fsym: 'BTC',
+            tsym: 'USD'
+          },
+          timeout: 10000
+        });
+      } catch (apiError) {
+        console.warn('CryptoCompare derivatives API failed, using fallback:', apiError.message);
+        
+        // Fallback: Use Binance derivatives data (already collected in collectBinanceFuturesData)
+        console.log('📊 Using Binance derivatives data as fallback');
+        return; // Binance data is already collected in collectBinanceFuturesData
+      }
       
       if (response.data && response.data.Data) {
         const data = response.data.Data;

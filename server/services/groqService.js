@@ -162,14 +162,17 @@ Focus on practical insights that help regular people make informed decisions abo
   // Parse analysis response
   parseAnalysisResponse(response, marketData) {
     try {
-      // Extract structured data from the response
+      // Clean up the response first
+      const cleanedResponse = this.cleanResponse(response);
+      
+      // Extract structured data from the cleaned response
       const analysis = {
-        overall_direction: this.extractDirection(response),
-        overall_confidence: this.extractConfidence(response),
-        overall_reasoning: this.extractReasoning(response),
-        short_term: this.extractTimeframe(response, 'short'),
-        medium_term: this.extractTimeframe(response, 'medium'),
-        long_term: this.extractTimeframe(response, 'long'),
+        overall_direction: this.extractDirection(cleanedResponse),
+        overall_confidence: this.extractConfidence(cleanedResponse),
+        overall_reasoning: this.extractReasoning(cleanedResponse),
+        short_term: this.extractTimeframe(cleanedResponse, 'short'),
+        medium_term: this.extractTimeframe(cleanedResponse, 'medium'),
+        long_term: this.extractTimeframe(cleanedResponse, 'long'),
         provider: 'Groq'
       };
 
@@ -210,16 +213,76 @@ Focus on practical insights that help regular people make informed decisions abo
     }
   }
 
+  // Clean up response formatting issues
+  cleanResponse(response) {
+    return response
+      .replace(/^\*\*:\s*/gm, '') // Remove "**: " at start of lines
+      .replace(/^\*\*/gm, '') // Remove "**" at start of lines
+      .replace(/^\*\s*/gm, '') // Remove "* " at start of lines
+      .replace(/^:\s*/gm, '') // Remove ": " at start of lines
+      .replace(/\*\*:\s*/g, '') // Remove "**: " anywhere
+      .replace(/\*\*/g, '') // Remove "**" anywhere
+      .trim();
+  }
+
   // Extract direction from response
   extractDirection(response) {
     const upperResponse = response.toUpperCase();
-    if (upperResponse.includes('BULLISH')) return 'BULLISH';
-    if (upperResponse.includes('BEARISH')) return 'BEARISH';
+    
+    // Look for explicit direction statements first
+    const directionPatterns = [
+      /MARKET OUTLOOK[:\s]*BULLISH/i,
+      /MARKET OUTLOOK[:\s]*BEARISH/i,
+      /MARKET OUTLOOK[:\s]*NEUTRAL/i,
+      /OVERALL DIRECTION[:\s]*BULLISH/i,
+      /OVERALL DIRECTION[:\s]*BEARISH/i,
+      /OVERALL DIRECTION[:\s]*NEUTRAL/i,
+      /MARKET DIRECTION[:\s]*BULLISH/i,
+      /MARKET DIRECTION[:\s]*BEARISH/i,
+      /MARKET DIRECTION[:\s]*NEUTRAL/i
+    ];
+    
+    for (const pattern of directionPatterns) {
+      const match = response.match(pattern);
+      if (match) {
+        const direction = match[0].toUpperCase();
+        if (direction.includes('BULLISH')) return 'BULLISH';
+        if (direction.includes('BEARISH')) return 'BEARISH';
+        if (direction.includes('NEUTRAL')) return 'NEUTRAL';
+      }
+    }
+    
+    // Fallback to simple search but with more context
+    const bullishContext = /(bullish|positive|upward|gaining|rising)/i;
+    const bearishContext = /(bearish|negative|downward|declining|falling)/i;
+    
+    if (bullishContext.test(response) && !bearishContext.test(response)) return 'BULLISH';
+    if (bearishContext.test(response) && !bullishContext.test(response)) return 'BEARISH';
+    
     return 'NEUTRAL';
   }
 
   // Extract confidence from response
   extractConfidence(response) {
+    // Look for confidence patterns
+    const confidencePatterns = [
+      /confidence[:\s]*(\d+)%/i,
+      /confidence[:\s]*(\d+)/i,
+      /(\d+)%\s*confidence/i,
+      /(\d+)%\s*confident/i
+    ];
+    
+    for (const pattern of confidencePatterns) {
+      const match = response.match(pattern);
+      if (match) {
+        const confidence = parseInt(match[1]);
+        if (confidence >= 0 && confidence <= 100) {
+          return confidence;
+        }
+      }
+    }
+    
+    // Fallback to any percentage found
     const confidenceMatch = response.match(/(\d+)%/);
     return confidenceMatch ? parseInt(confidenceMatch[1]) : 50;
   }
@@ -227,7 +290,17 @@ Focus on practical insights that help regular people make informed decisions abo
   // Extract reasoning from response
   extractReasoning(response) {
     const reasoningMatch = response.match(/Overall Reasoning[:\s]*(.*?)(?=\n\n|\nShort-term|$)/s);
-    return reasoningMatch ? reasoningMatch[1].trim() : 'Groq analysis completed successfully.';
+    let reasoning = reasoningMatch ? reasoningMatch[1].trim() : 'Groq analysis completed successfully.';
+    
+    // Clean up formatting issues
+    reasoning = reasoning
+      .replace(/^\*\*:\s*/, '') // Remove leading "**: "
+      .replace(/^\*\*/, '') // Remove leading "**"
+      .replace(/^\*/, '') // Remove leading "*"
+      .replace(/^:\s*/, '') // Remove leading ": "
+      .trim();
+    
+    return reasoning;
   }
 
   // Extract timeframe analysis

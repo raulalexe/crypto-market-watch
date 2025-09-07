@@ -80,6 +80,32 @@ const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount =
     return `${diffDays}d ago`;
   };
 
+  const formatEventTime = (alert) => {
+    // For upcoming events, show when the event is happening, not when the alert was created
+    if (alert.type === 'UPCOMING_EVENT' && alert.eventDate) {
+      const eventDate = new Date(alert.eventDate);
+      const now = new Date();
+      const diffMs = eventDate - now;
+      
+      if (diffMs < 0) {
+        // Event has passed
+        return 'Past event';
+      }
+      
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 60) return `in ${diffMins}m`;
+      if (diffHours < 24) return `in ${diffHours}h`;
+      if (diffDays < 7) return `in ${diffDays}d`;
+      return eventDate.toLocaleDateString();
+    }
+    
+    // For other alerts, show when the alert was created
+    return formatTimestamp(alert.timestamp);
+  };
+
   const handleAcknowledge = async (alertId) => {
     if (onAcknowledge) {
       await onAcknowledge(alertId);
@@ -174,7 +200,7 @@ const AlertPopup = ({ isOpen, onClose, alerts = [], onAcknowledge, unreadCount =
                         </p>
                         <div className="flex items-center justify-between text-xs text-slate-400">
                           <span className="truncate">{alert.type.replace(/_/g, ' ')}</span>
-                          <span className="flex-shrink-0 ml-2">{formatTimestamp(alert.timestamp)}</span>
+                          <span className="flex-shrink-0 ml-2">{formatEventTime(alert)}</span>
                         </div>
                       </div>
                     </div>

@@ -28,7 +28,7 @@ const testEndpoints = [
   },
   {
     name: 'CryptoCompare (Sentiment)',
-    url: 'https://min-api.cryptocompare.com/data/social/sentiment/latest',
+    url: 'https://min-api.cryptocompare.com/data/v2/social/sentiment/latest',
     method: 'GET',
     timeout: 10000
   },

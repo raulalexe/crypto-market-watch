@@ -303,10 +303,21 @@ class AIAnalyzer {
     if (bearishCount > bullishCount && bearishCount > neutralCount) return 'BEARISH';
     if (neutralCount > bullishCount && neutralCount > bearishCount) return 'NEUTRAL';
     
-    // If tied, use the one with highest confidence
-    const highestConfidence = Math.max(...analyses.map(a => a.overall_confidence || 0));
-    const bestAnalysis = analyses.find(a => a.overall_confidence === highestConfidence);
-    return bestAnalysis.overall_direction;
+    // If tied, use weighted consensus based on confidence
+    const weightedScores = { BULLISH: 0, BEARISH: 0, NEUTRAL: 0 };
+    
+    analyses.forEach(analysis => {
+      const direction = analysis.overall_direction;
+      const confidence = analysis.overall_confidence || 50;
+      weightedScores[direction] += confidence;
+    });
+    
+    // Return the direction with highest weighted score
+    const bestDirection = Object.keys(weightedScores).reduce((a, b) => 
+      weightedScores[a] > weightedScores[b] ? a : b
+    );
+    
+    return bestDirection;
   }
 
   // Get consensus confidence from multiple analyses
