@@ -52,7 +52,7 @@ const migrations = [
       CREATE TABLE IF NOT EXISTS onchain_data (
         id SERIAL PRIMARY KEY,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        blockchain VARCHAR(20) NOT NULL,
+        blockchain VARCHAR(50) NOT NULL,
         metric_type VARCHAR(50) NOT NULL,
         value DECIMAL,
         metadata TEXT,
@@ -669,6 +669,24 @@ const migrations = [
           ALTER TABLE crypto_prices ADD CONSTRAINT crypto_prices_symbol_timestamp_unique UNIQUE (symbol, timestamp);
         END IF;
       END $migration$;
+    `
+  },
+  {
+    name: 'fix_onchain_data_blockchain_length',
+    description: 'Increase blockchain column length in onchain_data table',
+    sql: `
+      DO $fix_blockchain$
+      BEGIN
+        -- Check if the column exists and has the old length
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'onchain_data' 
+          AND column_name = 'blockchain' 
+          AND character_maximum_length = 20
+        ) THEN
+          ALTER TABLE onchain_data ALTER COLUMN blockchain TYPE VARCHAR(50);
+        END IF;
+      END $fix_blockchain$;
     `
   }
 ];
