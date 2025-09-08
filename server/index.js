@@ -3969,7 +3969,13 @@ app.delete('/api/exports/scheduled/:id', authenticateToken, requireSubscription(
 });
 
 // Serve React app for all other routes (if available)
+// This should be the LAST route to avoid interfering with static files
 app.get('*', (req, res) => {
+  // Skip static file requests - they should be handled by express.static middleware
+  if (req.path.startsWith('/static/') || req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+    return res.status(404).send('Static file not found');
+  }
+  
   const indexPath = path.join(__dirname, '../client/build/index.html');
   const publicIndexPath = path.join(__dirname, '../public/index.html');
   
