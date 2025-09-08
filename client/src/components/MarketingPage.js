@@ -386,7 +386,7 @@ const MarketingPage = () => {
             </h1>
             <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
               Advanced cryptocurrency analytics with real-time notifications, AI-powered predictions, and comprehensive market data. 
-              Track 200+ cryptocurrencies, inflation data, Layer 1 blockchain metrics, and stay ahead with automated alerts.
+              Track multiple cryptocurrencies, inflation data, market imapacting events, Layer 1 blockchain metrics, and stay ahead with automated alerts via email, push notifications and Telegram.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

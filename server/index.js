@@ -61,12 +61,20 @@ try {
 
   
   if (fs.existsSync(staticPath)) {
-
-    app.use(express.static(staticPath));
+    console.log('✅ Serving static files from client/build');
+    app.use(express.static(staticPath, {
+      maxAge: '1d', // Cache static files for 1 day
+      etag: true,
+      lastModified: true
+    }));
 
   } else if (fs.existsSync(publicPath)) {
-
-    app.use(express.static(publicPath));
+    console.log('✅ Serving static files from public');
+    app.use(express.static(publicPath, {
+      maxAge: '1d', // Cache static files for 1 day
+      etag: true,
+      lastModified: true
+    }));
 
   } else {
     console.log('⚠️ React frontend not found, running in API-only mode');
