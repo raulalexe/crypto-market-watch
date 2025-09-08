@@ -96,7 +96,7 @@ describe('Brevo Email Service Tests', () => {
           htmlContent: expect.any(String),
           textContent: expect.any(String),
           sender: {
-            name: 'Crypto Market Monitor',
+            name: 'Crypto Market Watch',
             email: 'test@example.com'
           },
           to: [{

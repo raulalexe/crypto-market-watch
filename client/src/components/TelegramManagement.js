@@ -155,7 +155,7 @@ const TelegramManagement = () => {
       const response = await axios.post('/api/telegram/test-message', 
         { 
           chatId: testChatId,
-          message: testMessage || '🧪 Test message from Crypto Market Monitor bot'
+          message: testMessage || '🧪 Test message from Crypto Market Watch bot'
         },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );

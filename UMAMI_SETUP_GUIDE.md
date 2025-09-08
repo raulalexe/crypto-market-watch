@@ -15,7 +15,7 @@
    - Password: [create strong password]
    - Email: [your email]
 3. Add your website:
-   - Name: `Crypto Market Monitor`
+   - Name: `Crypto Market Watch`
    - Domain: `your-app.railway.app` (replace with your actual domain)
 
 ### 3. Get Tracking Code

@@ -1,6 +1,6 @@
 # Brevo Email Integration Setup
 
-This guide will help you set up Brevo (formerly Sendinblue) email service for the Crypto Market Monitor application.
+This guide will help you set up Brevo (formerly Sendinblue) email service for the Crypto Market Watch application.
 
 ## What is Brevo?
 
@@ -24,7 +24,7 @@ Brevo is a comprehensive email marketing and transactional email service that pr
 1. Log in to your Brevo dashboard
 2. Go to **Settings** → **API Keys**
 3. Click **Create a new API key**
-4. Give it a name (e.g., "Crypto Market Monitor")
+4. Give it a name (e.g., "Crypto Market Watch")
 5. Select **Full Access** or **Restricted Access** with email permissions
 6. Copy the generated API key
 

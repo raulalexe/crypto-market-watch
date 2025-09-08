@@ -1,7 +1,7 @@
 # Telegram Bot Setup Guide
 
 ## Overview
-This guide will help you set up the Telegram bot for Crypto Market Monitor to send real-time market alerts to users.
+This guide will help you set up the Telegram bot for Crypto Market Watch to send real-time market alerts to users.
 
 ## Features Implemented
 
@@ -37,7 +37,7 @@ This guide will help you set up the Telegram bot for Crypto Market Monitor to se
 1. **Open Telegram** and search for `@BotFather`
 2. **Start a conversation** with BotFather
 3. **Send `/newbot`** command
-4. **Choose a name** for your bot (e.g., "Crypto Market Monitor")
+4. **Choose a name** for your bot (e.g., "Crypto Market Watch")
 5. **Choose a username** for your bot (must end with 'bot', e.g., "cryptomarketmonitor_bot")
 6. **Copy the bot token** that BotFather provides
 
@@ -130,7 +130,7 @@ Details:
 
 Disclaimer: This is not financial advice. Always do your own research before making investment decisions.
 
-Crypto Market Monitor
+Crypto Market Watch
 ```
 
 ## Security Features

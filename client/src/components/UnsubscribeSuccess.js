@@ -60,7 +60,7 @@ const UnsubscribeSuccess = () => {
                 <strong>Email:</strong> {email}
               </p>
               <p className="text-sm text-gray-600 mt-2">
-                You will no longer receive email notifications from Crypto Market Monitor.
+                You will no longer receive email notifications from Crypto Market Watch.
               </p>
             </div>
           </div>

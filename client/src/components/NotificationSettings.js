@@ -177,18 +177,41 @@ const NotificationSettings = () => {
 
   const testNotification = async () => {
     try {
-      const result = await pushNotificationService.showNotification('Test Notification', {
-        body: 'This is a test notification from Crypto Market Monitor',
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+      if (!token) {
+        setMessage({ type: 'error', text: 'Authentication required' });
+        return;
+      }
+
+      // First try to show a local notification for immediate feedback
+      const localResult = await pushNotificationService.showNotification('Test Notification', {
+        body: 'This is a test notification from Crypto Market Watch',
         icon: '/favicon.ico',
         tag: 'test-notification'
       });
 
-      if (result.success) {
-        setMessage({ type: 'success', text: 'Test notification sent!' });
+      // Also send a server-side test notification
+      const response = await fetch('/api/push/test', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: 'Test Notification',
+          body: 'This is a test notification from Crypto Market Watch',
+          icon: '/favicon.ico'
+        })
+      });
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Test notification sent successfully!' });
       } else {
-        setMessage({ type: 'error', text: result.error });
+        const errorData = await response.json();
+        setMessage({ type: 'error', text: errorData.error || 'Failed to send test notification' });
       }
     } catch (error) {
+      console.error('Error sending test notification:', error);
       setMessage({ type: 'error', text: 'Error sending test notification' });
     }
   };

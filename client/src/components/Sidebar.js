@@ -38,7 +38,8 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
       path: '/app/data-export',
       name: 'Data Export',
       icon: Download,
-      requiresAuth: true
+      requiresAuth: true,
+      requiresPro: true
     },
     {
       path: '/app/advanced-export',
@@ -135,7 +136,7 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
         <div className="flex items-center justify-between p-6 border-b border-gray-700 md:hidden">
           <div className="flex items-center space-x-3">
             <TrendingUp className="w-8 h-8 text-crypto-blue" />
-            <h1 className="text-xl font-bold">Crypto Market Monitor</h1>
+            <h1 className="text-xl font-bold">Crypto Market Watch</h1>
           </div>
           <button
             onClick={onClose}
@@ -157,10 +158,17 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                     <Link
                       to="/app/subscription"
                       onClick={handleNavClick}
-                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                      className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                     >
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.name}</span>
+                      <div className="flex items-center space-x-3">
+                        <item.icon className="w-5 h-5" />
+                        <span>{item.name}</span>
+                      </div>
+                      {item.requiresPro && (
+                        <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
+                          Pro
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );
@@ -173,10 +181,17 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                     <Link
                       to="/app/subscription"
                       onClick={handleNavClick}
-                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                      className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                     >
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.name}</span>
+                      <div className="flex items-center space-x-3">
+                        <item.icon className="w-5 h-5" />
+                        <span>{item.name}</span>
+                      </div>
+                      {item.requiresPro && (
+                        <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
+                          Pro
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );
@@ -205,10 +220,15 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                     <Link
                       to="/app/subscription"
                       onClick={handleNavClick}
-                      className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                      className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                     >
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.name}</span>
+                      <div className="flex items-center space-x-3">
+                        <item.icon className="w-5 h-5" />
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
+                        Pro
+                      </span>
                     </Link>
                   </li>
                 );
@@ -223,14 +243,21 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                   <Link
                     to={item.path}
                     onClick={handleNavClick}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+                    className={`flex items-center justify-between px-4 py-3 rounded-lg transition-colors duration-200 ${
                       isActive
                         ? 'bg-crypto-blue text-white'
                         : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                     }`}
                   >
-                    <IconComponent className="w-5 h-5" />
-                    <span>{item.name}</span>
+                    <div className="flex items-center space-x-3">
+                      <IconComponent className="w-5 h-5" />
+                      <span>{item.name}</span>
+                    </div>
+                    {item.requiresPro && (
+                      <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
+                        Pro
+                      </span>
+                    )}
                   </Link>
                 </li>
               );

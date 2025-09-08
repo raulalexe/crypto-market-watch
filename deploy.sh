@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Crypto Market Monitor - Deployment Script"
+echo "🚀 Crypto Market Watch - Deployment Script"
 echo "=============================================="
 
 # Check if Node.js is installed

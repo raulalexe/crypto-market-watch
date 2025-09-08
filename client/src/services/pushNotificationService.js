@@ -200,6 +200,11 @@ class PushNotificationService {
       return { success: false, error: 'Notifications not supported' };
     }
 
+    // Check if we have permission
+    if (Notification.permission !== 'granted') {
+      return { success: false, error: 'Notification permission not granted' };
+    }
+
     try {
       const defaultOptions = {
         body: 'Test notification',
@@ -212,10 +217,17 @@ class PushNotificationService {
 
       const notificationOptions = { ...defaultOptions, ...options };
       
-      if (this.registration) {
+      // Try to use service worker first, fall back to direct notification
+      if (this.registration && this.registration.active) {
         await this.registration.showNotification(title, notificationOptions);
       } else {
-        new Notification(title, notificationOptions);
+        // Fall back to direct notification API
+        const notification = new Notification(title, notificationOptions);
+        
+        // Auto-close after 5 seconds
+        setTimeout(() => {
+          notification.close();
+        }, 5000);
       }
 
       return { success: true };

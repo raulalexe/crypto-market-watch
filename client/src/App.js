@@ -10,6 +10,7 @@ import AuthModal from './components/AuthModal';
 import UmamiAnalytics from './components/UmamiAnalytics';
 
 import About from './components/About';
+import MarketingAbout from './components/MarketingAbout';
 import ErrorLogs from './components/ErrorLogs';
 import DataExport from './components/DataExport';
 import AlertsPage from './components/AlertsPage';
@@ -29,6 +30,8 @@ import UpcomingEventsPage from './components/UpcomingEventsPage';
 import MarketingPage from './components/MarketingPage';
 import UnsubscribeSuccess from './components/UnsubscribeSuccess';
 import PasswordReset from './components/PasswordReset';
+import EmailConfirmSuccess from './components/EmailConfirmSuccess';
+import EmailConfirmError from './components/EmailConfirmError';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -159,9 +162,11 @@ function App() {
         <Routes>
           <Route path="/" element={<MarketingPage />} />
 
-          <Route path="/about" element={<About />} />
+          <Route path="/about" element={<MarketingAbout />} />
           <Route path="/unsubscribe-success" element={<UnsubscribeSuccess />} />
           <Route path="/reset-password" element={<PasswordReset />} />
+          <Route path="/auth/confirm-success" element={<EmailConfirmSuccess />} />
+          <Route path="/auth/confirm-error" element={<EmailConfirmError />} />
           
 
           
@@ -271,7 +276,7 @@ function App() {
                 <div className="max-w-7xl mx-auto">
                   <div className="flex flex-col md:flex-row justify-between items-center">
                     <div className="text-slate-400 text-sm mb-4 md:mb-0">
-                      <p>© 2024 Crypto Market Monitor. All rights reserved.</p>
+                      <p>© 2025 Crypto Market Watch. All rights reserved.</p>
                     </div>
                     <div className="flex space-x-6">
                       <Link 

@@ -93,7 +93,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
   };
 
   const handleUpgradeClick = () => {
-    navigate('/subscription');
+    navigate('/app/subscription');
   };
 
   const renderSubscriptionButton = () => {

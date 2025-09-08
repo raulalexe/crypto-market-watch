@@ -124,7 +124,7 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
           
           <Link to="/app" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <TrendingUp className="w-8 h-8 text-crypto-green" />
-            <h1 className="text-xl font-bold text-white">Crypto Market Monitor</h1>
+            <h1 className="text-xl font-bold text-white">Crypto Market Watch</h1>
           </Link>
         </div>
         
@@ -204,7 +204,7 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
           ) : (
             <div className="flex items-center space-x-2">
               <Link
-                to="/landing"
+                to="/about"
                 className="px-4 py-2 text-slate-300 hover:text-white transition-colors"
               >
                 About

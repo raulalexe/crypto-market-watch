@@ -74,7 +74,7 @@ class EmailService {
     try {
       const emailData = {
         sender: {
-          name: 'Crypto Market Monitor',
+          name: 'Crypto Market Watch',
           email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
         },
         to: [
@@ -117,7 +117,7 @@ class EmailService {
   async sendEmailViaSMTP(userEmail, alert, severityEmoji, alertType) {
     try {
       const emailContent = {
-        from: `"Crypto Market Monitor" <${process.env.SMTP_USER}>`,
+        from: `"Crypto Market Watch" <${process.env.SMTP_USER}>`,
         to: userEmail,
         subject: `${severityEmoji} Market Alert: ${alertType}`,
         html: this.generateAlertEmailHTML(alert),
@@ -222,7 +222,7 @@ class EmailService {
           </div>
           
           <div class="footer">
-            <p>Crypto Market Monitor</p>
+            <p>Crypto Market Watch</p>
             <p>You can manage your notification preferences in your account settings.</p>
           </div>
         </div>
@@ -250,7 +250,7 @@ ${alert.value ? `- Value: ${alert.value}` : ''}
 ---
 Disclaimer: This is not financial advice. Always do your own research before making investment decisions.
 
-Crypto Market Monitor
+Crypto Market Watch
     `.trim();
   }
 

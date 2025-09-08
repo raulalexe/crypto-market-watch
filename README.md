@@ -1,4 +1,4 @@
-# Crypto Market Monitor
+# Crypto Market Watch
 
 A comprehensive web application for monitoring cryptocurrency markets with AI-powered analysis, automated data collection, and backtesting capabilities.
 

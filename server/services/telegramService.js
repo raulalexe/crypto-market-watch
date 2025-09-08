@@ -163,7 +163,7 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
 
 <i>Disclaimer: This is not financial advice. Always do your own research before making investment decisions.</i>
 
-<code>Crypto Market Monitor</code>
+<code>Crypto Market Watch</code>
     `.trim();
   }
 
@@ -210,7 +210,7 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
         `https://api.telegram.org/bot${this.botToken}/sendMessage`,
         {
           chat_id: chatId,
-          text: '✅ Crypto Market Monitor bot is now active! You will receive market alerts here.',
+          text: '✅ Crypto Market Watch bot is now active! You will receive market alerts here.',
           parse_mode: 'HTML'
         }
       );
@@ -409,7 +409,7 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
         
         await this.sendMessage(chatId, 
           '✅ <b>Verification Successful!</b>\n\n' +
-          'Your Telegram account has been linked to your Crypto Market Monitor account.\n' +
+          'Your Telegram account has been linked to your Crypto Market Watch account.\n' +
           'You will now receive market alerts and notifications.\n\n' +
           'Use /help to see available commands.'
         );
@@ -546,12 +546,12 @@ Use these commands:
 
   async sendWelcomeMessage(chatId) {
     const message = `
-<b>🚀 Welcome to Crypto Market Monitor Bot!</b>
+<b>🚀 Welcome to Crypto Market Watch Bot!</b>
 
 To receive market alerts, you need to verify your account first.
 
 <b>How to verify:</b>
-1. Go to your Crypto Market Monitor account settings
+1. Go to your Crypto Market Watch account settings
 2. Navigate to Telegram notifications
 3. Click "Connect Telegram" to get a verification code
 4. Send the code using: <code>/verify YOUR_CODE</code>

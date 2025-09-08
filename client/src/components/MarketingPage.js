@@ -20,6 +20,7 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import PricingSection from './PricingSection';
 
 const MarketingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -223,60 +224,6 @@ const MarketingPage = () => {
     }
   ];
 
-  const plans = [
-    {
-      name: 'Free',
-      price: '$0',
-      period: 'forever',
-      features: [
-        'Basic dashboard access',
-        'Real-time crypto prices',
-        'Basic market metrics',
-        'Fear & Greed Index',
-        'Community support'
-      ],
-      popular: false,
-      cta: 'Get Started Free'
-    },
-    {
-      name: 'Pro',
-      price: '$29',
-      period: 'month',
-      features: [
-        'All Free features',
-        'AI market analysis (short, medium, long-term)',
-        'Real-time market alerts',
-        'Email notifications',
-        'Push notifications',
-        'Telegram bot alerts',
-        'Advanced metrics (VIX, DXY, Treasury yields)',
-        'Exchange flow data',
-        'Stablecoin metrics (SSR)',
-        'Data exports (CSV, JSON)',
-        'API access (1,000 calls/day)',
-        'Upcoming market events tracking'
-      ],
-      popular: true,
-      cta: 'Sign Up for Pro'
-    },
-    {
-      name: 'Premium+',
-      price: '$99',
-      period: 'month',
-      features: [
-        'All Pro features',
-        'Unlimited API calls',
-        'White-label options',
-        'Advanced analytics',
-        'Priority notification delivery',
-        'Custom alert thresholds',
-        'Advanced data exports',
-        'Webhook integrations'
-      ],
-      popular: false,
-      cta: 'Contact Sales'
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -286,7 +233,7 @@ const MarketingPage = () => {
           <div className="flex justify-between items-center py-4">
             <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
               <TrendingUp className="w-8 h-8 text-crypto-blue" />
-              <span className="text-xl font-bold text-white">Crypto Market Monitor</span>
+              <span className="text-xl font-bold text-white">Crypto Market Watch</span>
             </Link>
             
             {/* Desktop Navigation */}
@@ -382,7 +329,7 @@ const MarketingPage = () => {
               </div>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white via-blue-200 to-green-200 bg-clip-text text-transparent">
-              Crypto Market Monitor
+              Crypto Market Watch
             </h1>
             <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
               Advanced cryptocurrency analytics with real-time notifications, AI-powered predictions, and comprehensive market data. 
@@ -630,60 +577,13 @@ const MarketingPage = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing-section" className="py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Choose Your Plan</h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Start free and upgrade as you grow. No hidden fees, cancel anytime.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {plans.map((plan, index) => (
-              <div 
-                key={index} 
-                className={`bg-gray-800 p-8 rounded-lg border-2 ${
-                  plan.popular 
-                    ? 'border-crypto-blue shadow-lg shadow-crypto-blue/20' 
-                    : 'border-gray-700'
-                }`}
-              >
-                {plan.popular && (
-                  <div className="text-center mb-4">
-                    <span className="bg-crypto-blue text-white px-4 py-2 rounded-full text-sm font-semibold">
-                      Most Popular
-                    </span>
-                  </div>
-                )}
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                  <div className="text-4xl font-bold text-crypto-blue mb-1">
-                    {plan.price}
-                    <span className="text-lg text-gray-400 font-normal">/{plan.period}</span>
-                  </div>
-                </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center text-gray-300">
-                      <Check className="w-4 h-4 text-green-400 mr-3 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to={plan.name === 'Free' ? '/app' : '/app/subscription'}
-                  className={`w-full text-center py-3 px-6 rounded-lg font-semibold transition-colors ${
-                    plan.popular
-                      ? 'bg-crypto-blue text-white hover:bg-blue-600'
-                      : 'bg-gray-700 text-white hover:bg-gray-600'
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
+      <section id="pricing-section">
+        <PricingSection 
+          variant="marketing"
+          showPaymentMethods={false}
+          showFAQ={false}
+          showCTA={true}
+        />
       </section>
 
       {/* CTA Section */}
@@ -691,7 +591,7 @@ const MarketingPage = () => {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold mb-6">Ready to Start Monitoring?</h2>
           <p className="text-xl text-gray-400 mb-8">
-            Join thousands of traders who trust Crypto Market Monitor for their market analysis and notifications.
+            Join thousands of traders who trust Crypto Market Watch for their market analysis and notifications.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -717,7 +617,7 @@ const MarketingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-slate-400 text-sm mb-4 md:mb-0">
-              <p>© 2024 Crypto Market Monitor. All rights reserved.</p>
+              <p>© 2025 Crypto Market Watch. All rights reserved.</p>
             </div>
             <div className="flex space-x-6">
               <Link 

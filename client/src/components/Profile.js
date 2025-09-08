@@ -434,7 +434,7 @@ const Profile = ({ onProfileUpdate }) => {
       {!isAdmin(userData) && (
         <div className="pt-4">
           <Link
-            to="/subscription"
+            to="/app/subscription"
             className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
           >
             <CreditCard className="w-4 h-4" />
@@ -459,7 +459,7 @@ const Profile = ({ onProfileUpdate }) => {
           <div className="bg-slate-700 rounded-lg p-4">
             <p className="text-slate-400 mb-3">API access requires a Pro or Premium subscription.</p>
             <Link
-              to="/subscription"
+              to="/app/subscription"
               className="px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               Upgrade to Pro
