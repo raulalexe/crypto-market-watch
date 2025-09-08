@@ -384,10 +384,16 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
     const chatId = chat.id.toString();
     const code = text.replace('/verify ', '').trim();
     
+    console.log(`📱 Telegram verification attempt - Chat ID: ${chatId}, Code: "${code}"`);
+    
     if (!code) {
+      console.log(`❌ No verification code provided by chat ID: ${chatId}`);
       await this.sendMessage(chatId, '❌ Please provide a verification code.\n\nUsage: /verify YOUR_CODE');
       return;
     }
+    
+    // Log the code format for debugging
+    console.log(`🔍 Code analysis - Length: ${code.length}, Format: ${/^[A-Z0-9]+$/.test(code) ? 'Valid' : 'Invalid'}`);
     
     try {
       const { verifyTelegramCode } = require('../database');

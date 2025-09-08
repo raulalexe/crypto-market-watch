@@ -1362,45 +1362,71 @@ const getUsersWithNotifications = () => {
 // Telegram verification functions
 const generateTelegramVerificationCode = (userId) => {
   return new Promise((resolve, reject) => {
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    // Generate a more reliable 6-character code
+    const code = Math.random().toString(36).substring(2).padEnd(6, '0').substring(0, 6).toUpperCase();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+    
+    console.log(`🔑 Generated Telegram verification code: "${code}" for user ${userId}, expires at: ${expiresAt.toISOString()}`);
     
     dbAdapter.run(
       'UPDATE users SET telegram_verification_code = $1, telegram_verification_expires_at = $2 WHERE id = $3',
       [code, expiresAt.toISOString(), userId]
     ).then(result => {
+      console.log(`✅ Telegram verification code stored in database for user ${userId}`);
       resolve({ code, expiresAt });
-    }).catch(reject);
+    }).catch(error => {
+      console.error(`❌ Failed to store Telegram verification code for user ${userId}:`, error);
+      reject(error);
+    });
   });
 };
 
 const verifyTelegramCode = (code, chatId) => {
   return new Promise((resolve, reject) => {
+    console.log(`🔍 Verifying Telegram code: "${code}" for chat ID: ${chatId}`);
+    
+    // Normalize the code to uppercase for consistent comparison
+    const normalizedCode = code.toUpperCase().trim();
+    console.log(`🔍 Normalized code: "${normalizedCode}"`);
+    
     dbAdapter.get(
-      'SELECT id, telegram_verification_expires_at FROM users WHERE telegram_verification_code = $1',
-      [code]
+      'SELECT id, telegram_verification_expires_at FROM users WHERE UPPER(telegram_verification_code) = $1',
+      [normalizedCode]
     ).then(user => {
       if (!user) {
+        console.log(`❌ No user found with verification code: "${code}"`);
         resolve({ success: false, error: 'Invalid verification code' });
         return;
       }
+      
+      console.log(`👤 Found user ${user.id} with verification code, expires at: ${user.telegram_verification_expires_at}`);
       
       const now = new Date();
       const expiresAt = new Date(user.telegram_verification_expires_at);
       
       if (now > expiresAt) {
+        console.log(`⏰ Verification code expired. Now: ${now.toISOString()}, Expires: ${expiresAt.toISOString()}`);
         resolve({ success: false, error: 'Verification code has expired' });
         return;
       }
+      
+      console.log(`✅ Verification code is valid, linking chat ID ${chatId} to user ${user.id}`);
       
       // Link the chat ID to the user and mark as verified
       dbAdapter.run(
         'UPDATE users SET telegram_chat_id = $1, telegram_verified = true, telegram_verification_code = NULL, telegram_verification_expires_at = NULL WHERE id = $2',
         [chatId, user.id]
       ).then(result => {
+        console.log(`✅ Successfully linked Telegram chat ID ${chatId} to user ${user.id}`);
         resolve({ success: true, userId: user.id });
-      }).catch(reject);
-    }).catch(reject);
+      }).catch(error => {
+        console.error(`❌ Failed to link Telegram chat ID ${chatId} to user ${user.id}:`, error);
+        reject(error);
+      });
+    }).catch(error => {
+      console.error(`❌ Database error during verification:`, error);
+      reject(error);
+    });
   });
 };
 
