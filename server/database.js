@@ -1209,10 +1209,20 @@ const acknowledgeAlert = (alertId) => {
 // Push subscription functions
 const insertPushSubscription = (userId, endpoint, p256dh, auth) => {
   return new Promise((resolve, reject) => {
+    // First try to update existing subscription
     dbAdapter.run(
-      'INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, endpoint) DO UPDATE SET p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth',
+      'UPDATE push_subscriptions SET p256dh = $3, auth = $4 WHERE user_id = $1 AND endpoint = $2',
       [userId, endpoint, p256dh, auth]
-    ).then(result => resolve(result.lastID))
+    ).then(updateResult => {
+      // If no rows were updated, insert a new subscription
+      if (updateResult.changes === 0) {
+        return dbAdapter.run(
+          'INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES ($1, $2, $3, $4)',
+          [userId, endpoint, p256dh, auth]
+        );
+      }
+      return updateResult;
+    }).then(result => resolve(result.lastID))
      .catch(reject);
   });
 };
