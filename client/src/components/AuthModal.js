@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Lock, Mail } from 'lucide-react';
 import axios from 'axios';
 
-const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
-  const [isLogin, setIsLogin] = useState(true);
+const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) => {
+  const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -12,11 +12,26 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Update isLogin state when initialMode changes
+  useEffect(() => {
+    setIsLogin(initialMode === 'login');
+    setAgreedToTerms(false); // Reset terms agreement
+    setError(''); // Clear any errors
+  }, [initialMode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Check terms agreement for signup
+    if (!isLogin && !agreedToTerms) {
+      setError('Please agree to the Terms & Conditions and Privacy Policy to continue.');
+      setLoading(false);
+      return;
+    }
 
     try {
       let response;
@@ -287,6 +302,39 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
             </div>
           </div>
 
+          {/* Terms and Privacy Policy Agreement - Only show for signup */}
+          {!isLogin && (
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="agreeTerms"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-1 w-4 h-4 text-crypto-blue bg-slate-700 border-slate-600 rounded focus:ring-crypto-blue focus:ring-2"
+              />
+              <label htmlFor="agreeTerms" className="text-sm text-slate-300">
+                I agree to the{' '}
+                <a 
+                  href="/app/terms" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-crypto-blue hover:text-blue-400 underline"
+                >
+                  Terms & Conditions
+                </a>
+                {' '}and{' '}
+                <a 
+                  href="/app/privacy" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-crypto-blue hover:text-blue-400 underline"
+                >
+                  Privacy Policy
+                </a>
+              </label>
+            </div>
+          )}
+
           {error && (
             <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
               <p className="text-red-400 text-sm">{error}</p>
@@ -315,7 +363,11 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
           )}
           <div>
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setAgreedToTerms(false); // Reset terms agreement when switching
+                setError(''); // Clear any errors
+              }}
               className="text-crypto-blue hover:text-blue-400 text-sm"
             >
               {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}

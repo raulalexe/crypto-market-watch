@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import PricingSection from './PricingSection';
+import Footer from './Footer';
 
 const MarketingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -589,7 +590,8 @@ const MarketingPage = () => {
       {/* CTA Section */}
       <section className="py-24 bg-gray-800">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold mb-6">Ready to Start Monitoring?</h2>
+          <h2 className="text-4xl font-bold mb-6">Ready to Start Watching the Market
+            ?</h2>
           <p className="text-xl text-gray-400 mb-8">
             Join thousands of traders who trust Crypto Market Watch for their market analysis and notifications.
           </p>
@@ -599,7 +601,7 @@ const MarketingPage = () => {
               className="inline-flex items-center px-8 py-4 bg-crypto-blue text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
             >
               <TrendingUp className="w-5 h-5 mr-2" />
-              Launch App Now
+              Launch App
               <ArrowRight className="w-5 h-5 ml-2" />
             </Link>
             <Link
@@ -612,30 +614,7 @@ const MarketingPage = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-slate-800 border-t border-slate-700 py-6 px-4 md:px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-slate-400 text-sm mb-4 md:mb-0">
-              <p>© 2025 Crypto Market Watch. All rights reserved.</p>
-            </div>
-            <div className="flex space-x-6">
-              <Link 
-                to="/app/privacy" 
-                className="text-slate-400 hover:text-white transition-colors text-sm"
-              >
-                Privacy Policy
-              </Link>
-              <Link 
-                to="/app/terms" 
-                className="text-slate-400 hover:text-white transition-colors text-sm"
-              >
-                Terms & Conditions
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

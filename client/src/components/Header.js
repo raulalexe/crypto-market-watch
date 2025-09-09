@@ -126,6 +126,18 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
             <TrendingUp className="w-8 h-8 text-crypto-green" />
             <h1 className="text-xl font-bold text-white">Crypto Market Watch</h1>
           </Link>
+          
+          {/* Navigation links for non-authenticated users */}
+          {!isAuthenticated && (
+            <div className="hidden md:flex items-center space-x-4 ml-6">
+              <Link
+                to="/"
+                className="px-3 py-2 text-slate-300 hover:text-white transition-colors"
+              >
+                Home
+              </Link>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center space-x-2">
@@ -140,75 +152,78 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
             </button>
           )}
           
-          {/* Alert Icon - Show for all users with upgrade prompt for non-authenticated */}
-          <button
-            onClick={isAuthenticated ? handleAlertClick : () => setAuthModalOpen(true)}
-            className="relative p-2 rounded-lg hover:bg-slate-700 transition-colors"
-            title={isAuthenticated ? "Market Alerts" : "Sign up for Market Alerts"}
-          >
-            <Bell className="w-5 h-5 text-slate-300" />
-            {isAuthenticated && unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-            {!isAuthenticated && (
-              <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-xs px-1 py-0.5 rounded-full text-[10px]">
-                Pro
-              </span>
-            )}
-          </button>
-          
           {isAuthenticated ? (
-            <div className="flex items-center space-x-2">
-              <div className="relative profile-dropdown">
-                <button
-                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
-                  title="Profile"
-                >
-                  <User className="w-5 h-5 text-slate-300" />
-                </button>
-                
-                {/* Profile Dropdown */}
-                {isProfileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50">
-                    <div className="p-4 border-b border-slate-600">
-                      <p className="text-white font-medium">Hello,</p>
-                      <p className="text-slate-300 text-sm truncate">{userData?.email || 'User'}</p>
-                    </div>
-                    <div className="p-2">
-                      <Link
-                        to="/app/profile"
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors w-full"
-                      >
-                        <User className="w-4 h-4" />
-                        <span>View Profile</span>
-                      </Link>
-                      <button
-                        onClick={() => {
-                          setIsProfileDropdownOpen(false);
-                          onLogoutClick();
-                        }}
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors w-full"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Logout</span>
-                      </button>
-                    </div>
-                  </div>
+            <>
+              {/* Alert Icon - For authenticated users */}
+              <button
+                onClick={handleAlertClick}
+                className="relative p-2 rounded-lg hover:bg-slate-700 transition-colors"
+                title="Market Alerts"
+              >
+                <Bell className="w-5 h-5 text-slate-300" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
                 )}
+              </button>
+              
+              <div className="flex items-center space-x-2">
+                <div className="relative profile-dropdown">
+                  <button
+                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                    className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
+                    title="Profile"
+                  >
+                    <User className="w-5 h-5 text-slate-300" />
+                  </button>
+                  
+                  {/* Profile Dropdown */}
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50">
+                      <div className="p-4 border-b border-slate-600">
+                        <p className="text-white font-medium">Hello,</p>
+                        <p className="text-slate-300 text-sm truncate">{userData?.email || 'User'}</p>
+                      </div>
+                      <div className="p-2">
+                        <Link
+                          to="/app/profile"
+                          onClick={() => setIsProfileDropdownOpen(false)}
+                          className="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors w-full"
+                        >
+                          <User className="w-4 h-4" />
+                          <span>View Profile</span>
+                        </Link>
+                        <button
+                          onClick={() => {
+                            setIsProfileDropdownOpen(false);
+                            onLogoutClick();
+                          }}
+                          className="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors w-full"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Logout</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            </>
           ) : (
             <div className="flex items-center space-x-2">
-              <Link
-                to="/about"
-                className="px-4 py-2 text-slate-300 hover:text-white transition-colors"
+              {/* Alert Icon - For non-authenticated users */}
+              <button
+                onClick={() => window.location.href = '/app?auth=register'}
+                className="relative p-2 rounded-lg hover:bg-slate-700 transition-colors"
+                title="Sign up for Market Alerts"
               >
-                About
-              </Link>
+                <Bell className="w-5 h-5 text-slate-300" />
+                <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-xs px-1 py-0.5 rounded-full text-[10px]">
+                  Pro
+                </span>
+              </button>
+              
               <button
                 onClick={onAuthClick}
                 className="px-4 py-2 bg-crypto-green text-black rounded-lg hover:bg-green-400 transition-colors"

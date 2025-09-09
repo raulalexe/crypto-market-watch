@@ -164,7 +164,7 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                         <item.icon className="w-5 h-5" />
                         <span>{item.name}</span>
                       </div>
-                      {item.requiresPro && (
+                      {item.requiresPro && !hasProAccess(userData) && (
                         <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
                           Pro
                         </span>
@@ -187,7 +187,7 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                         <item.icon className="w-5 h-5" />
                         <span>{item.name}</span>
                       </div>
-                      {item.requiresPro && (
+                      {item.requiresPro && !hasProAccess(userData) && (
                         <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
                           Pro
                         </span>
@@ -253,7 +253,7 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
                       <IconComponent className="w-5 h-5" />
                       <span>{item.name}</span>
                     </div>
-                    {item.requiresPro && (
+                    {item.requiresPro && !hasProAccess(userData) && (
                       <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
                         Pro
                       </span>

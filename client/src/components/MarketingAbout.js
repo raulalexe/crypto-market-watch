@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { TrendingUp, Menu, X, Info, Clock, Database, Brain, TrendingUp as TrendingUpIcon, Shield, Zap } from 'lucide-react';
 import axios from 'axios';
+import Footer from './Footer';
 
 const MarketingAbout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -279,30 +280,7 @@ const MarketingAbout = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-slate-800 border-t border-slate-700 py-6 px-4 md:px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-slate-400 text-sm mb-4 md:mb-0">
-              <p>© 2025 Crypto Market Watch. All rights reserved.</p>
-            </div>
-            <div className="flex space-x-6">
-              <Link 
-                to="/app/privacy" 
-                className="text-slate-400 hover:text-white transition-colors text-sm"
-              >
-                Privacy Policy
-              </Link>
-              <Link 
-                to="/app/terms" 
-                className="text-slate-400 hover:text-white transition-colors text-sm"
-              >
-                Terms & Conditions
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

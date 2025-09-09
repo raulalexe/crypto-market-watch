@@ -87,7 +87,8 @@ const PricingSection = ({
     const token = localStorage.getItem('authToken');
     if (!token) {
       if (setAuthModalOpen) {
-        setAuthModalOpen(true);
+        // Use URL parameter instead of direct modal opening to avoid conflicts
+        window.location.href = '/app?auth=login';
       } else {
         showAlert('Please sign in to subscribe to a plan.', 'warning');
       }
@@ -113,7 +114,8 @@ const PricingSection = ({
     const token = localStorage.getItem('authToken');
     if (!token) {
       if (setAuthModalOpen) {
-        setAuthModalOpen(true);
+        // Use URL parameter instead of direct modal opening to avoid conflicts
+        window.location.href = '/app?auth=login';
       } else {
         showAlert('Please sign in to subscribe to a plan.', 'warning');
       }
@@ -402,16 +404,29 @@ const PricingSection = ({
             }
           </button>
         ) : (
-          <Link
-            to={plan.name === 'Free' ? '/app' : '/app/subscription'}
-            className={`w-full text-center py-3 px-6 rounded-lg font-semibold transition-colors ${
-              plan.popular
-                ? 'bg-crypto-blue text-white hover:bg-blue-600'
-                : 'bg-gray-700 text-white hover:bg-gray-600'
-            }`}
-          >
-            {plan.cta || (plan.price === 0 ? 'Get Started Free' : 'Sign Up for Pro')}
-          </Link>
+          plan.name === 'Free' ? (
+            <Link
+              to="/app?auth=register"
+              className={`w-full text-center py-3 px-6 rounded-lg font-semibold transition-colors ${
+                plan.popular
+                  ? 'bg-crypto-blue text-white hover:bg-blue-600'
+                  : 'bg-gray-700 text-white hover:bg-gray-600'
+              }`}
+            >
+              {plan.cta || 'Get Started Free'}
+            </Link>
+          ) : (
+            <Link
+              to="/app/subscription"
+              className={`w-full text-center py-3 px-6 rounded-lg font-semibold transition-colors ${
+                plan.popular
+                  ? 'bg-crypto-blue text-white hover:bg-blue-600'
+                  : 'bg-gray-700 text-white hover:bg-gray-600'
+              }`}
+            >
+              {plan.cta || 'Sign Up for Pro'}
+            </Link>
+          )
         )}
       </div>
     );
@@ -588,26 +603,6 @@ const PricingSection = ({
                   <p className="text-gray-400">We're working hard to launch Pro and Premium features. Sign up for our newsletter to be notified when they become available!</p>
                 </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* CTA Section for Marketing */}
-        {showCTA && variant === 'marketing' && (
-          <div className="text-center mt-16">
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/app"
-                className="inline-flex items-center px-8 py-4 bg-crypto-blue text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                Launch App Now
-              </Link>
-              <Link
-                to="/app/subscription"
-                className="inline-flex items-center px-8 py-4 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                View All Plans
-              </Link>
             </div>
           </div>
         )}

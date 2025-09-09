@@ -3,6 +3,15 @@ import { Calendar, Clock, AlertTriangle, TrendingUp, TrendingDown, DollarSign, U
 
 const UpcomingEventsCard = ({ events }) => {
   const [expanded, setExpanded] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all'); // all, high, medium, low
+
+  const handleFilterClick = (filterType) => {
+    setActiveFilter(filterType);
+    // Auto-expand when filtering
+    if (!expanded) {
+      setExpanded(true);
+    }
+  };
 
   const getImpactColor = (impact) => {
     switch (impact) {
@@ -68,6 +77,11 @@ const UpcomingEventsCard = ({ events }) => {
   const highImpactEvents = upcomingEvents.filter(event => event.impact === 'high');
   const mediumImpactEvents = upcomingEvents.filter(event => event.impact === 'medium');
 
+  // Filter events based on active filter
+  const filteredEvents = activeFilter === 'all' 
+    ? upcomingEvents 
+    : upcomingEvents.filter(event => event.impact === activeFilter);
+
   if (!events || events.length === 0) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
@@ -99,39 +113,67 @@ const UpcomingEventsCard = ({ events }) => {
 
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+        <button 
+          onClick={() => handleFilterClick('high')}
+          className={`rounded-lg p-3 transition-all cursor-pointer text-left w-full ${
+            activeFilter === 'high' 
+              ? 'bg-red-900/40 border-red-400' 
+              : 'bg-red-900/20 border border-red-500/30 hover:bg-red-900/30 hover:border-red-400'
+          }`}
+        >
           <div className="flex items-center space-x-2">
             <AlertTriangle className="w-4 h-4 text-red-400" />
             <span className="text-sm text-red-400 font-medium">High Impact</span>
           </div>
           <div className="text-2xl font-bold text-white mt-1">{highImpactEvents.length}</div>
           <div className="text-xs text-red-300">Events</div>
-        </div>
+        </button>
         
-        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3">
+        <button 
+          onClick={() => handleFilterClick('medium')}
+          className={`rounded-lg p-3 transition-all cursor-pointer text-left w-full ${
+            activeFilter === 'medium' 
+              ? 'bg-yellow-900/40 border-yellow-400' 
+              : 'bg-yellow-900/20 border border-yellow-500/30 hover:bg-yellow-900/30 hover:border-yellow-400'
+          }`}
+        >
           <div className="flex items-center space-x-2">
             <Clock className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-yellow-400 font-medium">Medium Impact</span>
           </div>
           <div className="text-2xl font-bold text-white mt-1">{mediumImpactEvents.length}</div>
           <div className="text-xs text-yellow-300">Events</div>
-        </div>
+        </button>
         
-        <div className="bg-slate-700/20 border border-slate-500/30 rounded-lg p-3">
+        <button 
+          onClick={() => handleFilterClick('all')}
+          className={`rounded-lg p-3 transition-all cursor-pointer text-left w-full ${
+            activeFilter === 'all' 
+              ? 'bg-slate-700/40 border-slate-400' 
+              : 'bg-slate-700/20 border border-slate-500/30 hover:bg-slate-700/30 hover:border-slate-400'
+          }`}
+        >
           <div className="flex items-center space-x-2">
             <Calendar className="w-4 h-4 text-slate-400" />
             <span className="text-sm text-slate-400 font-medium">Total</span>
           </div>
           <div className="text-2xl font-bold text-white mt-1">{upcomingEvents.length}</div>
           <div className="text-xs text-slate-300">Upcoming</div>
-        </div>
+        </button>
       </div>
 
       {/* Events List */}
       {expanded && (
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-slate-400 mb-3">Event Details</h4>
-          {upcomingEvents.slice(0, 10).map((event, index) => {
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-medium text-slate-400">Event Details</h4>
+            {activeFilter !== 'all' && (
+              <span className="text-xs text-slate-500">
+                Showing {activeFilter} impact events
+              </span>
+            )}
+          </div>
+          {filteredEvents.slice(0, 10).map((event, index) => {
             const eventDate = new Date(event.date);
             const now = new Date();
             const daysUntil = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
@@ -178,9 +220,9 @@ const UpcomingEventsCard = ({ events }) => {
             );
           })}
           
-          {upcomingEvents.length > 10 && (
+          {filteredEvents.length > 10 && (
             <div className="text-center text-sm text-slate-400 py-2">
-              +{upcomingEvents.length - 10} more events
+              +{filteredEvents.length - 10} more events
             </div>
           )}
         </div>

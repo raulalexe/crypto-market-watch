@@ -22,7 +22,9 @@ const EmailConfirmSuccess = () => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          navigate('/dashboard');
+          navigate('/app');
+          // Scroll to top when redirecting
+          window.scrollTo(0, 0);
           return 0;
         }
         return prev - 1;
@@ -33,7 +35,9 @@ const EmailConfirmSuccess = () => {
   }, [token, navigate]);
 
   const handleGoToDashboard = () => {
-    navigate('/dashboard');
+    navigate('/app');
+    // Scroll to top when navigating
+    window.scrollTo(0, 0);
   };
 
   return (
@@ -57,7 +61,7 @@ const EmailConfirmSuccess = () => {
           </p>
 
           <p className="text-slate-400 text-sm mb-8">
-            You are now logged in and will be redirected to your dashboard in {countdown} seconds.
+            You are now logged in and will be redirected to the app in {countdown} seconds.
           </p>
 
           {/* Action Button */}
@@ -65,7 +69,7 @@ const EmailConfirmSuccess = () => {
             onClick={handleGoToDashboard}
             className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
           >
-            <span>Go to Dashboard</span>
+            <span>Go to App</span>
             <ArrowRight className="w-4 h-4" />
           </button>
 

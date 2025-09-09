@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import pushNotificationService from './services/pushNotificationService';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
@@ -42,20 +42,6 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/dashboard');
-      setDashboardData(response.data);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchUserData = async () => {
     try {
       const token = localStorage.getItem('authToken');
@@ -71,6 +57,20 @@ function App() {
     } catch (err) {
       console.error('Error fetching user data:', err);
       setUserData(null);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/dashboard');
+      setDashboardData(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -112,6 +112,11 @@ function App() {
     setIsAuthenticated(true);
     await fetchUserData();
     
+    // Clear auth parameters from URL after successful authentication
+    const url = new URL(window.location);
+    url.searchParams.delete('auth');
+    window.history.replaceState({}, '', url.toString());
+    
     // Check if user is admin and refresh page to ensure all components update properly
     const token = localStorage.getItem('authToken');
     if (token) {
@@ -132,6 +137,8 @@ function App() {
     }
     
     fetchDashboardData();
+    // Scroll to top of the page after successful authentication
+    window.scrollTo(0, 0);
   };
 
   const handleLogout = () => {
@@ -141,6 +148,183 @@ function App() {
     setIsAuthenticated(false);
     // Reload the page to clear any cached data and ensure clean state
     window.location.reload();
+  };
+
+  // Component to handle URL parameters and auth modal state
+  const AppRoutes = () => {
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+
+    // Handle auth query parameters
+    useEffect(() => {
+      const authParam = searchParams.get('auth');
+      if (authParam === 'register' || authParam === 'login') {
+        setAuthModalOpen(true);
+        // Scroll to top when modal opens due to URL parameter
+        window.scrollTo(0, 0);
+      } else {
+        // If no auth param, close modal
+        setAuthModalOpen(false);
+      }
+    }, [searchParams]);
+
+    // Function to close modal and clear URL parameters
+    const handleCloseModal = () => {
+      setAuthModalOpen(false);
+      // Navigate to the same path without the auth parameter
+      const currentPath = window.location.pathname;
+      navigate(currentPath, { replace: true });
+      // Scroll to top of the page
+      window.scrollTo(0, 0);
+    };
+
+    return (
+      <>
+        <Header 
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          onRefreshClick={fetchDashboardData}
+          onAuthClick={() => {
+            window.location.href = '/app?auth=login';
+          }}
+          onLogoutClick={handleLogout}
+          loading={loading}
+          isAuthenticated={isAuthenticated}
+          userData={userData}
+          setAuthModalOpen={setAuthModalOpen}
+        />
+        
+        <div className="flex min-h-screen">
+          <Sidebar 
+            userData={userData} 
+            isOpen={sidebarOpen} 
+            onClose={() => setSidebarOpen(false)} 
+          />
+          
+          <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
+            <Routes>
+              <Route 
+                path="/" 
+                element={
+                  <Dashboard 
+                    isAuthenticated={isAuthenticated}
+                    userData={userData}
+                  />
+                } 
+              />
+              <Route 
+                path="history" 
+                element={<HistoricalData userData={userData} />} 
+              />
+              
+              <Route 
+                path="data-export" 
+                element={<DataExport />} 
+              />
+              <Route 
+                path="alerts" 
+                element={<AlertsPage isAuthenticated={isAuthenticated} userData={userData} />} 
+              />
+              <Route 
+                path="events" 
+                element={<UpcomingEventsPage />} 
+              />
+              <Route 
+                path="advanced-analytics" 
+                element={<AdvancedAnalytics userData={userData} />} 
+              />
+              <Route 
+                path="advanced-export" 
+                element={<AdvancedDataExport />} 
+              />
+              <Route 
+                path="custom-alerts" 
+                element={<CustomAlertThresholds />} 
+              />
+              <Route 
+                path="errors" 
+                element={<ErrorLogs />} 
+              />
+              <Route 
+                path="subscription" 
+                element={<SubscriptionPlans setAuthModalOpen={setAuthModalOpen} />} 
+              />
+              <Route 
+                path="admin" 
+                element={<AdminDashboard isAuthenticated={isAuthenticated} userData={userData} />} 
+              />
+              <Route 
+                path="auth-required" 
+                element={<AuthRequired />} 
+              />
+              <Route 
+                path="profile" 
+                element={<Profile onProfileUpdate={fetchUserData} />} 
+              />
+              <Route 
+                path="contact" 
+                element={<ContactForm />} 
+              />
+              <Route 
+                path="privacy" 
+                element={<PrivacyPolicy />} 
+              />
+              <Route 
+                path="terms" 
+                element={<TermsAndConditions />} 
+              />
+              <Route 
+                path="about" 
+                element={<About />} 
+              />
+            </Routes>
+          </main>
+        </div>
+        
+        {/* Main Footer */}
+        <footer className="bg-slate-800 border-t border-slate-700 py-6 px-4 md:px-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="text-slate-400 text-sm mb-4 md:mb-0">
+                <p>© 2025 Crypto Market Watch. All rights reserved.</p>
+              </div>
+              <div className="flex space-x-6">
+                <Link 
+                  to="/app/contact" 
+                  className="text-slate-400 hover:text-white transition-colors text-sm"
+                >
+                  Contact
+                </Link>
+                <Link 
+                  to="/app/privacy" 
+                  className="text-slate-400 hover:text-white transition-colors text-sm"
+                >
+                  Privacy Policy
+                </Link>
+                <Link 
+                  to="/app/terms" 
+                  className="text-slate-400 hover:text-white transition-colors text-sm"
+                >
+                  Terms & Conditions
+                </Link>
+                <Link 
+                  to="/app/about" 
+                  className="text-slate-400 hover:text-white transition-colors text-sm"
+                >
+                  About
+                </Link>
+              </div>
+            </div>
+          </div>
+        </footer>
+        
+        <AuthModal 
+          isOpen={authModalOpen}
+          onClose={handleCloseModal}
+          onAuthSuccess={handleAuthSuccess}
+          initialMode={searchParams.get('auth') === 'register' ? 'signup' : 'login'}
+        />
+      </>
+    );
   };
 
   // Check if current route is the landing page
@@ -171,152 +355,9 @@ function App() {
 
           
           {/* App routes with header and sidebar */}
-          <Route path="/app/*" element={
-            <>
-              <Header 
-                onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-                onRefreshClick={fetchDashboardData}
-                onAuthClick={() => setAuthModalOpen(true)}
-                onLogoutClick={handleLogout}
-                loading={loading}
-                isAuthenticated={isAuthenticated}
-                userData={userData}
-                setAuthModalOpen={setAuthModalOpen}
-              />
-              
-              <div className="flex min-h-screen">
-                <Sidebar 
-                  isOpen={sidebarOpen} 
-                  onClose={() => setSidebarOpen(false)}
-                  userData={userData}
-                />
-                
-                <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
-                  <Routes>
-                    <Route 
-                      path="/" 
-                      element={
-                        <Dashboard 
-                          isAuthenticated={isAuthenticated}
-                          userData={userData}
-                        />
-                      } 
-                    />
-                    <Route 
-                      path="history" 
-                      element={<HistoricalData userData={userData} />} 
-                    />
-                    
-                    <Route 
-                      path="data-export" 
-                      element={<DataExport />} 
-                    />
-                    <Route 
-                      path="alerts" 
-                      element={<AlertsPage isAuthenticated={isAuthenticated} userData={userData} />} 
-                    />
-                    <Route 
-                      path="events" 
-                      element={<UpcomingEventsPage />} 
-                    />
-                    <Route 
-                      path="advanced-analytics" 
-                      element={<AdvancedAnalytics userData={userData} />} 
-                    />
-                    <Route 
-                      path="advanced-export" 
-                      element={<AdvancedDataExport />} 
-                    />
-                    <Route 
-                      path="custom-alerts" 
-                      element={<CustomAlertThresholds />} 
-                    />
-                    <Route 
-                      path="errors" 
-                      element={<ErrorLogs />} 
-                    />
-                    <Route 
-                      path="subscription" 
-                      element={<SubscriptionPlans setAuthModalOpen={setAuthModalOpen} />} 
-                    />
-                    <Route 
-                      path="admin" 
-                      element={<AdminDashboard isAuthenticated={isAuthenticated} userData={userData} />} 
-                    />
-                    <Route 
-                      path="auth-required" 
-                      element={<AuthRequired />} 
-                    />
-                    <Route 
-                      path="profile" 
-                      element={<Profile onProfileUpdate={fetchUserData} />} 
-                    />
-                    <Route 
-                      path="contact" 
-                      element={<ContactForm />} 
-                    />
-                    <Route 
-                      path="privacy" 
-                      element={<PrivacyPolicy />} 
-                    />
-                    <Route 
-                      path="terms" 
-                      element={<TermsAndConditions />} 
-                    />
-                    <Route 
-                      path="about" 
-                      element={<About />} 
-                    />
-                  </Routes>
-                </main>
-              </div>
-              
-              {/* Main Footer */}
-              <footer className="bg-slate-800 border-t border-slate-700 py-6 px-4 md:px-6">
-                <div className="max-w-7xl mx-auto">
-                  <div className="flex flex-col md:flex-row justify-between items-center">
-                    <div className="text-slate-400 text-sm mb-4 md:mb-0">
-                      <p>© 2025 Crypto Market Watch. All rights reserved.</p>
-                    </div>
-                    <div className="flex space-x-6">
-                      <Link 
-                        to="/app/contact" 
-                        className="text-slate-400 hover:text-white transition-colors text-sm"
-                      >
-                        Contact
-                      </Link>
-                      <Link 
-                        to="/app/privacy" 
-                        className="text-slate-400 hover:text-white transition-colors text-sm"
-                      >
-                        Privacy Policy
-                      </Link>
-                      <Link 
-                        to="/app/terms" 
-                        className="text-slate-400 hover:text-white transition-colors text-sm"
-                      >
-                        Terms & Conditions
-                      </Link>
-                      <Link 
-                        to="/app/about" 
-                        className="text-slate-400 hover:text-white transition-colors text-sm"
-                      >
-                        About
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </footer>
-            </>
-          } />
+          <Route path="/app/*" element={<AppRoutes />} />
         </Routes>
       </div>
-      
-      <AuthModal 
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onAuthSuccess={handleAuthSuccess}
-      />
     </Router>
   );
 }

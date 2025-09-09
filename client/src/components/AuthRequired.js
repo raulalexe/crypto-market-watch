@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Lock, User, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
+import Footer from './Footer';
 
 const AuthRequired = () => {
   const [searchParams] = useSearchParams();
@@ -159,13 +160,13 @@ const AuthRequired = () => {
               ) : (
                 <>
                   <Link
-                    to="/?auth=login"
+                    to="/app?auth=login"
                     className="flex-1 bg-crypto-blue text-white py-3 px-6 rounded-lg hover:bg-blue-600 transition-colors font-medium text-center"
                   >
                     Sign In
                   </Link>
                   <Link
-                    to="/?auth=register"
+                    to="/app?auth=register"
                     className="flex-1 bg-slate-700 text-white py-3 px-6 rounded-lg hover:bg-slate-600 transition-colors font-medium text-center"
                   >
                     Create Account
@@ -178,7 +179,7 @@ const AuthRequired = () => {
               <p className="text-xs text-slate-500 mt-4">
                 Already have an account?{' '}
                 <Link
-                  to="/?auth=login"
+                  to="/app?auth=login"
                   className="text-crypto-blue hover:text-blue-400"
                 >
                   Sign in here
@@ -189,6 +190,12 @@ const AuthRequired = () => {
             {/* Footer links */}
             <div className="mt-8 pt-4 border-t border-slate-700">
               <div className="flex justify-center space-x-4 text-xs text-slate-500">
+                <Link 
+                  to="/app/contact" 
+                  className="hover:text-slate-300 transition-colors"
+                >
+                  Contact
+                </Link>
                 <Link 
                   to="/app/privacy" 
                   className="hover:text-slate-300 transition-colors"

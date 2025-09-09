@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, MessageSquare, User, Send, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, MessageSquare, User, Send, RefreshCw, CheckCircle, AlertCircle, Upload, X } from 'lucide-react';
 import axios from 'axios';
 
 const ContactForm = () => {
@@ -9,6 +9,7 @@ const ContactForm = () => {
     subject: '',
     message: ''
   });
+  const [screenshot, setScreenshot] = useState(null);
   const [captcha, setCaptcha] = useState({
     question: '',
     answer: '',
@@ -66,6 +67,37 @@ const ContactForm = () => {
     }));
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+        return;
+      }
+      
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        setError('File size must be less than 5MB');
+        return;
+      }
+      
+      setScreenshot(file);
+      setError(''); // Clear any previous errors
+    }
+  };
+
+  const removeScreenshot = () => {
+    setScreenshot(null);
+    // Reset the file input
+    const fileInput = document.getElementById('screenshot');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
   const validateForm = () => {
     if (!formData.name.trim()) {
       setError('Name is required');
@@ -109,9 +141,22 @@ const ContactForm = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/contact', {
-        ...formData,
-        captchaAnswer: captcha.userAnswer
+      // Create FormData to handle file upload
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('subject', formData.subject);
+      formDataToSend.append('message', formData.message);
+      formDataToSend.append('captchaAnswer', captcha.userAnswer);
+      
+      if (screenshot) {
+        formDataToSend.append('screenshot', screenshot);
+      }
+
+      const response = await axios.post('/api/contact', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       if (response.data.success) {
@@ -122,6 +167,7 @@ const ContactForm = () => {
           subject: '',
           message: ''
         });
+        setScreenshot(null);
         generateCaptcha();
       } else {
         setError(response.data.error || 'Failed to send message');
@@ -239,6 +285,61 @@ const ContactForm = () => {
                 placeholder="Please describe your question or issue in detail..."
                 required
               />
+            </div>
+
+            {/* Screenshot Upload Field */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Screenshot (Optional)
+              </label>
+              <div className="space-y-3">
+                {/* File Input */}
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="screenshot"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="screenshot"
+                    className="flex items-center justify-center space-x-2 w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-600 hover:border-crypto-blue transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>{screenshot ? 'Change Screenshot' : 'Upload Screenshot'}</span>
+                  </label>
+                </div>
+                
+                {/* File Info */}
+                {screenshot && (
+                  <div className="flex items-center justify-between p-3 bg-slate-700 border border-slate-600 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-crypto-blue/20 rounded flex items-center justify-center">
+                        <Upload className="w-4 h-4 text-crypto-blue" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-white font-medium">{screenshot.name}</p>
+                        <p className="text-xs text-slate-400">
+                          {(screenshot.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeScreenshot}
+                      className="p-1 rounded hover:bg-slate-600 transition-colors"
+                      title="Remove screenshot"
+                    >
+                      <X className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
+                )}
+                
+                <p className="text-xs text-slate-400">
+                  Supported formats: JPEG, PNG, GIF, WebP. Maximum size: 5MB.
+                </p>
+              </div>
             </div>
 
             {/* Captcha */}

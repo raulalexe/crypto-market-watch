@@ -291,7 +291,7 @@ const Settings = ({ setAuthModalOpen }) => {
             </div>
           </div>
           <button
-            onClick={() => setAuthModalOpen(true)}
+            onClick={() => window.location.href = '/app?auth=register'}
             className="px-6 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
             Sign Up for Pro

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Calendar, Clock, AlertTriangle, TrendingUp, TrendingDown, DollarSign, Users, Filter, Search, CalendarDays, Target, Info, Trash2, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
 import { isAdmin } from '../utils/authUtils';
 
 const UpcomingEventsPage = () => {
+  const [searchParams] = useSearchParams();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,6 +14,7 @@ const UpcomingEventsPage = () => {
     category: 'all',
     impact: 'all',
     search: '',
+    timeFilter: 'all', // all, thisWeek, nextMonth
     showIgnored: false
   });
   const [sortBy, setSortBy] = useState('date');
@@ -62,6 +65,20 @@ const UpcomingEventsPage = () => {
     initializeData();
   }, []);
 
+  // Handle URL filter parameter
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam) {
+      setFilters(prev => ({
+        ...prev,
+        impact: filterParam === 'all' ? 'all' : filterParam,
+        category: 'all',
+        search: '',
+        timeFilter: 'all'
+      }));
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     filterAndSortEvents();
   }, [events, filters, sortBy, isAdminUser]);
@@ -90,6 +107,25 @@ const UpcomingEventsPage = () => {
     // Apply impact filter
     if (filters.impact !== 'all') {
       filtered = filtered.filter(event => event?.impact === filters.impact);
+    }
+
+    // Apply time filter
+    if (filters.timeFilter !== 'all') {
+      const now = new Date();
+      filtered = filtered.filter(event => {
+        if (!event?.date) return false;
+        const eventDate = new Date(event.date);
+        const diffDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+        
+        switch (filters.timeFilter) {
+          case 'thisWeek':
+            return diffDays >= 0 && diffDays <= 7;
+          case 'nextMonth':
+            return diffDays >= 0 && diffDays <= 30;
+          default:
+            return true;
+        }
+      });
     }
 
     // Apply search filter
@@ -263,6 +299,53 @@ const UpcomingEventsPage = () => {
     }
   };
 
+  const handleStatsCardClick = (filterType) => {
+    switch (filterType) {
+      case 'total':
+        // Show all events
+        setFilters(prev => ({
+          ...prev,
+          category: 'all',
+          impact: 'all',
+          timeFilter: 'all',
+          search: ''
+        }));
+        break;
+      case 'highImpact':
+        // Filter by high impact only
+        setFilters(prev => ({
+          ...prev,
+          category: 'all',
+          impact: 'high',
+          timeFilter: 'all',
+          search: ''
+        }));
+        break;
+      case 'thisWeek':
+        // Filter by events happening this week
+        setFilters(prev => ({
+          ...prev,
+          category: 'all',
+          impact: 'all',
+          timeFilter: 'thisWeek',
+          search: ''
+        }));
+        break;
+      case 'nextMonth':
+        // Filter by events happening next month
+        setFilters(prev => ({
+          ...prev,
+          category: 'all',
+          impact: 'all',
+          timeFilter: 'nextMonth',
+          search: ''
+        }));
+        break;
+      default:
+        break;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -329,7 +412,10 @@ const UpcomingEventsPage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+          <button 
+            onClick={() => handleStatsCardClick('total')}
+            className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-crypto-blue hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
+          >
             <div className="flex items-center space-x-3">
               <Calendar className="w-6 h-6 text-crypto-blue" />
               <div>
@@ -337,9 +423,12 @@ const UpcomingEventsPage = () => {
                 <p className="text-2xl font-bold text-white">{stats.total}</p>
               </div>
             </div>
-          </div>
+          </button>
           
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+          <button 
+            onClick={() => handleStatsCardClick('highImpact')}
+            className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-red-400 hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
+          >
             <div className="flex items-center space-x-3">
               <Target className="w-6 h-6 text-red-400" />
               <div>
@@ -347,9 +436,12 @@ const UpcomingEventsPage = () => {
                 <p className="text-2xl font-bold text-white">{stats.highImpact}</p>
               </div>
             </div>
-          </div>
+          </button>
           
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+          <button 
+            onClick={() => handleStatsCardClick('thisWeek')}
+            className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-yellow-400 hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
+          >
             <div className="flex items-center space-x-3">
               <CalendarDays className="w-6 h-6 text-yellow-400" />
               <div>
@@ -357,9 +449,12 @@ const UpcomingEventsPage = () => {
                 <p className="text-2xl font-bold text-white">{stats.thisWeek}</p>
               </div>
             </div>
-          </div>
+          </button>
           
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+          <button 
+            onClick={() => handleStatsCardClick('nextMonth')}
+            className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-green-400 hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
+          >
             <div className="flex items-center space-x-3">
               <Clock className="w-6 h-6 text-green-400" />
               <div>
@@ -367,7 +462,7 @@ const UpcomingEventsPage = () => {
                 <p className="text-2xl font-bold text-white">{stats.nextMonth}</p>
               </div>
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Filters */}
@@ -377,7 +472,7 @@ const UpcomingEventsPage = () => {
             <h2 className="text-lg font-semibold text-white">Filters & Search</h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -413,6 +508,17 @@ const UpcomingEventsPage = () => {
               <option value="high">High Impact</option>
               <option value="medium">Medium Impact</option>
               <option value="low">Low Impact</option>
+            </select>
+
+            {/* Time Filter */}
+            <select
+              value={filters.timeFilter}
+              onChange={(e) => setFilters(prev => ({ ...prev, timeFilter: e.target.value }))}
+              className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-crypto-blue"
+            >
+              <option value="all">All Time</option>
+              <option value="thisWeek">This Week</option>
+              <option value="nextMonth">Next Month</option>
             </select>
 
             {/* Sort */}
@@ -457,12 +563,16 @@ const UpcomingEventsPage = () => {
 
         {/* Events List */}
         <div className="space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">Events</h2>
+            <p className="text-sm text-slate-400">Click the stats cards above to filter events</p>
+          </div>
           {filteredEvents.length === 0 ? (
             <div className="bg-slate-800 rounded-lg p-8 border border-slate-700 text-center">
               <Calendar className="w-12 h-12 text-slate-400 mx-auto mb-4" />
               <p className="text-slate-400 text-lg">No events match your filters</p>
               <button 
-                onClick={() => setFilters({ category: 'all', impact: 'all', search: '', showIgnored: false })}
+                onClick={() => setFilters({ category: 'all', impact: 'all', search: '', timeFilter: 'all', showIgnored: false })}
                 className="mt-4 text-crypto-blue hover:text-blue-400 transition-colors"
               >
                 Clear filters
@@ -470,7 +580,10 @@ const UpcomingEventsPage = () => {
             </div>
           ) : (
             filteredEvents.map((event, index) => (
-              <div key={index} className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-slate-600 transition-colors">
+              <div 
+                key={index} 
+                className="bg-slate-800 rounded-lg p-6 border border-slate-700"
+              >
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex-1">
                     <div className="flex items-start space-x-4">
@@ -531,6 +644,12 @@ const UpcomingEventsPage = () => {
                           timeZoneName: 'short'
                         }) : ''}
                       </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        {event?.source === 'BLS' || event?.source === 'Bureau of Labor Statistics' ? 'Eastern Time' : 
+                         event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
+                           timeZoneName: 'long'
+                         }) : ''}
+                      </div>
                       <div className="text-sm text-crypto-blue font-medium mt-1">
                         {event?.timeRemaining ? (
                           <span className="flex items-center space-x-1">
@@ -548,7 +667,10 @@ const UpcomingEventsPage = () => {
                           <div className="flex items-center justify-end space-x-2">
                             {event?.ignored ? (
                               <button
-                                onClick={() => handleUnignoreEvent(event.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUnignoreEvent(event.id);
+                                }}
                                 className="flex items-center space-x-1 px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
                                 title="Unignore event"
                               >
@@ -557,7 +679,10 @@ const UpcomingEventsPage = () => {
                               </button>
                             ) : (
                               <button
-                                onClick={() => handleIgnoreEvent(event.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleIgnoreEvent(event.id);
+                                }}
                                 className="flex items-center space-x-1 px-2 py-1 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 transition-colors"
                                 title="Ignore event"
                               >
@@ -566,7 +691,10 @@ const UpcomingEventsPage = () => {
                               </button>
                             )}
                             <button
-                              onClick={() => handleDeleteEvent(event.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteEvent(event.id);
+                              }}
                               className="flex items-center space-x-1 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
                               title="Delete event"
                             >
