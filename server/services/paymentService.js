@@ -130,7 +130,22 @@ class PaymentService {
       // Create or get Stripe customer
       let customer;
       if (user.stripe_customer_id) {
-        customer = await this.stripe.customers.retrieve(user.stripe_customer_id);
+        try {
+          customer = await this.stripe.customers.retrieve(user.stripe_customer_id);
+        } catch (error) {
+          // If customer doesn't exist in Stripe, create a new one
+          if (error.code === 'resource_missing') {
+            console.log(`Customer ${user.stripe_customer_id} not found in Stripe, creating new customer`);
+            customer = await this.stripe.customers.create({
+              email: user.email,
+            });
+            
+            // Update user with new Stripe customer ID
+            await updateUser(userId, { stripe_customer_id: customer.id });
+          } else {
+            throw error;
+          }
+        }
       } else {
         customer = await this.stripe.customers.create({
           email: user.email,
