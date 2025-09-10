@@ -176,6 +176,36 @@ class BrevoEmailService {
     }
   }
 
+  async sendUpgradeEmail(userEmail, userName = null, planType = 'Pro', subscriptionDetails = {}) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Brevo email service not configured, skipping upgrade email');
+      return false;
+    }
+
+    try {
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      
+      sendSmtpEmail.subject = `🎉 Welcome to ${planType}! Your upgrade is complete`;
+      sendSmtpEmail.htmlContent = this.generateUpgradeEmailHTML(userName, userEmail, planType, subscriptionDetails);
+      sendSmtpEmail.textContent = this.generateUpgradeEmailText(userName, userEmail, planType, subscriptionDetails);
+      sendSmtpEmail.sender = {
+        name: 'Crypto Market Watch',
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+      };
+      sendSmtpEmail.to = [{
+        email: userEmail,
+        name: userName || userEmail.split('@')[0]
+      }];
+
+      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log(`✅ Upgrade email sent to ${userEmail}: ${result.messageId}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error sending upgrade email:', error);
+      return false;
+    }
+  }
+
   async sendAccountDeletedByAdminEmail(userEmail, userName = null) {
     if (!this.isConfigured) {
       console.log('⚠️ Brevo email service not configured, skipping account deletion email');
@@ -1328,6 +1358,324 @@ This is an automated message. Please do not reply to this email.
       default:
         return 'linear-gradient(135deg, #64748b 0%, #475569 100%)';
     }
+  }
+
+  generateUpgradeEmailHTML(userName, userEmail = null, planType = 'Pro', subscriptionDetails = {}) {
+    const displayName = userName || 'there';
+    const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const unsubscribeUrl = userEmail ? this.generateUnsubscribeUrl(userEmail) : null;
+    
+    // Get plan features based on plan type
+    const planFeatures = this.getPlanFeatures(planType);
+    const planPrice = this.getPlanPrice(planType);
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to ${planType} - Crypto Market Watch</title>
+        <style>
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 20px;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .header { 
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #0f172a; 
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(15,23,42,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            width: 48px;
+            height: 48px;
+            background: #0f172a;
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+            z-index: 1;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+          }
+          .header p {
+            margin: 10px 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+          }
+          .content { 
+            padding: 40px 30px; 
+          }
+          .success-badge {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #0f172a;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 20px;
+          }
+          .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+          }
+          .feature-card {
+            background: #334155;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #00ff88;
+          }
+          .feature-card h4 {
+            margin: 0 0 10px;
+            color: #00ff88;
+            font-size: 16px;
+          }
+          .feature-card p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+          }
+          .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #0f172a;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            transition: transform 0.2s;
+          }
+          .cta-button:hover {
+            transform: translateY(-2px);
+          }
+          .subscription-details {
+            background: #334155;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+          }
+          .subscription-details h3 {
+            margin: 0 0 15px;
+            color: #00ff88;
+          }
+          .subscription-details p {
+            margin: 5px 0;
+            font-size: 14px;
+          }
+          .footer { 
+            background: #0f172a; 
+            padding: 30px; 
+            text-align: center; 
+            border-top: 1px solid #334155;
+          }
+          .footer p { 
+            margin: 5px 0; 
+            font-size: 14px; 
+            opacity: 0.7; 
+          }
+          .social-links {
+            margin: 20px 0;
+          }
+          .social-links a {
+            color: #00ff88;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 14px;
+          }
+          @media (max-width: 600px) {
+            .container { margin: 10px; }
+            .content { padding: 20px; }
+            .header { padding: 30px 20px; }
+            .header h1 { font-size: 24px; }
+            .features-grid { grid-template-columns: 1fr; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">📈</div>
+            <h1>🎉 Welcome to ${planType}!</h1>
+            <p>Your upgrade is complete and you're ready to unlock advanced features</p>
+          </div>
+          
+          <div class="content">
+            <div class="success-badge">✅ Upgrade Successful</div>
+            
+            <h2>Hello ${displayName}!</h2>
+            
+            <p>Congratulations! Your upgrade to <strong>${planType}</strong> has been successfully processed. You now have access to all the advanced features that will help you stay ahead in the crypto market.</p>
+            
+            <div class="subscription-details">
+              <h3>📋 Your Subscription Details</h3>
+              <p><strong>Plan:</strong> ${planType}</p>
+              <p><strong>Price:</strong> $${planPrice}/month</p>
+              <p><strong>Status:</strong> Active</p>
+              ${subscriptionDetails.current_period_end ? `<p><strong>Next Billing:</strong> ${new Date(subscriptionDetails.current_period_end).toLocaleDateString()}</p>` : ''}
+            </div>
+            
+            <h3>🚀 New Features Unlocked</h3>
+            <div class="features-grid">
+              ${planFeatures.map(feature => `
+                <div class="feature-card">
+                  <h4>${feature.title}</h4>
+                  <p>${feature.description}</p>
+                </div>
+              `).join('')}
+            </div>
+            
+            <h3>🎯 What's Next?</h3>
+            <p>Now that you have ${planType} access, here's how to make the most of your subscription:</p>
+            <ul>
+              <li><strong>Explore Advanced Analytics:</strong> Access detailed market insights and AI-powered analysis</li>
+              <li><strong>Set Up Alerts:</strong> Configure custom alerts for your favorite cryptocurrencies</li>
+              <li><strong>Use the API:</strong> Integrate our data into your own applications</li>
+              <li><strong>Export Data:</strong> Download historical data for your analysis</li>
+            </ul>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${frontendUrl}/app/dashboard" class="cta-button">Access Your Dashboard</a>
+            </div>
+            
+            <p>If you have any questions about your new ${planType} features or need help getting started, don't hesitate to reach out to our support team.</p>
+            
+            <p>Thank you for choosing Crypto Market Watch!</p>
+          </div>
+          
+          <div class="footer">
+            <div class="social-links">
+              <a href="${websiteUrl}">Website</a>
+              <a href="${frontendUrl}/app/settings">Account Settings</a>
+              <a href="${frontendUrl}/app/support">Support</a>
+            </div>
+            <p>Crypto Market Watch Team</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+            ${unsubscribeUrl ? `<p><a href="${unsubscribeUrl}" style="color: #64748b; font-size: 12px;">Unsubscribe</a></p>` : ''}
+          </div>
+        </div>
+      </body>
+      </html>
+    `.trim();
+  }
+
+  generateUpgradeEmailText(userName, userEmail = null, planType = 'Pro', subscriptionDetails = {}) {
+    const displayName = userName || 'there';
+    const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    // Get plan features based on plan type
+    const planFeatures = this.getPlanFeatures(planType);
+    const planPrice = this.getPlanPrice(planType);
+    
+    return `
+🎉 Welcome to ${planType}! Your upgrade is complete
+
+Hello ${displayName}!
+
+Congratulations! Your upgrade to ${planType} has been successfully processed. You now have access to all the advanced features that will help you stay ahead in the crypto market.
+
+📋 Your Subscription Details:
+- Plan: ${planType}
+- Price: $${planPrice}/month
+- Status: Active
+${subscriptionDetails.current_period_end ? `- Next Billing: ${new Date(subscriptionDetails.current_period_end).toLocaleDateString()}` : ''}
+
+🚀 New Features Unlocked:
+${planFeatures.map(feature => `- ${feature.title}: ${feature.description}`).join('\n')}
+
+🎯 What's Next?
+Now that you have ${planType} access, here's how to make the most of your subscription:
+
+- Explore Advanced Analytics: Access detailed market insights and AI-powered analysis
+- Set Up Alerts: Configure custom alerts for your favorite cryptocurrencies
+- Use the API: Integrate our data into your own applications
+- Export Data: Download historical data for your analysis
+
+Access Your Dashboard: ${frontendUrl}/app/dashboard
+
+If you have any questions about your new ${planType} features or need help getting started, don't hesitate to reach out to our support team.
+
+Thank you for choosing Crypto Market Watch!
+
+Crypto Market Watch Team
+This is an automated message. Please do not reply to this email.
+
+Website: ${websiteUrl}
+Account Settings: ${frontendUrl}/app/settings
+Support: ${frontendUrl}/app/support
+    `.trim();
+  }
+
+  getPlanFeatures(planType) {
+    const features = {
+      'Pro': [
+        { title: 'Advanced Analytics', description: 'AI-powered market analysis with confidence scores' },
+        { title: 'Unlimited Data Collection', description: 'Access to all crypto assets and historical data' },
+        { title: 'Custom Alerts', description: 'Email, push, and Telegram notifications' },
+        { title: 'API Access', description: '1,000 API calls per day for integrations' },
+        { title: 'Data Export', description: 'Download historical data in multiple formats' },
+        { title: 'Exchange Flows', description: 'Monitor exchange inflows and outflows' }
+      ],
+      'Premium': [
+        { title: 'All Pro Features', description: 'Everything in Pro plan plus more' },
+        { title: 'Extended History', description: '1-year historical data access' },
+        { title: 'Custom Models', description: 'Train your own AI models' },
+        { title: 'Priority Support', description: 'Dedicated support channel' },
+        { title: 'White-label Options', description: 'Custom branding and integrations' },
+        { title: 'Advanced API', description: '10,000 API calls per day' }
+      ]
+    };
+    
+    return features[planType] || features['Pro'];
+  }
+
+  getPlanPrice(planType) {
+    const prices = {
+      'Pro': '29.99',
+      'Premium': '99.00'
+    };
+    
+    return prices[planType] || '29.99';
   }
 
   async testConnection() {

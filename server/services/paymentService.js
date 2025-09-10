@@ -290,6 +290,41 @@ class PaymentService {
       });
       
       console.log(`Subscription ${subscription.id} saved to database for user ${userId}`);
+
+      // Send upgrade email if this is a paid plan (not free or admin)
+      if (planId !== 'free' && planId !== 'admin') {
+        try {
+          const user = await getUserById(userId);
+          if (user && user.email) {
+            const EmailService = require('./emailService');
+            const emailService = new EmailService();
+            
+            const plan = this.subscriptionPlans[planId];
+            const subscriptionDetails = {
+              current_period_start: new Date(subscription.current_period_start * 1000),
+              current_period_end: new Date(subscription.current_period_end * 1000),
+              payment_method: 'stripe',
+              payment_id: subscription.id
+            };
+
+            const emailSent = await emailService.sendUpgradeEmail(
+              user.email, 
+              user.email.split('@')[0], 
+              plan.name, 
+              subscriptionDetails
+            );
+
+            if (emailSent) {
+              console.log(`📧 Upgrade email sent to ${user.email} for ${plan.name} subscription`);
+            } else {
+              console.log(`⚠️ Failed to send upgrade email to ${user.email}`);
+            }
+          }
+        } catch (emailError) {
+          console.error('Error sending upgrade email:', emailError);
+          // Don't throw the error - subscription activation should still succeed
+        }
+      }
     } catch (error) {
       console.error('Error handling checkout session completed:', error);
     }
@@ -402,14 +437,7 @@ class PaymentService {
         order_id: `sub_${Date.now()}_${userId}_${planId}`,
         order_description: `${plan.name} ${isSubscription ? 'Subscription' : 'Payment'}`,
         ipn_callback_url: `${process.env.BASE_URL}/api/webhooks/nowpayments`,
-        case: isSubscription ? 'subscription' : 'payment',
-        is_subscription: isSubscription,
-        subscription_period: plan.duration, // days
-        metadata: {
-          user_id: userId,
-          plan_type: planId,
-          is_subscription: isSubscription
-        }
+        case: 'common'
       };
 
       const response = await axios.post(`${this.nowPaymentsBaseUrl}/payment`, paymentData, {
@@ -450,14 +478,7 @@ class PaymentService {
         order_id: `sub_${Date.now()}_${userId}_${planId}`,
         order_description: `${plan.name} Subscription`,
         ipn_callback_url: `${process.env.BASE_URL}/api/webhooks/nowpayments`,
-        case: 'subscription',
-        is_subscription: true,
-        subscription_period: plan.duration, // days
-        metadata: {
-          user_id: userId,
-          plan_type: planId,
-          subscription_type: 'recurring'
-        }
+        case: 'common'
       };
 
       const response = await axios.post(`${this.nowPaymentsBaseUrl}/payment`, subscriptionData, {
@@ -542,6 +563,40 @@ class PaymentService {
       });
 
       console.log(`Subscription activated for user ${userId}, plan ${planId}`);
+
+      // Send upgrade email if this is a paid plan (not free or admin)
+      if (planId !== 'free' && planId !== 'admin') {
+        try {
+          const user = await getUserById(userId);
+          if (user && user.email) {
+            const EmailService = require('./emailService');
+            const emailService = new EmailService();
+            
+            const subscriptionDetails = {
+              current_period_start: now,
+              current_period_end: endDate,
+              payment_method: paymentMethod,
+              payment_id: paymentId
+            };
+
+            const emailSent = await emailService.sendUpgradeEmail(
+              user.email, 
+              user.email.split('@')[0], 
+              plan.name, 
+              subscriptionDetails
+            );
+
+            if (emailSent) {
+              console.log(`📧 Upgrade email sent to ${user.email} for ${plan.name} subscription`);
+            } else {
+              console.log(`⚠️ Failed to send upgrade email to ${user.email}`);
+            }
+          }
+        } catch (emailError) {
+          console.error('Error sending upgrade email:', emailError);
+          // Don't throw the error - subscription activation should still succeed
+        }
+      }
     } catch (error) {
       console.error('Subscription activation error:', error);
       throw error;

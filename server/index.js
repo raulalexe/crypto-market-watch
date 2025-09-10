@@ -2969,8 +2969,17 @@ app.post('/api/admin/test-email', authenticateToken, requireAdmin, async (req, r
         };
         emailSent = await emailService.sendAlertEmail(email, testAlert);
         break;
+      case 'upgrade':
+        const subscriptionDetails = {
+          current_period_start: new Date(),
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          payment_method: 'stripe',
+          payment_id: 'test_sub_123'
+        };
+        emailSent = await emailService.sendUpgradeEmail(email, 'Test User', 'Pro', subscriptionDetails);
+        break;
       default:
-        return res.status(400).json({ error: 'Invalid email type. Use: test, welcome, or alert' });
+        return res.status(400).json({ error: 'Invalid email type. Use: test, welcome, alert, or upgrade' });
     }
     
     if (emailSent) {

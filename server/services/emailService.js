@@ -277,6 +277,28 @@ Crypto Market Watch
     return await this.sendAlertEmail(userEmail, alert);
   }
 
+  async sendUpgradeEmail(userEmail, userName = null, planType = 'Pro', subscriptionDetails = {}) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Email service not configured, skipping upgrade email');
+      return false;
+    }
+
+    try {
+      if (this.emailProvider === 'brevo') {
+        // Use BrevoEmailService for upgrade emails
+        const BrevoEmailService = require('./brevoEmailService');
+        const brevoService = new BrevoEmailService();
+        return await brevoService.sendUpgradeEmail(userEmail, userName, planType, subscriptionDetails);
+      } else {
+        console.log('⚠️ Upgrade emails are only supported with Brevo provider');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error sending upgrade email:', error);
+      return false;
+    }
+  }
+
   async testConnection() {
     if (!this.isConfigured) {
       return { success: false, error: 'Email service not configured' };
