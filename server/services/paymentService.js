@@ -116,32 +116,40 @@ class PaymentService {
 
   async createStripeSubscription(userId, planId) {
     try {
+      console.log(`🚀 Creating Stripe subscription for user ${userId}, plan ${planId}`);
+      
       const plan = this.subscriptionPlans[planId];
       if (!plan) {
         throw new Error('Invalid plan');
       }
+      console.log(`📋 Plan details: ${plan.name} - $${plan.price}`);
 
       // Get user
       const user = await getUserById(userId);
       if (!user) {
         throw new Error('User not found');
       }
+      console.log(`👤 User: ${user.email}, existing customer ID: ${user.stripe_customer_id || 'None'}`);
 
       // Create or get Stripe customer
       let customer;
       if (user.stripe_customer_id) {
         try {
           customer = await this.stripe.customers.retrieve(user.stripe_customer_id);
+          console.log(`✅ Retrieved existing customer: ${customer.id}`);
         } catch (error) {
-          // If customer doesn't exist in Stripe, create a new one
-          if (error.code === 'resource_missing') {
-            console.log(`Customer ${user.stripe_customer_id} not found in Stripe, creating new customer`);
+          console.log(`❌ Error retrieving customer ${user.stripe_customer_id}:`, error.message);
+          
+          // If customer doesn't exist in Stripe or has corrupted data, create a new one
+          if (error.code === 'resource_missing' || error.message.includes('Invalid time value') || error.message.includes('Invalid')) {
+            console.log(`Customer ${user.stripe_customer_id} not found or corrupted in Stripe, creating new customer`);
             customer = await this.stripe.customers.create({
               email: user.email,
             });
             
             // Update user with new Stripe customer ID
             await updateUser(userId, { stripe_customer_id: customer.id });
+            console.log(`✅ Created new customer: ${customer.id}`);
           } else {
             throw error;
           }
@@ -153,6 +161,7 @@ class PaymentService {
         
         // Update user with Stripe customer ID
         await updateUser(userId, { stripe_customer_id: customer.id });
+        console.log(`✅ Created new customer: ${customer.id}`);
       }
 
       // Create or get price for the plan
@@ -206,7 +215,9 @@ class PaymentService {
       }
 
       // Create Stripe Checkout session
+      console.log(`💳 Creating Stripe checkout session with customer: ${customer.id}`);
       const session = await this.stripe.checkout.sessions.create(sessionConfig);
+      console.log(`✅ Checkout session created: ${session.id}`);
 
       return {
         success: true,
@@ -214,7 +225,13 @@ class PaymentService {
         url: session.url,
       };
     } catch (error) {
-      console.error('Stripe subscription creation error:', error);
+      console.error('❌ Stripe subscription creation error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        type: error.type,
+        statusCode: error.statusCode
+      });
       throw error;
     }
   }
@@ -440,13 +457,18 @@ class PaymentService {
         case: 'common'
       };
 
+      console.log('Creating NOWPayments payment:', paymentData);
+
       const response = await axios.post(`${this.nowPaymentsBaseUrl}/payment`, paymentData, {
         headers: {
           'x-api-key': this.nowPaymentsApiKey,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 30000 // 30 second timeout
       });
+      
       const payment = response.data;
+      console.log('NOWPayments payment response:', payment);
 
       return {
         paymentId: payment.payment_id,
@@ -459,7 +481,29 @@ class PaymentService {
       };
     } catch (error) {
       console.error('NOWPayments charge creation error:', error);
-      throw error;
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error('Error response status:', error.response.status);
+        console.error('Error response data:', error.response.data);
+        console.error('Error response headers:', error.response.headers);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+      } else {
+        console.error('Error message:', error.message);
+      }
+      console.error('Error config:', error.config);
+      
+      // Provide more specific error message
+      if (error.response && error.response.status === 400) {
+        throw new Error(`NOWPayments API error: ${error.response.data?.message || 'Bad request - check your parameters'}`);
+      } else if (error.response && error.response.status === 401) {
+        throw new Error('NOWPayments API authentication failed - check your API key');
+      } else if (error.response && error.response.status === 403) {
+        throw new Error('NOWPayments API access forbidden - check your account status');
+      } else {
+        throw new Error(`NOWPayments API error: ${error.message}`);
+      }
     }
   }
 
@@ -470,7 +514,8 @@ class PaymentService {
         throw new Error('Invalid plan');
       }
 
-      // Create subscription
+      // NOWPayments doesn't have a separate subscription endpoint
+      // We'll create a regular payment and handle subscription logic in our webhook
       const subscriptionData = {
         price_amount: plan.price,
         price_currency: 'usd',
@@ -481,13 +526,18 @@ class PaymentService {
         case: 'common'
       };
 
+      console.log('Creating NOWPayments subscription payment:', subscriptionData);
+
       const response = await axios.post(`${this.nowPaymentsBaseUrl}/payment`, subscriptionData, {
         headers: {
           'x-api-key': this.nowPaymentsApiKey,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 30000 // 30 second timeout
       });
+      
       const subscription = response.data;
+      console.log('NOWPayments subscription response:', subscription);
 
       return {
         subscriptionId: subscription.payment_id,
@@ -500,7 +550,29 @@ class PaymentService {
       };
     } catch (error) {
       console.error('NOWPayments subscription creation error:', error);
-      throw error;
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error('Error response status:', error.response.status);
+        console.error('Error response data:', error.response.data);
+        console.error('Error response headers:', error.response.headers);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+      } else {
+        console.error('Error message:', error.message);
+      }
+      console.error('Error config:', error.config);
+      
+      // Provide more specific error message
+      if (error.response && error.response.status === 400) {
+        throw new Error(`NOWPayments API error: ${error.response.data?.message || 'Bad request - check your parameters'}`);
+      } else if (error.response && error.response.status === 401) {
+        throw new Error('NOWPayments API authentication failed - check your API key');
+      } else if (error.response && error.response.status === 403) {
+        throw new Error('NOWPayments API access forbidden - check your account status');
+      } else {
+        throw new Error(`NOWPayments API error: ${error.message}`);
+      }
     }
   }
 
