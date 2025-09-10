@@ -469,13 +469,14 @@ class PaymentService {
       
       const payment = response.data;
       console.log('NOWPayments payment response:', payment);
+      console.log('Available fields:', Object.keys(payment));
 
       return {
         paymentId: payment.payment_id,
         payAddress: payment.pay_address,
         payAmount: payment.pay_amount,
         payCurrency: payment.pay_currency,
-        hostedUrl: payment.invoice_url,
+        hostedUrl: payment.invoice_url || payment.pay_url || payment.payment_url,
         expiresAt: payment.expires_at,
         isSubscription: isSubscription
       };
@@ -538,13 +539,14 @@ class PaymentService {
       
       const subscription = response.data;
       console.log('NOWPayments subscription response:', subscription);
+      console.log('Available fields:', Object.keys(subscription));
 
       return {
         subscriptionId: subscription.payment_id,
         payAddress: subscription.pay_address,
         payAmount: subscription.pay_amount,
         payCurrency: subscription.pay_currency,
-        hostedUrl: subscription.invoice_url,
+        hostedUrl: subscription.invoice_url || subscription.pay_url || subscription.payment_url,
         expiresAt: subscription.expires_at,
         isSubscription: true
       };
