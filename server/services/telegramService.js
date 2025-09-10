@@ -287,25 +287,38 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
 
   async testConnection() {
     if (!this.isConfigured) {
+      console.log('❌ Telegram bot not configured - missing environment variables');
       return { success: false, error: 'Telegram bot not configured' };
     }
 
     try {
+      console.log('🔍 Testing Telegram connection...');
       const botInfo = await this.getBotInfo();
       const webhookInfo = await this.getWebhookInfo();
       
+      console.log('📊 Bot info result:', botInfo.success ? '✅ Success' : '❌ Failed');
+      console.log('📊 Webhook info result:', webhookInfo.success ? '✅ Success' : '❌ Failed');
+      
+      if (webhookInfo.success && webhookInfo.webhook) {
+        console.log('🔗 Webhook URL:', webhookInfo.webhook.url);
+        console.log('🔗 Webhook set status:', Boolean(webhookInfo.success && webhookInfo.webhook && webhookInfo.webhook.url));
+      }
+      
       if (botInfo.success) {
-        return { 
+        const result = { 
           success: true, 
           botName: botInfo.bot.first_name,
           chatCount: botInfo.chatCount,
           webhookSet: Boolean(webhookInfo.success && webhookInfo.webhook && webhookInfo.webhook.url),
           webhookUrl: webhookInfo.webhook ? webhookInfo.webhook.url : null
         };
+        console.log('📊 Final test connection result:', result);
+        return result;
       } else {
         return botInfo;
       }
     } catch (error) {
+      console.error('❌ Error in testConnection:', error.message);
       return { success: false, error: error.message };
     }
   }

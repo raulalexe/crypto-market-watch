@@ -34,6 +34,7 @@ const TelegramManagement = () => {
         const statusResponse = await axios.get('/api/telegram/admin-status', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        console.log('📊 Telegram status response:', statusResponse.data);
         setStatus(statusResponse.data);
       } catch (statusError) {
         console.error('Error fetching status:', statusError);
@@ -233,12 +234,26 @@ const TelegramManagement = () => {
                 {status.webhookUrl}
               </p>
             )}
-            <button
-              onClick={setupWebhook}
-              className="text-sm text-purple-600 hover:text-purple-800"
-            >
-              Setup Webhook
-            </button>
+            {/* Debug info - remove in production */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-gray-500 mt-2">
+                Debug: webhookSet={String(status?.webhookSet)}, success={String(status?.success)}
+              </div>
+            )}
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={setupWebhook}
+                className="text-sm text-purple-600 hover:text-purple-800"
+              >
+                Setup Webhook
+              </button>
+              <button
+                onClick={fetchTelegramData}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Refresh Status
+              </button>
+            </div>
           </div>
         </div>
 

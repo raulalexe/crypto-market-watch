@@ -207,8 +207,8 @@ const PricingSection = ({
     {
       id: 'pro',
       name: 'Pro',
-      price: pricing?.pro?.currentPrice || 29,
-      originalPrice: pricing?.pro?.originalPrice || 29,
+      price: pricing?.pro?.currentPrice || 29.99,
+      originalPrice: pricing?.pro?.originalPrice || 29.99,
       period: 'month',
       description: 'Advanced features for serious traders',
       features: [
@@ -336,7 +336,7 @@ const PricingSection = ({
                 </div>
                 <div className="mt-1">
                   <span className="text-xs text-red-400 font-medium">
-                    🔥 Limited Time Offer!
+                    🔥 First Month Only!
                   </span>
                 </div>
               </div>
@@ -454,7 +454,7 @@ const PricingSection = ({
                 <div className="flex items-center justify-center space-x-2">
                   <Tag className="w-5 h-5 text-red-400" />
                   <span className="text-red-400 font-medium">
-                    🔥 LIMITED TIME OFFER: Pro plan now ${pricing?.pro?.currentPrice} (Save {pricing?.pro?.discountPercentage}%!)
+                    🔥 FIRST MONTH DISCOUNT: Pro plan ${pricing?.pro?.currentPrice} for first month, then ${pricing?.pro?.originalPrice}/month (Save {pricing?.pro?.discountPercentage}% on first month!)
                   </span>
                 </div>
               </div>
@@ -620,7 +620,7 @@ const PricingSection = ({
                 Subscribe to {selectedPlan.name} plan for ${selectedPlan.price}/{selectedPlan.period}
                 {selectedPlan.hasDiscount && (
                   <span className="block text-sm text-red-400 mt-1">
-                    🔥 Limited Time Offer! Save {selectedPlan.discountPercentage}% (was ${selectedPlan.originalPrice})
+                    🔥 First Month Discount! Pay ${selectedPlan.price} for first month, then ${selectedPlan.originalPrice}/month (Save {selectedPlan.discountPercentage}% on first month!)
                   </span>
                 )}
               </p>

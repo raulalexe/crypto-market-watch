@@ -4,7 +4,21 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cron = require('node-cron');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// Stripe key selection based on NODE_ENV
+// Production: STRIPE_SECRET_KEY (live keys)
+// Development: STRIPE_TEST_SECRET_KEY (test keys)
+const stripeKey = process.env.NODE_ENV === 'production' 
+  ? process.env.STRIPE_SECRET_KEY 
+  : process.env.STRIPE_TEST_SECRET_KEY;
+
+// Stripe publishable key selection based on NODE_ENV
+// Production: STRIPE_PUBLISHABLE_KEY (live keys)
+// Development: STRIPE_TEST_PUBLISHABLE_KEY (test keys)
+const stripePublishableKey = process.env.NODE_ENV === 'production' 
+  ? process.env.STRIPE_PUBLISHABLE_KEY 
+  : process.env.STRIPE_TEST_PUBLISHABLE_KEY;
+
+const stripe = require('stripe')(stripeKey);
 require('dotenv').config({ path: path.join(__dirname, '../.env.local') });
 
 const { 
@@ -172,6 +186,19 @@ const setupDataCollectionCron = () => {
 const cronJob = setupDataCollectionCron();
 
 // API Routes
+
+// Get Stripe publishable key
+app.get('/api/stripe/config', async (req, res) => {
+  try {
+    res.json({
+      publishableKey: stripePublishableKey,
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    console.error('Error getting Stripe config:', error);
+    res.status(500).json({ error: 'Failed to get Stripe configuration' });
+  }
+});
 
 // Get current market data
 app.get('/api/market-data', async (req, res) => {
@@ -1215,10 +1242,10 @@ app.get('/api/subscription/pricing', (req, res) => {
     
     const pricing = {
       pro: {
-        originalPrice: 29,
-        currentPrice: hasDiscount ? parseFloat(discountOffer) : 29,
+        originalPrice: 29.99,
+        currentPrice: hasDiscount ? parseFloat(discountOffer) : 29.99,
         hasDiscount,
-        discountPercentage: hasDiscount ? Math.round(((29 - parseFloat(discountOffer)) / 29) * 100) : 0
+        discountPercentage: hasDiscount ? Math.round(((29.99 - parseFloat(discountOffer)) / 29.99) * 100) : 0
       },
       premium: {
         originalPrice: 99,
@@ -1308,7 +1335,9 @@ app.post('/api/telegram/add-chat', authenticateToken, requireAdmin, async (req, 
 
 app.get('/api/telegram/admin-status', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    console.log('🔍 Admin requesting Telegram status...');
     const status = await telegramService.testConnection();
+    console.log('📊 Returning status to admin:', status);
     res.json(status);
   } catch (error) {
     console.error('Error getting Telegram status:', error);
@@ -3077,13 +3106,20 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
     return res.status(400).json({ error: 'Missing stripe-signature header' });
   }
 
-  if (!process.env.STRIPE_WEBHOOK_SECRET) {
-    console.error('Stripe webhook: Missing STRIPE_WEBHOOK_SECRET environment variable');
+  // Webhook secret selection based on NODE_ENV
+  // Production: STRIPE_WEBHOOK_SECRET (live webhook)
+  // Development: STRIPE_TEST_WEBHOOK_SECRET (test webhook)
+  const webhookSecret = process.env.NODE_ENV === 'production' 
+    ? process.env.STRIPE_WEBHOOK_SECRET 
+    : process.env.STRIPE_TEST_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    console.error('Stripe webhook: Missing webhook secret environment variable');
     return res.status(500).json({ error: 'Webhook secret not configured' });
   }
 
   try {
-    const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
     console.log(`Received Stripe webhook: ${event.type} (ID: ${event.id})`);
     
     await paymentService.handleStripeWebhook(event);

@@ -28,7 +28,7 @@ STRIPE_WEBHOOK_SECRET=whsec_... # Your webhook endpoint secret (you'll get this 
 #### Pro Plan Product
 - **Name**: Pro Plan
 - **Description**: Advanced features for serious traders
-- **Price**: $29/month
+- **Price**: $29.99/month (with $9.99 first month discount)
 
 #### Premium Plan Product
 - **Name**: Premium+ Plan  

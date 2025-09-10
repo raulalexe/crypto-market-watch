@@ -1,4 +1,10 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// Stripe key selection based on NODE_ENV
+// Production: STRIPE_SECRET_KEY (live keys)
+// Development: STRIPE_TEST_SECRET_KEY (test keys)
+const stripeKey = process.env.NODE_ENV === 'production' 
+  ? process.env.STRIPE_SECRET_KEY 
+  : process.env.STRIPE_TEST_SECRET_KEY;
+const stripe = require('stripe')(stripeKey);
 // NOWPayments API client using axios
 const axios = require('axios');
 
@@ -45,7 +51,7 @@ class PaymentService {
       pro: {
         id: 'pro',
         name: 'Pro Plan',
-        price: 29,
+        price: 29.99,
         priceId: null, // Will be created dynamically
         cryptoPrice: 0.001, // ETH
         features: [
@@ -88,6 +94,25 @@ class PaymentService {
   }
 
   // ===== STRIPE PAYMENTS =====
+
+  async createDiscountCoupon(discountAmount, originalAmount) {
+    try {
+      // Create a one-time discount coupon for the first month
+      const coupon = await this.stripe.coupons.create({
+        amount_off: Math.round(discountAmount),
+        currency: 'usd',
+        duration: 'once', // Only applies to the first billing cycle
+        name: 'First Month Discount',
+        metadata: {
+          type: 'first_month_discount'
+        }
+      });
+      return coupon.id;
+    } catch (error) {
+      console.error('Error creating discount coupon:', error);
+      throw error;
+    }
+  }
 
   async createStripeSubscription(userId, planId) {
     try {
@@ -135,8 +160,11 @@ class PaymentService {
         price = priceData.id;
       }
 
-      // Create Stripe Checkout session
-      const session = await this.stripe.checkout.sessions.create({
+      // Check if there's a discount offer for first month
+      const discountOffer = process.env.DISCOUNT_OFFER;
+      const hasDiscount = !!discountOffer && planId === 'pro';
+      
+      let sessionConfig = {
         customer: customer.id,
         payment_method_types: ['card'],
         line_items: [
@@ -152,7 +180,18 @@ class PaymentService {
           userId: userId.toString(),
           planId: planId,
         },
-      });
+      };
+
+      // Add discount for first month if available
+      if (hasDiscount) {
+        const discountAmount = (plan.price - parseFloat(discountOffer)) * 100; // Convert to cents
+        sessionConfig.discounts = [{
+          coupon: await this.createDiscountCoupon(discountAmount, plan.price * 100)
+        }];
+      }
+
+      // Create Stripe Checkout session
+      const session = await this.stripe.checkout.sessions.create(sessionConfig);
 
       return {
         success: true,

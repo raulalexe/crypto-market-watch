@@ -62,7 +62,7 @@ cd client && npm start
 - Basic AI analysis
 - 1 manual data collection per day
 
-### **Pro Tier** ($29/month)
+### **Pro Tier** ($29.99/month, $9.99 first month)
 - All crypto assets (BTC, ETH, SOL, SUI, XRP)
 - 30-day historical data
 - Advanced AI analysis with confidence scores

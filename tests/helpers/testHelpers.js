@@ -130,7 +130,7 @@ const mockApiResponses = {
     {
       id: 'pro',
       name: 'Pro',
-      price: 29,
+      price: 29.99,
       features: ['Advanced analytics', 'Unlimited alerts', 'Email notifications']
     },
     {
