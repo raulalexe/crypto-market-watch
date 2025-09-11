@@ -56,21 +56,27 @@ class InflationDataService {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`📊 Fetching PPI data from BLS API (attempt ${attempt}/${maxRetries})...`);
+        console.log(`🔗 BLS API URL: ${this.blsBaseUrl}/timeseries/data/`);
+        console.log(`🔑 API Key configured: ${this.blsApiKey ? 'Yes' : 'No'}`);
         
         const currentYear = new Date().getFullYear();
-        const response = await axios.post(this.blsBaseUrl + '/timeseries/data/', {
+        const requestData = {
           seriesid: ['WPSFD4', 'WPSFD41'], // Final Demand PPI and Core PPI
           startyear: (currentYear - 1).toString(), // Get data from previous year for YoY calculation
           endyear: currentYear.toString(), // Get data up to current year
           registrationkey: this.blsApiKey
-        }, {
-          timeout: 60000, // Increased timeout to 60 seconds
+        };
+        
+        console.log(`📋 Request data:`, JSON.stringify(requestData, null, 2));
+        
+        const response = await axios.post(this.blsBaseUrl + '/timeseries/data/', requestData, {
+          timeout: 30000, // Reduced timeout to 30 seconds for production
           headers: {
             'User-Agent': 'CryptoMarketWatch/1.0',
             'Accept': 'application/json'
           },
           // Add retry configuration
-          retry: 2,
+          retry: 1, // Reduced retries for faster fallback
           retryDelay: 1000
         });
 
@@ -82,15 +88,23 @@ class InflationDataService {
         throw new Error('Invalid BLS API response structure');
       } catch (error) {
         console.error(`❌ PPI data fetch attempt ${attempt} failed:`, error.message);
+        console.error(`🔍 Error details:`, {
+          code: error.code,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            timeout: error.config?.timeout
+          }
+        });
         
         if (attempt === maxRetries) {
           console.error('❌ All PPI data fetch attempts failed');
           
-          // Check if it's an API limit error or invalid response and provide fallback
-          if (error.message.includes('daily threshold') || error.message.includes('limit') || error.message.includes('Invalid BLS API response structure')) {
-            console.log('🔄 Using fallback PPI data due to API issues');
-            return this.getFallbackPPIData();
-          }
+          // No fallback data - return null when APIs fail
+          console.log('❌ PPI data unavailable - API failed, no fallback data provided');
           
           return null;
         }
@@ -101,35 +115,8 @@ class InflationDataService {
     }
   }
 
-  getFallbackCPIData() {
-    // Return recent CPI data as fallback when API limits are reached
-    const currentDate = new Date();
-    const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-    
-    return {
-      date: lastMonth.toISOString(),
-      cpi: 317.6, // Recent CPI index value
-      coreCPI: 323.3, // Recent Core CPI index value
-      cpiYoY: 2.87, // Recent YoY change
-      coreCPIYoY: 3.21 // Recent Core YoY change
-    };
-  }
-
-  getFallbackPPIData() {
-    // Return recent PPI data as fallback when API limits are reached
-    const currentDate = new Date();
-    const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-    
-    return {
-      date: lastMonth.toISOString(),
-      ppi: 125.8, // Recent PPI index value
-      corePPI: 128.2, // Recent Core PPI index value
-      ppiMoM: 0.2, // Recent MoM change
-      corePPIMoM: 0.3, // Recent Core MoM change
-      ppiYoY: 2.6, // Recent YoY change
-      corePPIYoY: 2.8 // Recent Core YoY change
-    };
-  }
+  // No fallback data - only return null when APIs fail
+  // This ensures no synthetic data is ever shown to users
 
   // Fetch PCE data from BEA API with retry logic
   async fetchPCEData() {
@@ -409,21 +396,27 @@ class InflationDataService {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`📊 Fetching CPI data from BLS API (attempt ${attempt}/${maxRetries})...`);
+        console.log(`🔗 BLS API URL: ${this.blsBaseUrl}/timeseries/data/`);
+        console.log(`🔑 API Key configured: ${this.blsApiKey ? 'Yes' : 'No'}`);
         
         const currentYear = new Date().getFullYear();
-        const response = await axios.post(this.blsBaseUrl + '/timeseries/data/', {
+        const requestData = {
           seriesid: ['CUSR0000SA0', 'CUSR0000SA0L1E'], // All items and Core CPI
           startyear: (currentYear - 1).toString(), // Get data from previous year for YoY calculation
           endyear: currentYear.toString(), // Get data up to current year
           registrationkey: this.blsApiKey
-        }, {
-          timeout: 60000, // Increased timeout to 60 seconds
+        };
+        
+        console.log(`📋 Request data:`, JSON.stringify(requestData, null, 2));
+        
+        const response = await axios.post(this.blsBaseUrl + '/timeseries/data/', requestData, {
+          timeout: 30000, // Reduced timeout to 30 seconds for production
           headers: {
             'User-Agent': 'CryptoMarketWatch/1.0',
             'Accept': 'application/json'
           },
           // Add retry configuration
-          retry: 2,
+          retry: 1, // Reduced retries for faster fallback
           retryDelay: 1000
         });
 
@@ -437,15 +430,23 @@ class InflationDataService {
         throw new Error('Invalid BLS API response structure');
       } catch (error) {
         console.error(`❌ CPI data fetch attempt ${attempt} failed:`, error.message);
+        console.error(`🔍 Error details:`, {
+          code: error.code,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            timeout: error.config?.timeout
+          }
+        });
         
         if (attempt === maxRetries) {
           console.error('❌ All CPI data fetch attempts failed');
           
-          // Check if it's an API limit error or invalid response and provide fallback
-          if (error.message.includes('daily threshold') || error.message.includes('limit') || error.message.includes('Invalid BLS API response structure')) {
-            console.log('🔄 Using fallback CPI data due to API issues');
-            return this.getFallbackCPIData();
-          }
+          // No fallback data - return null when APIs fail
+          console.log('❌ CPI data unavailable - API failed, no fallback data provided');
           
           throw error;
         }
@@ -959,51 +960,9 @@ class InflationDataService {
         // In the future, this could be enhanced with web scraping or if they provide an API
         console.log('Cleveland Fed expectations: Using placeholder data structure');
         
-        // Return structured data that matches our expectations format
-        // This would be populated with real data if we had access to their API
-        return {
-          cpi: {
-        headline: {
-              expected: 2.8, // Placeholder - would come from Cleveland Fed nowcasting
-              consensus: 2.8,
-              range: { min: 2.6, max: 3.0 }
-        },
-        core: {
-              expected: 3.1,
-              consensus: 3.1,
-              range: { min: 2.9, max: 3.3 }
-            }
-          },
-          pce: {
-            headline: {
-              expected: 2.5,
-              consensus: 2.5,
-              range: { min: 2.3, max: 2.7 }
-            },
-            core: {
-              expected: 2.8,
-              consensus: 2.8,
-              range: { min: 2.6, max: 3.0 }
-            }
-          },
-          ppi: {
-            headline: {
-              expected: 0.3,
-              consensus: 0.3,
-              range: { min: 0.1, max: 0.5 }
-            },
-            core: {
-              expected: 0.4,
-              consensus: 0.4,
-              range: { min: 0.2, max: 0.6 }
-            },
-            yoy: {
-              expected: 3.2,
-              consensus: 3.2,
-              range: { min: 2.9, max: 3.5 }
-            }
-          }
-        };
+        // No placeholder data - return null when no real data is available
+        console.log('Cleveland Fed expectations: No real data available, returning null');
+        return null;
     } catch (error) {
         console.log('Cleveland Fed data fetch failed:', error.message);
         return null;
@@ -1217,27 +1176,15 @@ class InflationDataService {
       try {
         expectations = await this.fetchMarketExpectations();
       } catch (error) {
-        console.warn('⚠️ Failed to fetch market expectations, using fallback:', error.message);
-        expectations = {
-          cpi: { headline: { expected: 3.2 }, core: { expected: 3.8 } },
-          pce: { headline: { expected: 2.6 }, core: { expected: 2.8 } }
-        };
+        console.warn('⚠️ Failed to fetch market expectations, no fallback data provided:', error.message);
+        expectations = null;
       }
       
       try {
         analysis = await this.analyzeInflationData(data, expectations);
       } catch (error) {
-        console.warn('⚠️ Failed to analyze inflation data, using fallback:', error.message);
-        analysis = {
-          overallSentiment: 'neutral',
-          marketImpact: {
-            crypto: 'neutral',
-            stocks: 'neutral',
-            bonds: 'neutral',
-            dollar: 'neutral'
-          },
-          description: 'Analysis unavailable'
-        };
+        console.warn('⚠️ Failed to analyze inflation data, no fallback analysis provided:', error.message);
+        analysis = null;
       }
 
       return {

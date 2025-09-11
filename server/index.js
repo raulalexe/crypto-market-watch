@@ -2565,6 +2565,86 @@ app.get('/api/inflation/expectations', async (req, res) => {
   }
 });
 
+// Debug endpoint to test BLS API connectivity
+app.get('/api/debug/bls-connectivity', async (req, res) => {
+  try {
+    console.log('🔍 Testing BLS API connectivity...');
+    
+    const axios = require('axios');
+    const blsApiKey = process.env.BLS_API_KEY;
+    const blsBaseUrl = 'https://api.bls.gov/publicAPI/v2';
+    
+    console.log(`🔑 BLS API Key configured: ${blsApiKey ? 'Yes' : 'No'}`);
+    console.log(`🔗 BLS Base URL: ${blsBaseUrl}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🚂 Railway Environment: ${process.env.RAILWAY_ENVIRONMENT || 'Not set'}`);
+    
+    if (!blsApiKey) {
+      return res.json({ 
+        success: false, 
+        error: 'BLS API key not configured',
+        environment: process.env.NODE_ENV,
+        railway: process.env.RAILWAY_ENVIRONMENT
+      });
+    }
+    
+    // Test simple connectivity
+    const testData = {
+      seriesid: ['CUSR0000SA0'],
+      startyear: '2024',
+      endyear: '2024',
+      registrationkey: blsApiKey
+    };
+    
+    console.log('📋 Test request data:', JSON.stringify(testData, null, 2));
+    
+    const response = await axios.post(`${blsBaseUrl}/timeseries/data/`, testData, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'CryptoMarketWatch/1.0',
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log('✅ BLS API test successful');
+    console.log('📊 Response status:', response.status);
+    console.log('📊 Response data keys:', Object.keys(response.data || {}));
+    
+    res.json({
+      success: true,
+      status: response.status,
+      dataKeys: Object.keys(response.data || {}),
+      environment: process.env.NODE_ENV,
+      railway: process.env.RAILWAY_ENVIRONMENT,
+      message: 'BLS API connectivity test successful'
+    });
+    
+  } catch (error) {
+    console.error('❌ BLS API connectivity test failed:', error.message);
+    console.error('🔍 Error details:', {
+      code: error.code,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        timeout: error.config?.timeout
+      }
+    });
+    
+    res.json({
+      success: false,
+      error: error.message,
+      code: error.code,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      environment: process.env.NODE_ENV,
+      railway: process.env.RAILWAY_ENVIRONMENT
+    });
+  }
+});
+
 // Get latest inflation data
 app.get('/api/inflation/latest', async (req, res) => {
   try {
