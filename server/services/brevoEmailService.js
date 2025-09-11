@@ -577,6 +577,10 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             margin: 0;
             padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
           .container { 
             max-width: 600px; 
@@ -729,7 +733,9 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">📈</div>
+            <div class="logo">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8IS0tIEJhY2tncm91bmQgY2lyY2xlIHdpdGggZ3JhZGllbnQgLS0+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnR3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMTBCOTgxO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwNTk2Njk7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0idXJsKCNiZ0dyYWRpZW50KSIvPgogIAogIDwhLS0gVHJlbmRpbmcgdXAgYXJyb3cgaWNvbiB3aXRoIGJldHRlciB2aXNpYmlsaXR5IC0tPgogIDxwYXRoIGQ9Ik04IDIyTDEyIDE4TDE2IDIwTDI0IDEyIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+CiAgPHBhdGggZD0iTTIwIDEySDI0VjE2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+Cjwvc3ZnPgo=" alt="Crypto Market Watch Logo" style="width: 48px; height: 48px;" />
+            </div>
             <h1>Crypto Market Watch</h1>
             <p>Confirm Your Email Address</p>
           </div>
@@ -1172,50 +1178,213 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
   generateAccountDeletedByAdminEmailHTML(userName, userEmail = null) {
     const displayName = userName || 'there';
     const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Account Deleted - Crypto Market Watch</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
-          .alert { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .header { 
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white; 
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+            z-index: 1;
+          }
+          .header h1 { 
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+          }
+          .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+            position: relative;
+            z-index: 1;
+          }
+          .content { 
+            background: #1e293b;
+            padding: 40px 30px;
+            color: #f8fafc;
+          }
+          .content h2 {
+            color: #f8fafc;
+            font-size: 24px;
+            margin-bottom: 20px;
+          }
+          .content h3 {
+            color: #f8fafc;
+            font-size: 20px;
+            margin: 30px 0 15px;
+          }
+          .content p {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+          }
+          .alert { 
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            color: #fca5a5;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
+            font-size: 16px;
+          }
+          .alert strong {
+            color: #fca5a5;
+            font-weight: 600;
+          }
+          .content ul {
+            color: #cbd5e1;
+            margin: 20px 0;
+            padding-left: 20px;
+          }
+          .content li {
+            margin-bottom: 10px;
+            font-size: 16px;
+          }
+          .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white; 
+            padding: 16px 32px; 
+            text-decoration: none; 
+            border-radius: 12px; 
+            margin: 25px 0;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+          }
+          .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+          }
+          .footer { 
+            text-align: center; 
+            padding: 30px;
+            background: #0f172a;
+            color: #64748b; 
+            font-size: 14px;
+          }
+          .footer-logo {
+            width: 32px;
+            height: 32px;
+            background: #dc2626;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+          }
+          .footer p {
+            margin: 10px 0;
+            color: #64748b;
+          }
+          .footer strong {
+            color: #f8fafc;
+          }
+          @media (max-width: 600px) {
+            .container { margin: 10px; }
+            .header, .content, .footer { padding: 20px; }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>🚨 Account Deleted</h1>
-          <p>Crypto Market Watch</p>
-        </div>
-        <div class="content">
-          <h2>Hello ${displayName},</h2>
-          
-          <div class="alert">
-            <strong>Important Notice:</strong> Your Crypto Market Watch account has been deleted by an administrator.
+        <div class="container">
+          <div class="header">
+            <div class="logo">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8IS0tIEJhY2tncm91bmQgY2lyY2xlIHdpdGggZ3JhZGllbnQgLS0+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnR3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMTBCOTgxO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwNTk2Njk7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0idXJsKCNiZ0dyYWRpZW50KSIvPgogIAogIDwhLS0gVHJlbmRpbmcgdXAgYXJyb3cgaWNvbiB3aXRoIGJldHRlciB2aXNpYmlsaXR5IC0tPgogIDxwYXRoIGQ9Ik04IDIyTDEyIDE4TDE2IDIwTDI0IDEyIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+CiAgPHBhdGggZD0iTTIwIDEySDI0VjE2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+Cjwvc3ZnPgo=" alt="Crypto Market Watch Logo" style="width: 48px; height: 48px;" />
+            </div>
+            <h1>Account Deleted</h1>
+            <p>Crypto Market Watch</p>
           </div>
           
-          <p>We're writing to inform you that your account associated with <strong>${userEmail}</strong> has been permanently deleted from our system.</p>
-          
-          <h3>What this means:</h3>
-          <ul>
-            <li>All your account data has been permanently removed</li>
-            <li>You will no longer receive market alerts or notifications</li>
-            <li>Your subscription (if any) has been cancelled</li>
-            <li>You can no longer access your dashboard or account settings</li>
-          </ul>
-          
-          <h3>If you believe this was done in error:</h3>
-          <p>Please contact our support team immediately if you believe your account was deleted by mistake. We may be able to help restore your account if contacted within a reasonable timeframe.</p>
-          
-          <p>Thank you for using Crypto Market Watch.</p>
+          <div class="content">
+            <h2>Hello ${displayName},</h2>
+            
+            <div class="alert">
+              <strong>Important Notice:</strong> Your Crypto Market Watch account has been deleted by an administrator.
+            </div>
+            
+            <p>We're writing to inform you that your account associated with <strong>${userEmail}</strong> has been permanently deleted from our system.</p>
+            
+            <h3>What this means:</h3>
+            <ul>
+              <li>All your account data has been permanently removed</li>
+              <li>You will no longer receive market alerts or notifications</li>
+              <li>Your subscription (if any) has been cancelled</li>
+              <li>You can no longer access your dashboard or account settings</li>
+            </ul>
+            
+            <h3>If you believe this was done in error:</h3>
+            <p>Please contact our support team immediately if you believe your account was deleted by mistake. We may be able to help restore your account if contacted within a reasonable timeframe.</p>
+            
+            <div style="text-align: center;">
+              <a href="${frontendUrl}/contact" class="button">Contact Support</a>
+            </div>
+            
+            <p>Thank you for using Crypto Market Watch.</p>
+          </div>
           
           <div class="footer">
-            <p>Crypto Market Watch Team</p>
+            <div class="footer-logo">CMM</div>
+            <p><strong>Crypto Market Watch Team</strong></p>
             <p>This is an automated message. Please do not reply to this email.</p>
           </div>
         </div>
@@ -1254,50 +1423,213 @@ This is an automated message. Please do not reply to this email.
   generateAccountDeletedByUserEmailHTML(userName, userEmail = null) {
     const displayName = userName || 'there';
     const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Account Deleted - Crypto Market Watch</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
-          .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 5px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .header { 
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white; 
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+            z-index: 1;
+          }
+          .header h1 { 
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+          }
+          .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+            position: relative;
+            z-index: 1;
+          }
+          .content { 
+            background: #1e293b;
+            padding: 40px 30px;
+            color: #f8fafc;
+          }
+          .content h2 {
+            color: #f8fafc;
+            font-size: 24px;
+            margin-bottom: 20px;
+          }
+          .content h3 {
+            color: #f8fafc;
+            font-size: 20px;
+            margin: 30px 0 15px;
+          }
+          .content p {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+          }
+          .success { 
+            background: rgba(5, 150, 105, 0.1);
+            border: 1px solid rgba(5, 150, 105, 0.3);
+            color: #6ee7b7;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
+            font-size: 16px;
+          }
+          .success strong {
+            color: #6ee7b7;
+            font-weight: 600;
+          }
+          .content ul {
+            color: #cbd5e1;
+            margin: 20px 0;
+            padding-left: 20px;
+          }
+          .content li {
+            margin-bottom: 10px;
+            font-size: 16px;
+          }
+          .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white; 
+            padding: 16px 32px; 
+            text-decoration: none; 
+            border-radius: 12px; 
+            margin: 25px 0;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+          }
+          .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(5, 150, 105, 0.4);
+          }
+          .footer { 
+            text-align: center; 
+            padding: 30px;
+            background: #0f172a;
+            color: #64748b; 
+            font-size: 14px;
+          }
+          .footer-logo {
+            width: 32px;
+            height: 32px;
+            background: #059669;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+          }
+          .footer p {
+            margin: 10px 0;
+            color: #64748b;
+          }
+          .footer strong {
+            color: #f8fafc;
+          }
+          @media (max-width: 600px) {
+            .container { margin: 10px; }
+            .header, .content, .footer { padding: 20px; }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>✅ Account Deleted</h1>
-          <p>Crypto Market Watch</p>
-        </div>
-        <div class="content">
-          <h2>Hello ${displayName},</h2>
-          
-          <div class="success">
-            <strong>Confirmation:</strong> Your Crypto Market Watch account has been successfully deleted as requested.
+        <div class="container">
+          <div class="header">
+            <div class="logo">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8IS0tIEJhY2tncm91bmQgY2lyY2xlIHdpdGggZ3JhZGllbnQgLS0+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnR3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMTBCOTgxO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwNTk2Njk7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0idXJsKCNiZ0dyYWRpZW50KSIvPgogIAogIDwhLS0gVHJlbmRpbmcgdXAgYXJyb3cgaWNvbiB3aXRoIGJldHRlciB2aXNpYmlsaXR5IC0tPgogIDxwYXRoIGQ9Ik04IDIyTDEyIDE4TDE2IDIwTDI0IDEyIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+CiAgPHBhdGggZD0iTTIwIDEySDI0VjE2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+Cjwvc3ZnPgo=" alt="Crypto Market Watch Logo" style="width: 48px; height: 48px;" />
+            </div>
+            <h1>Account Deleted</h1>
+            <p>Crypto Market Watch</p>
           </div>
           
-          <p>We're writing to confirm that your account associated with <strong>${userEmail}</strong> has been permanently deleted from our system.</p>
-          
-          <h3>What has been removed:</h3>
-          <ul>
-            <li>All your account data and personal information</li>
-            <li>Your market alerts and notification preferences</li>
-            <li>Your subscription (if any) has been cancelled</li>
-            <li>Access to your dashboard and account settings</li>
-          </ul>
-          
-          <h3>We're sorry to see you go!</h3>
-          <p>If you change your mind in the future, you're always welcome to create a new account with us. We're constantly improving our platform and adding new features.</p>
-          
-          <p>Thank you for being part of the Crypto Market Watch community.</p>
+          <div class="content">
+            <h2>Hello ${displayName},</h2>
+            
+            <div class="success">
+              <strong>Confirmation:</strong> Your Crypto Market Watch account has been successfully deleted as requested.
+            </div>
+            
+            <p>We're writing to confirm that your account associated with <strong>${userEmail}</strong> has been permanently deleted from our system.</p>
+            
+            <h3>What has been removed:</h3>
+            <ul>
+              <li>All your account data and personal information</li>
+              <li>Your market alerts and notification preferences</li>
+              <li>Your subscription (if any) has been cancelled</li>
+              <li>Access to your dashboard and account settings</li>
+            </ul>
+            
+            <h3>We're sorry to see you go!</h3>
+            <p>If you change your mind in the future, you're always welcome to create a new account with us. We're constantly improving our platform and adding new features.</p>
+            
+            <div style="text-align: center;">
+              <a href="${frontendUrl}" class="button">Create New Account</a>
+            </div>
+            
+            <p>Thank you for being part of the Crypto Market Watch community.</p>
+          </div>
           
           <div class="footer">
-            <p>Crypto Market Watch Team</p>
+            <div class="footer-logo">CMM</div>
+            <p><strong>Crypto Market Watch Team</strong></p>
             <p>This is an automated message. Please do not reply to this email.</p>
           </div>
         </div>
@@ -1702,6 +2034,198 @@ Support: ${frontendUrl}/app/support
     } catch (error) {
       return { success: false, error: error.message };
     }
+  }
+  async sendRenewalReminderEmail(userEmail, planType, daysUntilExpiry) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Brevo email service not configured, skipping email send');
+      return false;
+    }
+
+    try {
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      
+      sendSmtpEmail.subject = `⚠️ Your ${planType} subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`;
+      sendSmtpEmail.htmlContent = this.generateRenewalReminderEmailHTML(planType, daysUntilExpiry);
+      sendSmtpEmail.textContent = this.generateRenewalReminderEmailText(planType, daysUntilExpiry);
+      sendSmtpEmail.sender = {
+        name: 'Crypto Market Watch',
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+      };
+      sendSmtpEmail.to = [{
+        email: userEmail,
+        name: userEmail.split('@')[0]
+      }];
+
+      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log(`✅ Renewal reminder email sent to ${userEmail}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error sending renewal reminder email to ${userEmail}:`, error);
+      return false;
+    }
+  }
+
+  async sendSubscriptionExpiredEmail(userEmail, planType) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Brevo email service not configured, skipping email send');
+      return false;
+    }
+
+    try {
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      
+      sendSmtpEmail.subject = `❌ Your ${planType} subscription has expired`;
+      sendSmtpEmail.htmlContent = this.generateSubscriptionExpiredEmailHTML(planType);
+      sendSmtpEmail.textContent = this.generateSubscriptionExpiredEmailText(planType);
+      sendSmtpEmail.sender = {
+        name: 'Crypto Market Watch',
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+      };
+      sendSmtpEmail.to = [{
+        email: userEmail,
+        name: userEmail.split('@')[0]
+      }];
+
+      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log(`✅ Subscription expired email sent to ${userEmail}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error sending subscription expired email to ${userEmail}:`, error);
+      return false;
+    }
+  }
+
+  generateRenewalReminderEmailHTML(planType, daysUntilExpiry) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Subscription Renewal Reminder</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #1e40af; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f8fafc; }
+          .button { display: inline-block; background: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+          .footer { padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ Subscription Renewal Reminder</h1>
+          </div>
+          <div class="content">
+            <h2>Your ${planType} subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}</h2>
+            <p>Don't lose access to your premium features! Renew now to continue enjoying:</p>
+            <ul>
+              <li>Advanced market alerts</li>
+              <li>Unlimited API access</li>
+              <li>AI-powered analysis</li>
+              <li>Data export capabilities</li>
+            </ul>
+            <p><strong>Special Offer:</strong> Save up to 20% when you prepay for multiple months!</p>
+            <a href="${process.env.FRONTEND_URL}/app/subscription" class="button">Renew Now</a>
+            <p>If you have any questions, please contact our support team.</p>
+          </div>
+          <div class="footer">
+            <p>Crypto Market Watch - Your trusted crypto market intelligence platform</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  generateRenewalReminderEmailText(planType, daysUntilExpiry) {
+    return `
+Subscription Renewal Reminder
+
+Your ${planType} subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}.
+
+Don't lose access to your premium features! Renew now to continue enjoying:
+- Advanced market alerts
+- Unlimited API access
+- AI-powered analysis
+- Data export capabilities
+
+Special Offer: Save up to 20% when you prepay for multiple months!
+
+Renew now: ${process.env.FRONTEND_URL}/app/subscription
+
+If you have any questions, please contact our support team.
+
+Crypto Market Watch - Your trusted crypto market intelligence platform
+    `;
+  }
+
+  generateSubscriptionExpiredEmailHTML(planType) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Subscription Expired</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f8fafc; }
+          .button { display: inline-block; background: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+          .footer { padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>❌ Subscription Expired</h1>
+          </div>
+          <div class="content">
+            <h2>Your ${planType} subscription has expired</h2>
+            <p>Your premium features are no longer available. You can still access basic features with our free plan.</p>
+            <p>To restore your premium access, please renew your subscription:</p>
+            <ul>
+              <li>Advanced market alerts</li>
+              <li>Unlimited API access</li>
+              <li>AI-powered analysis</li>
+              <li>Data export capabilities</li>
+            </ul>
+            <p><strong>Special Offer:</strong> Save up to 20% when you prepay for multiple months!</p>
+            <a href="${process.env.FRONTEND_URL}/app/subscription" class="button">Renew Now</a>
+            <p>If you have any questions, please contact our support team.</p>
+          </div>
+          <div class="footer">
+            <p>Crypto Market Watch - Your trusted crypto market intelligence platform</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  generateSubscriptionExpiredEmailText(planType) {
+    return `
+Subscription Expired
+
+Your ${planType} subscription has expired.
+
+Your premium features are no longer available. You can still access basic features with our free plan.
+
+To restore your premium access, please renew your subscription:
+- Advanced market alerts
+- Unlimited API access
+- AI-powered analysis
+- Data export capabilities
+
+Special Offer: Save up to 20% when you prepay for multiple months!
+
+Renew now: ${process.env.FRONTEND_URL}/app/subscription
+
+If you have any questions, please contact our support team.
+
+Crypto Market Watch - Your trusted crypto market intelligence platform
+    `;
   }
 }
 

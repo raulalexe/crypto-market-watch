@@ -22,6 +22,82 @@ class EconomicDataService {
     this.errorLogger = new (require('./errorLogger'))();
   }
 
+  // ===== BLS PPI DATA =====
+
+  // Fetch PPI data from BLS
+  async fetchPPIData() {
+    try {
+      if (!this.blsApiKey) {
+        console.log('⚠️ BLS API key not configured for PPI data');
+        return null;
+      }
+
+      console.log('📊 Fetching PPI data from BLS...');
+      
+      const response = await axios.post(`${this.blsBaseUrl}/timeseries/data`, {
+        seriesid: ['WPSFD4', 'WPSFD41'], // Final Demand PPI and Core PPI
+        startyear: moment().subtract(1, 'year').year(),
+        endyear: moment().year(),
+        registrationkey: this.blsApiKey
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000
+      });
+
+      if (response.data.status === 'REQUEST_SUCCEEDED' && response.data.Results.series.length > 0) {
+        const series = response.data.Results.series;
+        const ppiData = {
+          date: null,
+          ppi: null,
+          corePPI: null,
+          ppiMoM: null,
+          corePPIMoM: null,
+          ppiYoY: null,
+          corePPIYoY: null
+        };
+
+        series.forEach(s => {
+          if (!s || !s.data || !Array.isArray(s.data) || s.data.length === 0) return;
+          
+          const latest = s.data[0];
+          if (!latest || !latest.value) return;
+          
+          if (s.seriesID === 'WPSFD4') { // Final Demand PPI
+            ppiData.ppi = parseFloat(latest.value);
+            ppiData.date = `${latest.year}-${latest.periodName}-01`;
+            
+            // Calculate MoM change
+            if (s.data.length > 1) {
+              const previousMonth = s.data[1];
+              if (previousMonth && previousMonth.value) {
+                ppiData.ppiMoM = ((parseFloat(latest.value) - parseFloat(previousMonth.value)) / parseFloat(previousMonth.value)) * 100;
+              }
+            }
+          } else if (s.seriesID === 'WPSFD41') { // Core PPI
+            ppiData.corePPI = parseFloat(latest.value);
+            
+            // Calculate MoM change for core
+            if (s.data.length > 1) {
+              const previousMonth = s.data[1];
+              if (previousMonth && previousMonth.value) {
+                ppiData.corePPIMoM = ((parseFloat(latest.value) - parseFloat(previousMonth.value)) / parseFloat(previousMonth.value)) * 100;
+              }
+            }
+          }
+        });
+
+        console.log('✅ PPI data fetched successfully');
+        return ppiData;
+      } else {
+        console.error('❌ PPI data fetch failed:', response.data.message);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error fetching PPI data:', error.message);
+      return null;
+    }
+  }
+
   // ===== BLS EMPLOYMENT DATA =====
 
   // Fetch Nonfarm Payrolls data from BLS
@@ -243,6 +319,20 @@ class EconomicDataService {
       category: 'inflation'
     });
 
+    // PPI (Second Tuesday of each month, usually same week as CPI)
+    const ppiTuesday = moment(now).startOf('month').day(2).add(7, 'days');
+    schedule.push({
+      id: 'ppi',
+      title: 'Producer Price Index',
+      description: 'PPI and Core PPI (MoM and YoY)',
+      date: ppiTuesday.format('YYYY-MM-DD'),
+      time: '08:30',
+      timezone: 'America/New_York',
+      impact: 'high',
+      source: 'BLS',
+      category: 'inflation'
+    });
+
     // PCE (Last business day of each month)
     const lastDay = moment(now).endOf('month');
     while (lastDay.day() === 0 || lastDay.day() === 6) {
@@ -310,6 +400,9 @@ class EconomicDataService {
               break;
             case 'cpi':
               data = await this.fetchCPIData();
+              break;
+            case 'ppi':
+              data = await this.fetchPPIData();
               break;
             case 'pce':
               data = await this.fetchPCEData();

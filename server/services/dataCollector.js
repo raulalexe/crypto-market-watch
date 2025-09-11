@@ -2407,6 +2407,12 @@ class DataCollector {
           console.log('✅ PCE data processed and stored');
         }
         
+        // Process and store PPI data if available
+        if (data.ppi) {
+          await inflationService.processInflationData(data.ppi, 'PPI');
+          console.log('✅ PPI data processed and stored');
+        }
+        
         console.log('🎉 Inflation data collection completed successfully');
         return data;
       } else {

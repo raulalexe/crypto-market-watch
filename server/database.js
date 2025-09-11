@@ -966,8 +966,12 @@ const getActiveSubscription = (userId) => {
 
 const updateSubscription = (subscriptionId, updates) => {
   return new Promise((resolve, reject) => {
-    const fields = Object.keys(updates).map((key, index) => `${key} = $${index + 1}`).join(', ');
-    const values = Object.values(updates);
+    // Remove updated_at from updates if it exists to avoid duplicate assignment
+    const cleanUpdates = { ...updates };
+    delete cleanUpdates.updated_at;
+    
+    const fields = Object.keys(cleanUpdates).map((key, index) => `${key} = $${index + 1}`).join(', ');
+    const values = Object.values(cleanUpdates);
     values.push(subscriptionId);
     
     dbAdapter.run(
@@ -1620,6 +1624,24 @@ const getAllUpcomingEvents = (limit = 20) => {
   });
 };
 
+const getPastEvents = (limit = 50) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.all(
+      'SELECT * FROM upcoming_events WHERE date <= NOW() ORDER BY date DESC LIMIT $1',
+      [limit]
+    ).then(resolve).catch(reject);
+  });
+};
+
+const getAllEvents = (limit = 100) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.all(
+      'SELECT * FROM upcoming_events ORDER BY date DESC LIMIT $1',
+      [limit]
+    ).then(resolve).catch(reject);
+  });
+};
+
 const ignoreUpcomingEvent = (eventId) => {
   return new Promise((resolve, reject) => {
     dbAdapter.run(
@@ -1764,13 +1786,15 @@ const insertInflationData = (data) => {
     // Use explicit type casting to ensure proper data handling
     const query = `
       INSERT INTO inflation_data (
-        type, date, value, core_value, yoy_change, core_yoy_change, source, created_at
-      ) VALUES ($1::VARCHAR(10), $2::DATE, $3::NUMERIC, $4::NUMERIC, $5::NUMERIC, $6::NUMERIC, $7::VARCHAR(10), CURRENT_TIMESTAMP)
+        type, date, value, core_value, yoy_change, core_yoy_change, mom_change, core_mom_change, source, created_at
+      ) VALUES ($1::VARCHAR(10), $2::DATE, $3::NUMERIC, $4::NUMERIC, $5::NUMERIC, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC, $9::VARCHAR(10), CURRENT_TIMESTAMP)
       ON CONFLICT (type, date) DO UPDATE SET
         value = EXCLUDED.value,
         core_value = EXCLUDED.core_value,
         yoy_change = EXCLUDED.yoy_change,
         core_yoy_change = EXCLUDED.core_yoy_change,
+        mom_change = EXCLUDED.mom_change,
+        core_mom_change = EXCLUDED.core_mom_change,
         source = EXCLUDED.source,
         created_at = CURRENT_TIMESTAMP
       RETURNING id
@@ -1783,6 +1807,8 @@ const insertInflationData = (data) => {
       data.coreValue, 
       data.yoyChange, 
       data.coreYoYChange, 
+      data.momChange || null,
+      data.coreMomChange || null,
       data.source
     ];
     
@@ -2233,6 +2259,8 @@ module.exports = {
   insertUpcomingEvent,
   getUpcomingEvents,
   getAllUpcomingEvents,
+  getPastEvents,
+  getAllEvents,
   cleanupDuplicateEvents,
   ignoreUpcomingEvent,
   unignoreUpcomingEvent,

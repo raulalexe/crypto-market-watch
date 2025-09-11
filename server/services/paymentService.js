@@ -1,3 +1,6 @@
+// Load environment variables first
+require('dotenv').config({ path: '.env.local' });
+
 // Stripe key selection based on NODE_ENV
 // Production: STRIPE_SECRET_KEY (live keys)
 // Development: STRIPE_TEST_SECRET_KEY (test keys)
@@ -7,8 +10,6 @@ const stripeKey = process.env.NODE_ENV === 'production'
 const stripe = require('stripe')(stripeKey);
 // NOWPayments API client using axios
 const axios = require('axios');
-
-require('dotenv').config({ path: '.env.local' });
 
 const {
   insertUser,
@@ -25,6 +26,12 @@ class PaymentService {
     this.stripe = stripe;
     this.nowPaymentsApiKey = process.env.NOWPAYMENTS_API_KEY;
     this.nowPaymentsBaseUrl = 'https://api.nowpayments.io/v1';
+    
+    // Debug: Check if API key is loaded
+    console.log('🔑 NOWPayments API Key loaded:', this.nowPaymentsApiKey ? '✅ Yes' : '❌ No');
+    if (this.nowPaymentsApiKey) {
+      console.log('🔑 API Key preview:', this.nowPaymentsApiKey.substring(0, 8) + '...');
+    }
     // Remove ETH provider and wallet initialization
     
     this.subscriptionPlans = {

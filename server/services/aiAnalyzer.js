@@ -412,10 +412,11 @@ CRITICAL ANALYSIS REQUIREMENTS:
 2. **Bitcoin Dominance (BTC.D)**: Analyze Bitcoin's market dominance percentage and its implications
 3. **Market Sentiment**: Consider Fear & Greed Index, VIX volatility, and overall market mood
 4. **Macro Factors**: Evaluate DXY (dollar strength), Treasury yields, equity markets, and oil prices
-5. **Inflation Impact**: Assess how inflation data affects crypto markets specifically
-6. **Technical Indicators**: Consider price levels, volume, and market structure
-7. **Fundamental Factors**: Upcoming events, regulatory news, and adoption trends
-8. **Trending Narratives**: Consider trending narratives for the crypto market
+5. **Inflation Impact**: Assess how inflation data (CPI, PCE, PPI) affects crypto markets specifically
+6. **PPI Analysis**: Pay special attention to Producer Price Index (PPI) data as it often leads consumer inflation and affects corporate margins, which impacts equity markets and risk sentiment
+7. **Technical Indicators**: Consider price levels, volume, and market structure
+8. **Fundamental Factors**: Upcoming events, regulatory news, and adoption trends
+9. **Trending Narratives**: Consider trending narratives for the crypto market
 
 MARKET DATA:
 ${marketDataStr}

@@ -141,6 +141,9 @@ class GroqService {
       if (marketContext.inflationData.pce) {
         prompt += `- PCE: ${marketContext.inflationData.pce.value}%\n`;
       }
+      if (marketContext.inflationData.ppi) {
+        prompt += `- PPI: ${marketContext.inflationData.ppi.value}% (MoM: ${marketContext.inflationData.ppi.ppiMoM}%, Core MoM: ${marketContext.inflationData.ppi.corePPIMoM}%)\n`;
+      }
     }
 
     prompt += `\n## Analysis Request:

@@ -767,6 +767,30 @@ app.get('/api/admin/events', authenticateToken, requireAdmin, async (req, res) =
   }
 });
 
+// Admin: Get past events
+app.get('/api/admin/events/past', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { getPastEvents } = require('./database');
+    const events = await getPastEvents(100);
+    res.json(events);
+  } catch (error) {
+    console.error('Error fetching past events:', error);
+    res.status(500).json({ error: 'Failed to fetch past events' });
+  }
+});
+
+// Admin: Get all events (upcoming and past)
+app.get('/api/admin/events/all', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { getAllEvents } = require('./database');
+    const events = await getAllEvents(200);
+    res.json(events);
+  } catch (error) {
+    console.error('Error fetching all events:', error);
+    res.status(500).json({ error: 'Failed to fetch all events' });
+  }
+});
+
 // Admin: Ignore an upcoming event
 app.post('/api/admin/events/:id/ignore', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -2511,64 +2535,85 @@ app.get('/api/health', async (req, res) => {
 
 // ===== INFLATION DATA ENDPOINTS =====
 
+// Test PPI endpoint
+app.get('/api/inflation/ppi-test', async (req, res) => {
+  try {
+    const inflationService = require('./services/inflationDataService');
+    const freshData = await inflationService.fetchLatestData();
+    
+    res.json({
+      success: true,
+      ppiData: freshData?.ppi || null,
+      allData: freshData
+    });
+  } catch (error) {
+    console.error('PPI test error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get market expectations for inflation data
+app.get('/api/inflation/expectations', async (req, res) => {
+  try {
+    const inflationService = require('./services/inflationDataService');
+    const expectations = await inflationService.fetchMarketExpectations();
+    
+    res.json(expectations);
+  } catch (error) {
+    console.error('Error fetching market expectations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get latest inflation data
 app.get('/api/inflation/latest', async (req, res) => {
   try {
-    // Use direct database query to bypass any caching issues
-    const { Pool } = require('pg');
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-    });
-    
-    const [cpiResult, pceResult] = await Promise.all([
-      pool.query(`
-        SELECT * FROM inflation_data 
-        WHERE type = $1 
-        ORDER BY created_at DESC 
-        LIMIT 1
-      `, ['CPI']),
-      pool.query(`
-        SELECT * FROM inflation_data 
-        WHERE type = $1 
-        ORDER BY created_at DESC 
-        LIMIT 1
-      `, ['PCE'])
-    ]);
-    
-    const cpiData = cpiResult.rows[0] || null;
-    const pceData = pceResult.rows[0] || null;
+    console.log('🚀 INFLATION LATEST ENDPOINT CALLED - USING FRESH DATA');
+    // Get fresh data from APIs
+    const inflationService = require('./services/inflationDataService');
+    const freshData = await inflationService.fetchLatestData();
+    console.log('Fresh data fetched successfully');
     
     // Helper function to format numbers to 2 decimal places
     const formatNumber = (value) => {
       if (value === null || value === undefined) return null;
       const num = parseFloat(value);
       if (isNaN(num)) return null;
-      // Return as string to preserve the formatting
       return num.toFixed(2);
     };
     
-    // Transform database data to match frontend expectations
-    const transformedData = {
-      cpi: cpiData ? {
-        cpi: formatNumber(cpiData.value),           // Headline CPI
-        coreCPI: formatNumber(cpiData.core_value),  // Core CPI
-        cpiYoY: formatNumber(cpiData.yoy_change),   // YoY change
-        coreCPIYoY: formatNumber(cpiData.core_yoy_change), // Core YoY change
-        date: cpiData.date            // Date
+    // Return fresh data directly
+    const response = {
+      cpi: freshData?.cpi ? {
+        cpi: formatNumber(freshData.cpi.cpi),
+        coreCPI: formatNumber(freshData.cpi.coreCPI),
+        cpiYoY: formatNumber(freshData.cpi.cpiYoY),
+        coreCPIYoY: formatNumber(freshData.cpi.coreCPIYoY),
+        date: freshData.cpi.date
       } : null,
-      pce: pceData ? {
-        pce: formatNumber(pceData.value),           // Headline PCE
-        corePCE: formatNumber(pceData.core_value),  // Core PCE
-        pceYoY: formatNumber(pceData.yoy_change),   // YoY change
-        corePCEYoY: formatNumber(pceData.core_yoy_change), // Core YoY change
-        date: pceData.date            // Date
+      pce: freshData?.pce ? {
+        pce: formatNumber(freshData.pce.pce),
+        corePCE: formatNumber(freshData.pce.corePCE),
+        pceYoY: formatNumber(freshData.pce.pceYoY),
+        corePCEYoY: formatNumber(freshData.pce.corePCEYoY),
+        date: freshData.pce.date
+      } : null,
+      ppi: freshData?.ppi ? {
+        ppi: formatNumber(freshData.ppi.ppi),
+        corePPI: formatNumber(freshData.ppi.corePPI),
+        ppiMoM: formatNumber(freshData.ppi.ppiMoM),
+        corePPIMoM: formatNumber(freshData.ppi.corePPIMoM),
+        ppiActual: formatNumber(freshData.ppi.ppiActual),
+        corePPIActual: formatNumber(freshData.ppi.corePPIActual),
+        ppiYoY: formatNumber(freshData.ppi.ppiYoY),
+        corePPIYoY: formatNumber(freshData.ppi.corePPIYoY),
+        date: freshData.ppi.date
       } : null,
       timestamp: new Date().toISOString()
     };
     
-    await pool.end();
-    res.json(transformedData);
+    console.log('Returning response:', response);
+    res.json(response);
   } catch (error) {
     console.error('Error fetching latest inflation data:', error);
     res.status(500).json({ error: error.message });
@@ -2734,24 +2779,6 @@ app.get('/api/inflation/analysis', async (req, res) => {
 });
 
 // Get market expectations only - DISABLED (would require API calls)
-app.get('/api/inflation/expectations', async (req, res) => {
-  try {
-    // This endpoint would require external API calls, so we'll return null
-    // Only data collection should fetch fresh data
-    res.json({
-      success: true,
-      data: null,
-      message: 'Market expectations not available (use data collection for fresh data)'
-    });
-  } catch (error) {
-    console.error('Error getting market expectations:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch market expectations',
-      message: error.message
-    });
-  }
-});
 
 // Get inflation sentiment analysis - DATABASE ONLY
 app.get('/api/inflation/sentiment', async (req, res) => {
@@ -3042,9 +3069,73 @@ app.post('/api/subscribe/crypto', authenticateToken, async (req, res) => {
   }
 });
 
-// Create NOWPayments crypto subscription
+// Wallet payment subscription endpoint
+app.post('/api/subscribe/wallet-payment', authenticateToken, async (req, res) => {
+  try {
+    if (process.env.SUPPORT_CRYPTO_PAYMENT !== 'true') {
+      return res.status(404).json({ error: 'Crypto payments are not enabled' });
+    }
+    
+    const { planId, months = 1, network = 'base' } = req.body;
+    const walletPaymentService = require('./services/walletPaymentService');
+    const result = await walletPaymentService.createWalletSubscription(req.user.id, planId, months, network);
+    res.json(result);
+  } catch (error) {
+    console.error('Wallet payment subscription error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Check payment status
+app.get('/api/subscribe/payment-status/:paymentId', authenticateToken, async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const walletPaymentService = require('./services/walletPaymentService');
+    const status = await walletPaymentService.getPaymentStatus(paymentId);
+    res.json(status);
+  } catch (error) {
+    console.error('Payment status check error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get renewal info
+app.get('/api/subscribe/renewal-info', authenticateToken, async (req, res) => {
+  try {
+    const subscriptionManager = require('./services/subscriptionManager');
+    const renewalOptions = await subscriptionManager.getRenewalOptions(req.user.id);
+    res.json(renewalOptions);
+  } catch (error) {
+    console.error('Renewal info error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create renewal subscription
+app.post('/api/subscribe/renew', authenticateToken, async (req, res) => {
+  try {
+    if (process.env.SUPPORT_CRYPTO_PAYMENT !== 'true') {
+      return res.status(404).json({ error: 'Crypto payments are not enabled' });
+    }
+    
+    const { planId, months = 1, network = 'base' } = req.body;
+    const subscriptionManager = require('./services/subscriptionManager');
+    const result = await subscriptionManager.createRenewalSubscription(req.user.id, planId, months, network);
+    res.json(result);
+  } catch (error) {
+    console.error('Renewal subscription error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Legacy crypto subscription endpoint (disabled by default)
+// Enable by setting SUPPORT_CRYPTO_PAYMENT=true in environment
 app.post('/api/subscribe/crypto-subscription', authenticateToken, async (req, res) => {
   try {
+    if (process.env.SUPPORT_CRYPTO_PAYMENT !== 'true') {
+      return res.status(404).json({ error: 'Crypto payments are not enabled' });
+    }
+    
     const { planId } = req.body;
     const result = await paymentService.createNowPaymentsSubscription(req.user.id, planId);
     res.json(result);
@@ -3070,14 +3161,8 @@ app.post('/api/subscribe/cancel', authenticateToken, async (req, res) => {
 // Get subscription status
 app.get('/api/subscription', authenticateToken, async (req, res) => {
   try {
-    let status;
-    try {
-      status = await paymentService.getSubscriptionStatus(req.user.id);
-    } catch (error) {
-      console.error('Payment service error:', error);
-      // If payment service fails, return basic status
-      status = { plan: 'free', status: 'inactive' };
-    }
+    const subscriptionManager = require('./services/subscriptionManager');
+    const status = await subscriptionManager.getSubscriptionStatus(req.user.id);
     
     // Get user data from database
     const { getUserById } = require('./database');
@@ -3094,6 +3179,11 @@ app.get('/api/subscription', authenticateToken, async (req, res) => {
       features: status.features,
       currentPeriodEnd: status.currentPeriodEnd,
       isAdmin: status.isAdmin || false,
+      needsRenewal: status.needsRenewal || false,
+      daysUntilExpiry: status.daysUntilExpiry,
+      expiredAt: status.expiredAt,
+      expiredPlan: status.expiredPlan,
+      shouldShowPaymentPage: subscriptionManager.shouldShowPaymentPage(status),
       notifications: user.notification_preferences ? JSON.parse(user.notification_preferences) : {}
     };
     
@@ -3146,9 +3236,14 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
   }
 });
 
-// NOWPayments webhook
+// NOWPayments webhook (disabled by default)
+// Enable by setting SUPPORT_CRYPTO_PAYMENT=true in environment
 app.post('/api/webhooks/nowpayments', async (req, res) => {
   try {
+    if (process.env.SUPPORT_CRYPTO_PAYMENT !== 'true') {
+      return res.status(404).json({ error: 'Crypto payments are not enabled' });
+    }
+    
     await paymentService.handleNowPaymentsWebhook(req.body);
     res.json({ received: true });
   } catch (error) {
@@ -4078,9 +4173,9 @@ app.delete('/api/exports/scheduled/:id', authenticateToken, requireSubscription(
 // Serve React app for all other routes (if available)
 // This should be the LAST route to avoid interfering with static files
 app.get('*', (req, res) => {
-  // Skip static file requests - they should be handled by express.static middleware
-  if (req.path.startsWith('/static/') || req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
-    return res.status(404).send('Static file not found');
+  // Skip API routes and static file requests
+  if (req.path.startsWith('/api/') || req.path.startsWith('/static/') || req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+    return res.status(404).send('Not found');
   }
   
   const indexPath = path.join(__dirname, '../client/build/index.html');
