@@ -42,13 +42,6 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
           });
           break;
           
-        case 'nowpayments':
-          // Use crypto subscription by default
-          result = await axios.post('/api/subscribe/crypto-subscription', { planId });
-          if (result.data.hostedUrl) {
-            window.open(result.data.hostedUrl, '_blank');
-          }
-          break;
           
         default:
           throw new Error('Invalid payment method');
@@ -139,8 +132,6 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
     switch (method) {
       case 'stripe':
         return <CreditCard className="w-5 h-5" />;
-      case 'nowpayments':
-        return <Bitcoin className="w-5 h-5" />;
       default:
         return <CreditCard className="w-5 h-5" />;
     }

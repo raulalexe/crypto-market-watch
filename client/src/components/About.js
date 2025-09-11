@@ -206,7 +206,7 @@ const About = () => {
             <h3 className="text-lg font-medium text-white mb-2">APIs & Services</h3>
             <ul className="space-y-1 text-slate-400">
               <li>• Stripe Payments</li>
-              <li>• NOWPayments Crypto</li>
+              <li>• Direct Wallet Payments</li>
               <li>• Venice AI Analysis</li>
               <li>• Multiple Data APIs</li>
             </ul>

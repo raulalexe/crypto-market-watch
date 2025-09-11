@@ -198,56 +198,7 @@ class EconomicDataService {
           }
         };
 
-        let response;
-        
-        // Use proxy for Railway environment if FRED API is unreachable
-        if (process.env.RAILWAY_ENVIRONMENT) {
-          console.log('🚂 Railway environment detected - using proxy for FRED API');
-          
-          // Try multiple proxy options
-          const proxyOptions = [
-            'https://api.allorigins.win/raw?url=', // Free CORS proxy
-            'https://cors-anywhere.herokuapp.com/', // CORS proxy
-            'https://thingproxy.freeboard.io/fetch/' // Another free proxy
-          ];
-          
-          // Try direct connection first, then fallback to proxies
-          let lastError = null;
-          
-          for (let i = 0; i < proxyOptions.length; i++) {
-            try {
-              const proxyUrl = proxyOptions[i];
-              const targetUrl = encodeURIComponent(url + '?' + new URLSearchParams(params).toString());
-              
-              console.log(`🔄 Trying proxy ${i + 1}/${proxyOptions.length}: ${proxyUrl}`);
-              
-              response = await axios.get(proxyUrl + targetUrl, {
-                ...axiosConfig,
-                headers: {
-                  ...axiosConfig.headers,
-                  'X-Requested-With': 'XMLHttpRequest'
-                }
-              });
-              
-              console.log(`✅ Proxy ${i + 1} successful for FRED API`);
-              break;
-              
-            } catch (proxyError) {
-              console.log(`❌ Proxy ${i + 1} failed for FRED API:`, proxyError.message);
-              lastError = proxyError;
-              continue;
-            }
-          }
-          
-          // If all proxies fail, try direct connection as last resort
-          if (!response) {
-            console.log('🔄 All proxies failed, trying direct connection to FRED API...');
-            response = await axios.get(url, axiosConfig);
-          }
-        } else {
-          // Direct connection for non-Railway environments
-          response = await axios.get(url, axiosConfig);
-        }
+        const response = await axios.get(url, axiosConfig);
 
         if (response.data.observations && response.data.observations.length > 0) {
           const latest = response.data.observations[0];

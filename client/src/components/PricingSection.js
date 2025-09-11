@@ -179,38 +179,6 @@ const PricingSection = ({
         } else {
           showAlert('Wallet payment setup failed. Please try again.', 'error');
         }
-      } else {
-        // Legacy crypto payment (NOWPayments)
-        const response = await fetch('/api/subscribe/crypto-subscription', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ planId: selectedPlan.id })
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.hostedUrl) {
-            window.open(result.hostedUrl, '_blank');
-          } else if (result.payAddress && result.payAmount && result.payCurrency) {
-            // Show crypto payment details
-            const paymentDetails = `Crypto Payment Setup Complete! 🎉 Send ${result.payAmount} ${result.payCurrency.toUpperCase()} to: ${result.payAddress} (Payment ID: ${result.subscriptionId})`;
-            showAlert(paymentDetails, 'success');
-            
-            // Copy payment address to clipboard
-            navigator.clipboard.writeText(result.payAddress).then(() => {
-              console.log('Payment address copied to clipboard');
-            }).catch(err => {
-              console.error('Failed to copy payment address:', err);
-            });
-          } else {
-            showAlert('Crypto payment setup failed. Please try again.', 'error');
-          }
-        } else {
-          showAlert('Crypto payment setup failed. Please try again.', 'error');
-        }
       }
     } catch (error) {
       console.error('Subscription error:', error);

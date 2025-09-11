@@ -3128,22 +3128,6 @@ app.post('/api/subscribe/renew', authenticateToken, async (req, res) => {
   }
 });
 
-// Legacy crypto subscription endpoint (disabled by default)
-// Enable by setting SUPPORT_CRYPTO_PAYMENT=true in environment
-app.post('/api/subscribe/crypto-subscription', authenticateToken, async (req, res) => {
-  try {
-    if (process.env.SUPPORT_CRYPTO_PAYMENT !== 'true') {
-      return res.status(404).json({ error: 'Crypto payments are not enabled' });
-    }
-    
-    const { planId } = req.body;
-    const result = await paymentService.createNowPaymentsSubscription(req.user.id, planId);
-    res.json(result);
-  } catch (error) {
-    console.error('NOWPayments subscription error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 
 
@@ -3236,21 +3220,6 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
   }
 });
 
-// NOWPayments webhook (disabled by default)
-// Enable by setting SUPPORT_CRYPTO_PAYMENT=true in environment
-app.post('/api/webhooks/nowpayments', async (req, res) => {
-  try {
-    if (process.env.SUPPORT_CRYPTO_PAYMENT !== 'true') {
-      return res.status(404).json({ error: 'Crypto payments are not enabled' });
-    }
-    
-    await paymentService.handleNowPaymentsWebhook(req.body);
-    res.json({ received: true });
-  } catch (error) {
-    console.error('NOWPayments webhook error:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
 
 // ===== API ACCESS (PRO TIER) =====
 

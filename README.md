@@ -51,7 +51,7 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
 ### APIs & Services
 - **Alpha Vantage** for market data (DXY, yields, equity indices, VIX, oil)
 - **CoinGecko** for cryptocurrency prices (free, no API key required, 10,000 calls/month)
-- **NOWPayments** for crypto payments and subscriptions (200+ cryptocurrencies)
+- **Direct Wallet Payments** for crypto payments (Base, Solana)
 - **Venice AI** for market analysis
 - **Brevo** for transactional emails (confirmation, alerts, notifications)
 - **Alternative.me** for Fear & Greed Index

@@ -8,7 +8,6 @@ const stripeKey = process.env.NODE_ENV === 'production'
   ? process.env.STRIPE_SECRET_KEY 
   : process.env.STRIPE_TEST_SECRET_KEY;
 const stripe = require('stripe')(stripeKey);
-// NOWPayments API client using axios
 const axios = require('axios');
 
 const {
@@ -24,15 +23,6 @@ const {
 class PaymentService {
   constructor() {
     this.stripe = stripe;
-    this.nowPaymentsApiKey = process.env.NOWPAYMENTS_API_KEY;
-    this.nowPaymentsBaseUrl = 'https://api.nowpayments.io/v1';
-    
-    // Debug: Check if API key is loaded
-    console.log('🔑 NOWPayments API Key loaded:', this.nowPaymentsApiKey ? '✅ Yes' : '❌ No');
-    if (this.nowPaymentsApiKey) {
-      console.log('🔑 API Key preview:', this.nowPaymentsApiKey.substring(0, 8) + '...');
-    }
-    // Remove ETH provider and wallet initialization
     
     this.subscriptionPlans = {
       free: {
@@ -444,184 +434,8 @@ class PaymentService {
     }
   }
 
-  // ===== NOWPAYMENTS (CRYPTO) =====
 
-  async createNowPaymentsCharge(userId, planId, isSubscription = false) {
-    try {
-      const plan = this.subscriptionPlans[planId];
-      if (!plan) {
-        throw new Error('Invalid plan');
-      }
 
-      // Create payment request
-      const paymentData = {
-        price_amount: plan.price,
-        price_currency: 'usd',
-        pay_currency: 'btc', // Default, user can change
-        order_id: `sub_${Date.now()}_${userId}_${planId}`,
-        order_description: `${plan.name} ${isSubscription ? 'Subscription' : 'Payment'}`,
-        ipn_callback_url: `${process.env.BASE_URL}/api/webhooks/nowpayments`,
-        case: 'common'
-      };
-
-      console.log('Creating NOWPayments payment:', paymentData);
-
-      const response = await axios.post(`${this.nowPaymentsBaseUrl}/payment`, paymentData, {
-        headers: {
-          'x-api-key': this.nowPaymentsApiKey,
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000 // 30 second timeout
-      });
-      
-      const payment = response.data;
-      console.log('NOWPayments payment response:', payment);
-      console.log('Available fields:', Object.keys(payment));
-
-      return {
-        paymentId: payment.payment_id,
-        payAddress: payment.pay_address,
-        payAmount: payment.pay_amount,
-        payCurrency: payment.pay_currency,
-        hostedUrl: payment.invoice_url || payment.pay_url || payment.payment_url,
-        expiresAt: payment.expires_at,
-        isSubscription: isSubscription
-      };
-    } catch (error) {
-      console.error('NOWPayments charge creation error:', error);
-      
-      // Log detailed error information
-      if (error.response) {
-        console.error('Error response status:', error.response.status);
-        console.error('Error response data:', error.response.data);
-        console.error('Error response headers:', error.response.headers);
-      } else if (error.request) {
-        console.error('No response received:', error.request);
-      } else {
-        console.error('Error message:', error.message);
-      }
-      console.error('Error config:', error.config);
-      
-      // Provide more specific error message
-      if (error.response && error.response.status === 400) {
-        throw new Error(`NOWPayments API error: ${error.response.data?.message || 'Bad request - check your parameters'}`);
-      } else if (error.response && error.response.status === 401) {
-        throw new Error('NOWPayments API authentication failed - check your API key');
-      } else if (error.response && error.response.status === 403) {
-        throw new Error('NOWPayments API access forbidden - check your account status');
-      } else {
-        throw new Error(`NOWPayments API error: ${error.message}`);
-      }
-    }
-  }
-
-  async createNowPaymentsSubscription(userId, planId) {
-    try {
-      const plan = this.subscriptionPlans[planId];
-      if (!plan) {
-        throw new Error('Invalid plan');
-      }
-
-      // NOWPayments doesn't have a separate subscription endpoint
-      // We'll create a regular payment and handle subscription logic in our webhook
-      const subscriptionData = {
-        price_amount: plan.price,
-        price_currency: 'usd',
-        pay_currency: 'btc', // Default, user can change
-        order_id: `sub_${Date.now()}_${userId}_${planId}`,
-        order_description: `${plan.name} Subscription`,
-        ipn_callback_url: `${process.env.BASE_URL}/api/webhooks/nowpayments`,
-        case: 'common'
-      };
-
-      console.log('Creating NOWPayments subscription payment:', subscriptionData);
-
-      const response = await axios.post(`${this.nowPaymentsBaseUrl}/payment`, subscriptionData, {
-        headers: {
-          'x-api-key': this.nowPaymentsApiKey,
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000 // 30 second timeout
-      });
-      
-      const subscription = response.data;
-      console.log('NOWPayments subscription response:', subscription);
-      console.log('Available fields:', Object.keys(subscription));
-
-      return {
-        subscriptionId: subscription.payment_id,
-        payAddress: subscription.pay_address,
-        payAmount: subscription.pay_amount,
-        payCurrency: subscription.pay_currency,
-        hostedUrl: subscription.invoice_url || subscription.pay_url || subscription.payment_url,
-        expiresAt: subscription.expires_at,
-        isSubscription: true
-      };
-    } catch (error) {
-      console.error('NOWPayments subscription creation error:', error);
-      
-      // Log detailed error information
-      if (error.response) {
-        console.error('Error response status:', error.response.status);
-        console.error('Error response data:', error.response.data);
-        console.error('Error response headers:', error.response.headers);
-      } else if (error.request) {
-        console.error('No response received:', error.request);
-      } else {
-        console.error('Error message:', error.message);
-      }
-      console.error('Error config:', error.config);
-      
-      // Provide more specific error message
-      if (error.response && error.response.status === 400) {
-        throw new Error(`NOWPayments API error: ${error.response.data?.message || 'Bad request - check your parameters'}`);
-      } else if (error.response && error.response.status === 401) {
-        throw new Error('NOWPayments API authentication failed - check your API key');
-      } else if (error.response && error.response.status === 403) {
-        throw new Error('NOWPayments API access forbidden - check your account status');
-      } else {
-        throw new Error(`NOWPayments API error: ${error.message}`);
-      }
-    }
-  }
-
-  async handleNowPaymentsWebhook(event) {
-    try {
-      console.log('NOWPayments webhook received:', event);
-
-      // Handle payment confirmation
-      if (event.payment_status === 'confirmed' || event.payment_status === 'finished') {
-        const paymentId = event.payment_id;
-        const metadata = event.metadata || {};
-        const userId = metadata.user_id;
-        const planId = metadata.plan_type;
-        const isSubscription = metadata.is_subscription || metadata.subscription_type === 'recurring';
-
-        if (userId && planId) {
-          if (isSubscription) {
-            await this.activateSubscription(userId, planId, 'nowpayments_subscription', paymentId);
-          } else {
-            await this.activateSubscription(userId, planId, 'nowpayments', paymentId);
-          }
-        }
-      }
-
-      // Handle subscription renewal
-      if (event.payment_status === 'renewal_confirmed') {
-        const paymentId = event.payment_id;
-        const metadata = event.metadata || {};
-        const userId = metadata.user_id;
-        const planId = metadata.plan_id;
-
-        if (userId && planId) {
-          await this.renewSubscription(userId, planId, paymentId);
-        }
-      }
-    } catch (error) {
-      console.error('NOWPayments webhook error:', error);
-      throw error;
-    }
-  }
 
 
 

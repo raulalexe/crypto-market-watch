@@ -22,9 +22,9 @@ class InflationDataService {
       corePCE: 'PCEPILFE'        // Personal Consumption Expenditures: Chain-type Price Index Less Food and Energy
     };
     
-    // Rate limiting for FRED API (120 requests per minute for free tier)
+    // Rate limiting for FRED API (conservative: 60 requests per minute for free tier)
     this.fredRequestTimes = [];
-    this.fredRateLimit = 120; // requests per minute
+    this.fredRateLimit = 60; // requests per minute (conservative limit)
     this.fredRateWindow = 60000; // 1 minute in milliseconds
     
     // Initialize cron jobs
@@ -251,56 +251,7 @@ class InflationDataService {
           }
         };
 
-        let response;
-        
-        // Use proxy for Railway environment if FRED API is unreachable
-        if (process.env.RAILWAY_ENVIRONMENT) {
-          console.log('🚂 Railway environment detected - using proxy for FRED API');
-          
-          // Try multiple proxy options
-          const proxyOptions = [
-            'https://api.allorigins.win/raw?url=', // Free CORS proxy
-            'https://cors-anywhere.herokuapp.com/', // CORS proxy
-            'https://thingproxy.freeboard.io/fetch/' // Another free proxy
-          ];
-          
-          // Try direct connection first, then fallback to proxies
-          let lastError = null;
-          
-          for (let i = 0; i < proxyOptions.length; i++) {
-            try {
-              const proxyUrl = proxyOptions[i];
-              const targetUrl = encodeURIComponent(url + '?' + new URLSearchParams(params).toString());
-              
-              console.log(`🔄 Trying proxy ${i + 1}/${proxyOptions.length}: ${proxyUrl}`);
-              
-              response = await axios.get(proxyUrl + targetUrl, {
-                ...axiosConfig,
-                headers: {
-                  ...axiosConfig.headers,
-                  'X-Requested-With': 'XMLHttpRequest'
-                }
-              });
-              
-              console.log(`✅ Proxy ${i + 1} successful for FRED API`);
-              break;
-              
-            } catch (proxyError) {
-              console.log(`❌ Proxy ${i + 1} failed for FRED API:`, proxyError.message);
-              lastError = proxyError;
-              continue;
-            }
-          }
-          
-          // If all proxies fail, try direct connection as last resort
-          if (!response) {
-            console.log('🔄 All proxies failed, trying direct connection to FRED API...');
-            response = await axios.get(url, axiosConfig);
-          }
-        } else {
-          // Direct connection for non-Railway environments
-          response = await axios.get(url, axiosConfig);
-        }
+        const response = await axios.get(url, axiosConfig);
 
         if (response.data && response.data.observations && response.data.observations.length > 0) {
           console.log(`✅ FRED data fetched successfully for ${seriesId}`);
@@ -330,7 +281,7 @@ class InflationDataService {
     try {
       // Fetch data sequentially to avoid overwhelming FRED API
       const cpiData = await this.fetchFREDData(this.fredSeries.cpi);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay between requests
+      await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between requests
       const coreCPIData = await this.fetchFREDData(this.fredSeries.coreCPI);
 
       if (!cpiData || !coreCPIData) {
@@ -364,10 +315,9 @@ class InflationDataService {
   // Parse FRED data for PPI
   async parseFREDPPIData() {
     try {
-      const [ppiData, corePPIData] = await Promise.all([
-        this.fetchFREDData(this.fredSeries.ppi),
-        this.fetchFREDData(this.fredSeries.corePPI)
-      ]);
+      const ppiData = await this.fetchFREDData(this.fredSeries.ppi);
+      await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between requests
+      const corePPIData = await this.fetchFREDData(this.fredSeries.corePPI);
 
       if (!ppiData || !corePPIData) {
         throw new Error('Failed to fetch PPI data from FRED');
