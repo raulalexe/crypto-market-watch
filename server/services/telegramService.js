@@ -97,7 +97,7 @@ class TelegramService {
     try {
       const severityEmoji = this.getSeverityEmoji(alert.severity);
       const alertType = alert.type.replace(/_/g, ' ');
-      const timestamp = new Date(alert.timestamp).toLocaleString();
+      const timestamp = new Date(alert.timestamp).toISOString().split('T')[0];
       
       const message = this.formatAlertMessage(alert, severityEmoji, alertType, timestamp);
       
@@ -148,16 +148,28 @@ class TelegramService {
   formatAlertMessage(alert, severityEmoji, alertType, timestamp) {
     const severityColor = this.getSeverityColor(alert.severity);
     
+    // Escape HTML special characters in user-provided content
+    const escapeHtml = (text) => {
+      if (!text) return '';
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+    
     return `
 <b>${severityEmoji} Market Alert</b>
 
-<b>Type:</b> ${alertType}
+<b>Type:</b> ${escapeHtml(alertType)}
 <b>Severity:</b> ${alert.severity.toUpperCase()}
 
-${alert.message}
+${escapeHtml(alert.message)}
 
 <b>Details:</b>
-• Metric: ${alert.metric}
+• Alert ID: ${alert.id}
+• Metric: ${escapeHtml(alert.metric)}
 ${alert.value ? `• Value: ${alert.value}` : ''}
 • Time: ${timestamp}
 

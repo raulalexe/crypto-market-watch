@@ -1,5 +1,23 @@
 module.exports = {
   testEnvironment: 'node',
+  projects: [
+    {
+      displayName: 'server',
+      testEnvironment: 'node',
+      testMatch: ['<rootDir>/tests/unit/**/*.test.js', '<rootDir>/tests/integration/notification-flow.test.js'],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+    },
+    {
+      displayName: 'client',
+      testEnvironment: 'jsdom',
+      testMatch: ['<rootDir>/tests/integration/frontend.test.js'],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+      globals: {
+        TextEncoder: require('util').TextEncoder,
+        TextDecoder: require('util').TextDecoder
+      }
+    }
+  ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',

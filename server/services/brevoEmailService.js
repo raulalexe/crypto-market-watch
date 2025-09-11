@@ -290,8 +290,12 @@ class BrevoEmailService {
   }
 
   generateAlertEmailHTML(alert, userEmail = null) {
+    // Use Yahoo-compatible template for better email client support
+    return this.generateYahooCompatibleAlertEmail(alert, userEmail);
+  }
+
+  generateYahooCompatibleAlertEmail(alert, userEmail = null) {
     const severityColor = this.getSeverityColor(alert.severity);
-    const severityGradient = this.getSeverityGradient(alert.severity);
     const timestamp = new Date(alert.timestamp).toLocaleString();
     const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -306,224 +310,173 @@ class BrevoEmailService {
         <title>Market Alert - Crypto Market Watch</title>
         <style>
           body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            font-family: Arial, Helvetica, sans-serif; 
             line-height: 1.6; 
-            color: #f8fafc; 
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #333333; 
+            background-color: #f4f4f4;
             margin: 0;
-            padding: 20px;
+            padding: 0;
           }
+          table { border-collapse: collapse; }
           .container { 
             max-width: 600px; 
             margin: 0 auto; 
-            background: #1e293b;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            background-color: #ffffff;
           }
           .header { 
-            background: ${severityGradient};
-            color: white; 
-            padding: 40px 30px;
+            background-color: ${severityColor};
+            color: #ffffff; 
+            padding: 30px 20px;
             text-align: center;
-            position: relative;
-          }
-          .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-            opacity: 0.3;
-          }
-          .logo {
-            width: 48px;
-            height: 48px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            position: relative;
-            z-index: 1;
           }
           .header h1 { 
             margin: 0;
-            font-size: 28px;
-            font-weight: 700;
-            position: relative;
-            z-index: 1;
+            font-size: 24px;
+            font-weight: bold;
           }
           .header p {
             margin: 10px 0 0;
-            opacity: 0.9;
             font-size: 16px;
-            position: relative;
-            z-index: 1;
           }
           .content { 
-            background: #1e293b;
-            padding: 40px 30px;
-            color: #f8fafc;
+            background-color: #ffffff;
+            padding: 30px 20px;
+            color: #333333;
           }
           .alert-message { 
             font-size: 18px; 
             margin: 20px 0;
             padding: 20px;
-            background: linear-gradient(135deg, #334155 0%, #475569 100%);
-            border-radius: 12px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
             border-left: 4px solid ${severityColor};
-            color: #f8fafc;
-            font-weight: 600;
           }
           .alert-details { 
-            background: linear-gradient(135deg, #334155 0%, #475569 100%);
-            padding: 25px;
-            border-radius: 12px;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
             margin: 20px 0;
-            border: 1px solid #475569;
+            border: 1px solid #dee2e6;
           }
           .alert-details p {
-            margin: 10px 0;
-            color: #cbd5e1;
-            font-size: 14px;
+            margin: 8px 0;
+            color: #666666;
           }
           .alert-details strong {
-            color: #f8fafc;
-            font-weight: 600;
+            color: #333333;
           }
           .cta-button { 
             display: inline-block; 
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            color: white; 
-            padding: 16px 32px; 
+            background-color: #3b82f6;
+            color: #ffffff; 
+            padding: 15px 30px; 
             text-decoration: none; 
-            border-radius: 12px; 
+            border-radius: 5px; 
             margin: 25px 0;
-            font-weight: 600;
+            font-weight: bold;
             font-size: 16px;
             text-align: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-          }
-          .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
           }
           .footer { 
             text-align: center; 
-            padding: 30px;
-            background: #0f172a;
-            color: #64748b; 
-            font-size: 14px;
-          }
-          .footer-logo {
-            width: 32px;
-            height: 32px;
-            background: #3b82f6;
-            border-radius: 8px;
-            margin: 0 auto 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
+            padding: 30px 20px;
+            background-color: #f8f9fa;
+            color: #666666; 
             font-size: 14px;
           }
           .footer-links { 
             margin: 20px 0;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
           }
           .footer-links a { 
             color: #3b82f6; 
             text-decoration: none; 
-            font-weight: 500;
-            transition: color 0.3s ease;
+            margin: 0 10px;
           }
-          .footer-links a:hover { 
-            color: #00ff88;
+          .disclaimer {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
           }
-          .disclaimer { 
-            background: rgba(255, 68, 68, 0.1);
-            border: 1px solid rgba(255, 68, 68, 0.3);
-            border-radius: 12px;
-            padding: 20px;
-            margin: 25px 0;
-            color: #fca5a5;
+          .disclaimer p {
+            margin: 0;
+            color: #856404;
             font-size: 14px;
-          }
-          .disclaimer strong {
-            color: #fca5a5;
-          }
-          .severity-badge {
-            display: inline-block;
-            background: ${severityColor};
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            margin: 5px 0;
-          }
-          @media (max-width: 600px) {
-            .container { margin: 10px; }
-            .header, .content, .footer { padding: 20px; }
-            .footer-links { flex-direction: column; gap: 10px; }
           }
         </style>
       </head>
       <body>
-        <div class="container">
-          <div class="header">
-            <div class="logo">${this.getSeverityEmoji(alert.severity)}</div>
-            <h1>Market Alert</h1>
-            <p><strong>${alert.type.replace(/_/g, ' ')}</strong></p>
-          </div>
-          
-          <div class="content">
-            <div class="alert-message">
-              ${alert.message}
-            </div>
-            
-            <div class="alert-details">
-              <p><strong>Severity:</strong> <span class="severity-badge">${alert.severity.toUpperCase()}</span></p>
-              <p><strong>Metric:</strong> ${alert.metric}</p>
-              ${alert.value ? `<p><strong>Value:</strong> ${alert.value}</p>` : ''}
-              <p><strong>Time:</strong> ${timestamp}</p>
-            </div>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${frontendUrl}/dashboard" class="cta-button">View Full Dashboard</a>
-            </div>
-            
-            <div class="disclaimer">
-              <strong>⚠️ Disclaimer:</strong> This is not financial advice. Always do your own research before making investment decisions. Past performance does not guarantee future results.
-            </div>
-          </div>
-          
-          <div class="footer">
-            <div class="footer-logo">CMM</div>
-            <p><strong>Crypto Market Watch</strong></p>
-            <p>Advanced cryptocurrency analytics with AI-powered insights</p>
-            <div class="footer-links">
-              <a href="${frontendUrl}">Visit Website</a>
-              <a href="${frontendUrl}/dashboard">Dashboard</a>
-              <a href="${frontendUrl}/settings">Settings</a>
-              ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
-            </div>
-            <p style="margin-top: 20px; font-size: 12px; color: #64748b;">
-              You can manage your notification preferences in your account settings.
-            </p>
-          </div>
-        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4;">
+          <tr>
+            <td align="center">
+              <table class="container" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td class="header">
+                    <h1>Market Alert</h1>
+                    <p><strong>${alert.type.replace(/_/g, ' ')}</strong></p>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td class="content">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="alert-message">
+                          <strong>${alert.message}</strong>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="alert-details">
+                          <p><strong>Severity:</strong> ${alert.severity.toUpperCase()}</p>
+                          <p><strong>Metric:</strong> ${alert.metric}</p>
+                          ${alert.value ? `<p><strong>Value:</strong> ${alert.value}</p>` : ''}
+                          <p><strong>Time:</strong> ${timestamp}</p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" style="padding: 30px 0;">
+                          <a href="${frontendUrl}/dashboard" class="cta-button">View Dashboard</a>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="disclaimer">
+                          <p><strong>Disclaimer:</strong> This is not financial advice. Always do your own research before making investment decisions.</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td class="footer">
+                    <p><strong>Crypto Market Watch</strong></p>
+                    <p>Advanced cryptocurrency analytics with AI-powered insights</p>
+                    <div class="footer-links">
+                      <a href="${frontendUrl}/dashboard">Dashboard</a>
+                      <a href="${frontendUrl}/alerts">Alerts</a>
+                      <a href="${frontendUrl}/settings">Settings</a>
+                      ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
+                    </div>
+                    <p style="margin-top: 20px; font-size: 12px; color: #666666;">
+                      You can manage your notification preferences in your account settings.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
@@ -887,6 +840,11 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
   }
 
   generateWelcomeEmailHTML(userName, userEmail = null) {
+    // Use Yahoo-compatible template for better email client support
+    return this.generateYahooCompatibleWelcomeEmail(userName, userEmail);
+  }
+
+  generateYahooCompatibleWelcomeEmail(userName, userEmail = null) {
     const displayName = userName || 'there';
     const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -901,241 +859,203 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
         <title>Welcome to Crypto Market Watch</title>
         <style>
           body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            font-family: Arial, Helvetica, sans-serif; 
             line-height: 1.6; 
-            color: #f8fafc; 
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #333333; 
+            background-color: #f4f4f4;
             margin: 0;
-            padding: 20px;
+            padding: 0;
           }
+          table { border-collapse: collapse; }
           .container { 
             max-width: 600px; 
             margin: 0 auto; 
-            background: #1e293b;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            background-color: #ffffff;
           }
           .header { 
-            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
-            color: #0f172a; 
-            padding: 40px 30px;
+            background-color: #00cc6a;
+            color: #ffffff; 
+            padding: 30px 20px;
             text-align: center;
-            position: relative;
-          }
-          .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(15,23,42,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-            opacity: 0.3;
-          }
-          .logo {
-            width: 48px;
-            height: 48px;
-            background: rgba(15, 23, 42, 0.2);
-            border-radius: 12px;
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            position: relative;
-            z-index: 1;
           }
           .header h1 { 
             margin: 0;
-            font-size: 28px;
-            font-weight: 700;
-            position: relative;
-            z-index: 1;
+            font-size: 24px;
+            font-weight: bold;
           }
           .header p {
             margin: 10px 0 0;
-            opacity: 0.8;
             font-size: 16px;
-            position: relative;
-            z-index: 1;
           }
           .content { 
-            background: #1e293b;
-            padding: 40px 30px;
-            color: #f8fafc;
+            background-color: #ffffff;
+            padding: 30px 20px;
+            color: #333333;
           }
           .content p {
             font-size: 16px;
             margin-bottom: 20px;
-            color: #cbd5e1;
+            color: #333333;
           }
           .feature { 
-            background: linear-gradient(135deg, #334155 0%, #475569 100%);
+            background-color: #f8f9fa;
             padding: 20px;
-            border-radius: 12px;
             margin: 15px 0;
             border-left: 4px solid #3b82f6;
-            transition: all 0.3s ease;
-          }
-          .feature:hover {
-            transform: translateX(5px);
-            border-left-color: #00ff88;
           }
           .feature strong {
-            color: #f8fafc;
+            color: #333333;
             font-size: 16px;
             display: block;
             margin-bottom: 8px;
           }
           .feature span {
-            color: #cbd5e1;
+            color: #666666;
             font-size: 14px;
           }
           .cta-button { 
             display: inline-block; 
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            color: white; 
-            padding: 16px 32px; 
+            background-color: #3b82f6;
+            color: #ffffff; 
+            padding: 15px 30px; 
             text-decoration: none; 
-            border-radius: 12px; 
+            border-radius: 5px; 
             margin: 25px 0;
-            font-weight: 600;
+            font-weight: bold;
             font-size: 16px;
             text-align: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-          }
-          .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
           }
           .footer { 
             text-align: center; 
-            padding: 30px;
-            background: #0f172a;
-            color: #64748b; 
-            font-size: 14px;
-          }
-          .footer-logo {
-            width: 32px;
-            height: 32px;
-            background: #3b82f6;
-            border-radius: 8px;
-            margin: 0 auto 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
+            padding: 30px 20px;
+            background-color: #f8f9fa;
+            color: #666666; 
             font-size: 14px;
           }
           .footer-links { 
             margin: 20px 0;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
           }
           .footer-links a { 
             color: #3b82f6; 
             text-decoration: none; 
-            font-weight: 500;
-            transition: color 0.3s ease;
-          }
-          .footer-links a:hover { 
-            color: #00ff88;
+            margin: 0 10px;
           }
           .celebration {
-            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
-            border: 1px solid rgba(0, 255, 136, 0.3);
-            border-radius: 12px;
+            background-color: #e8f5e8;
+            border: 1px solid #00cc6a;
+            border-radius: 5px;
             padding: 20px;
             margin: 20px 0;
             text-align: center;
           }
           .celebration p {
             margin: 0;
-            color: #00ff88;
-            font-weight: 600;
-          }
-          @media (max-width: 600px) {
-            .container { margin: 10px; }
-            .header, .content, .footer { padding: 20px; }
-            .footer-links { flex-direction: column; gap: 10px; }
+            color: #00cc6a;
+            font-weight: bold;
           }
         </style>
       </head>
       <body>
-        <div class="container">
-          <div class="header">
-            <div class="logo">🚀</div>
-            <h1>Welcome to Crypto Market Watch!</h1>
-            <p>Your journey to smarter crypto trading starts now</p>
-          </div>
-          
-          <div class="content">
-            <p>Hi <strong>${displayName}</strong>,</p>
-            
-            <div class="celebration">
-              <p>🎉 Congratulations! Your account is now active and ready to use.</p>
-            </div>
-            
-            <p>Welcome to the most advanced cryptocurrency monitoring platform! We're excited to have you on board and can't wait to help you stay ahead of the market.</p>
-            
-            <p>Here's what you can do with your account:</p>
-            
-            <div class="feature">
-              <strong>📊 Real-time Market Data</strong>
-              <span>Get live cryptocurrency prices, market caps, trading volumes, and comprehensive market analysis</span>
-            </div>
-            
-            <div class="feature">
-              <strong>🤖 AI-Powered Analysis</strong>
-              <span>Receive intelligent market insights, predictions, and automated analysis powered by advanced AI</span>
-            </div>
-            
-            <div class="feature">
-              <strong>🔔 Smart Alerts</strong>
-              <span>Set up custom alerts for price movements, market events, and get notified via email, push notifications, and Telegram</span>
-            </div>
-            
-            <div class="feature">
-              <strong>📈 Advanced Metrics</strong>
-              <span>Access Bitcoin dominance, stablecoin flows, Layer 1 blockchain metrics, and economic calendar events</span>
-            </div>
-            
-            <div class="feature">
-              <strong>📅 Economic Calendar</strong>
-              <span>Stay informed about market-impacting events and economic indicators that affect crypto markets</span>
-            </div>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${frontendUrl}/dashboard" class="cta-button">Get Started Now</a>
-            </div>
-            
-            <p>Ready to explore? Log in to your account and discover all the powerful features waiting for you!</p>
-            
-            <p style="margin-top: 30px; padding: 20px; background: #334155; border-radius: 8px; border-left: 4px solid #3b82f6;">
-              <strong>💡 Pro Tip:</strong> Start by setting up your first alert to get notified when Bitcoin reaches a specific price point. It's a great way to test the system and stay informed!
-            </p>
-          </div>
-          
-          <div class="footer">
-            <div class="footer-logo">CMM</div>
-            <p><strong>Crypto Market Watch</strong></p>
-            <p>Advanced cryptocurrency analytics with AI-powered insights</p>
-            <div class="footer-links">
-              <a href="${frontendUrl}">Visit Website</a>
-              <a href="${frontendUrl}/dashboard">Dashboard</a>
-              <a href="${frontendUrl}/about">About</a>
-              ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
-            </div>
-            <p style="margin-top: 20px; font-size: 12px; color: #64748b;">
-              Need help? Contact our support team anytime.
-            </p>
-          </div>
-        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4;">
+          <tr>
+            <td align="center">
+              <table class="container" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td class="header">
+                    <h1>Welcome to Crypto Market Watch!</h1>
+                    <p>Your journey to smarter crypto trading starts now</p>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td class="content">
+                    <p>Hi <strong>${displayName}</strong>,</p>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="celebration">
+                          <p>Congratulations! Your account is now active and ready to use.</p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <p>Welcome to the most advanced cryptocurrency monitoring platform! We're excited to have you on board and can't wait to help you stay ahead of the market.</p>
+                    
+                    <p>Here's what you can do with your account:</p>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="feature">
+                          <strong>Real-time Market Data</strong>
+                          <span>Get live cryptocurrency prices, market caps, trading volumes, and comprehensive market analysis</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="feature">
+                          <strong>AI-Powered Analysis</strong>
+                          <span>Receive intelligent market insights, predictions, and automated analysis powered by advanced AI</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="feature">
+                          <strong>Smart Alerts</strong>
+                          <span>Set up custom alerts for price movements, market events, and get notified via email, push notifications, and Telegram</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="feature">
+                          <strong>Advanced Metrics</strong>
+                          <span>Access Bitcoin dominance, stablecoin flows, Layer 1 blockchain metrics, and economic calendar events</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="feature">
+                          <strong>Economic Calendar</strong>
+                          <span>Stay informed about market-impacting events and economic indicators that affect crypto markets</span>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" style="padding: 30px 0;">
+                          <a href="${frontendUrl}/dashboard" class="cta-button">Get Started Now</a>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <p>Ready to explore? Log in to your account and discover all the powerful features waiting for you!</p>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #3b82f6;">
+                          <p style="margin: 0;">
+                            <strong>Pro Tip:</strong> Start by setting up your first alert to get notified when Bitcoin reaches a specific price point. It's a great way to test the system and stay informed!
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td class="footer">
+                    <p><strong>Crypto Market Watch</strong></p>
+                    <p>Advanced cryptocurrency analytics with AI-powered insights</p>
+                    <div class="footer-links">
+                      <a href="${frontendUrl}/dashboard">Dashboard</a>
+                      <a href="${frontendUrl}/about">About</a>
+                      ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
+                    </div>
+                    <p style="margin-top: 20px; font-size: 12px; color: #666666;">
+                      Need help? Contact our support team anytime.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;

@@ -164,47 +164,123 @@ class EconomicDataService {
 
   // ===== FRED API DATA =====
 
-  // Fetch data from FRED API
-  async fetchFREDData(seriesId, description) {
-    try {
-      if (!this.fredApiKey) {
-        console.log('⚠️ FRED API key not configured');
-        return null;
-      }
+  // Fetch data from FRED API with retry logic and proxy support
+  async fetchFREDData(seriesId, description, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (!this.fredApiKey) {
+          console.log('⚠️ FRED API key not configured');
+          return null;
+        }
 
-      console.log(`📊 Fetching ${description} from FRED...`);
-      
-      const response = await axios.get(`${this.fredBaseUrl}/series/observations`, {
-        params: {
+        console.log(`📊 Fetching ${description} from FRED... (attempt ${attempt}/${maxRetries})`);
+        
+        const url = `${this.fredBaseUrl}/series/observations`;
+        const params = {
           series_id: seriesId,
           api_key: this.fredApiKey,
           file_type: 'json',
           limit: 2,
           sort_order: 'desc'
-        },
-        timeout: 30000 // Increased to 30 seconds for BLS API
-      });
-
-      if (response.data.observations && response.data.observations.length > 0) {
-        const latest = response.data.observations[0];
-        const previous = response.data.observations[1];
-        
-        return {
-          seriesId: seriesId,
-          date: latest.date,
-          value: parseFloat(latest.value),
-          previousValue: previous ? parseFloat(previous.value) : null,
-          change: previous ? parseFloat(latest.value) - parseFloat(previous.value) : null,
-          source: 'FRED',
-          description: description
         };
-      } else {
-        throw new Error('No data returned from FRED API');
+
+        const axiosConfig = {
+          params,
+          timeout: 60000, // Increased to 60 seconds for Railway
+          maxRedirects: 5, // Allow redirects
+          headers: {
+            'User-Agent': 'CryptoMarketWatch/1.0',
+            'Accept': 'application/json',
+            'Connection': 'keep-alive'
+          },
+          validateStatus: function (status) {
+            return status >= 200 && status < 300;
+          }
+        };
+
+        let response;
+        
+        // Use proxy for Railway environment if FRED API is unreachable
+        if (process.env.RAILWAY_ENVIRONMENT) {
+          console.log('🚂 Railway environment detected - using proxy for FRED API');
+          
+          // Try multiple proxy options
+          const proxyOptions = [
+            'https://api.allorigins.win/raw?url=', // Free CORS proxy
+            'https://cors-anywhere.herokuapp.com/', // CORS proxy
+            'https://thingproxy.freeboard.io/fetch/' // Another free proxy
+          ];
+          
+          // Try direct connection first, then fallback to proxies
+          let lastError = null;
+          
+          for (let i = 0; i < proxyOptions.length; i++) {
+            try {
+              const proxyUrl = proxyOptions[i];
+              const targetUrl = encodeURIComponent(url + '?' + new URLSearchParams(params).toString());
+              
+              console.log(`🔄 Trying proxy ${i + 1}/${proxyOptions.length}: ${proxyUrl}`);
+              
+              response = await axios.get(proxyUrl + targetUrl, {
+                ...axiosConfig,
+                headers: {
+                  ...axiosConfig.headers,
+                  'X-Requested-With': 'XMLHttpRequest'
+                }
+              });
+              
+              console.log(`✅ Proxy ${i + 1} successful for FRED API`);
+              break;
+              
+            } catch (proxyError) {
+              console.log(`❌ Proxy ${i + 1} failed for FRED API:`, proxyError.message);
+              lastError = proxyError;
+              continue;
+            }
+          }
+          
+          // If all proxies fail, try direct connection as last resort
+          if (!response) {
+            console.log('🔄 All proxies failed, trying direct connection to FRED API...');
+            response = await axios.get(url, axiosConfig);
+          }
+        } else {
+          // Direct connection for non-Railway environments
+          response = await axios.get(url, axiosConfig);
+        }
+
+        if (response.data.observations && response.data.observations.length > 0) {
+          const latest = response.data.observations[0];
+          const previous = response.data.observations[1];
+          
+          console.log(`✅ ${description} fetched successfully from FRED`);
+          return {
+            seriesId: seriesId,
+            date: latest.date,
+            value: parseFloat(latest.value),
+            previousValue: previous ? parseFloat(previous.value) : null,
+            change: previous ? parseFloat(latest.value) - parseFloat(previous.value) : null,
+            source: 'FRED',
+            description: description
+          };
+        } else {
+          throw new Error('No data returned from FRED API');
+        }
+      } catch (error) {
+        console.error(`❌ Error fetching ${description} from FRED (attempt ${attempt}/${maxRetries}):`, error.message);
+        
+        // If this is the last attempt, log error and return null
+        if (attempt === maxRetries) {
+          console.error(`❌ All ${maxRetries} attempts failed for ${description}`);
+          await this.errorLogger.logError('fred_data', error.message, { seriesId, description });
+          return null;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
+        console.log(`⏳ Waiting ${retryDelay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
-    } catch (error) {
-      console.error(`❌ Error fetching ${description} from FRED:`, error.message);
-      await this.errorLogger.logError('fred_data', error.message, { seriesId, description });
-      return null;
     }
   }
 

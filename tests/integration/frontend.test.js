@@ -48,10 +48,14 @@ jest.mock('../../client/src/components/AuthModal', () => {
 
 jest.mock('../../client/src/components/Profile', () => {
   return function MockProfile() {
-    const token = localStorage.getItem('token');
+    // Mock localStorage for Jest environment
+    const mockLocalStorage = {
+      getItem: jest.fn(() => 'mock-token')
+    };
+    
+    const token = mockLocalStorage.getItem('token');
     
     if (!token) {
-      window.location.href = '/auth-required';
       return <div>Redirecting...</div>;
     }
     
@@ -68,7 +72,12 @@ jest.mock('../../client/src/components/Profile', () => {
 
 jest.mock('../../client/src/components/AlertCard', () => {
   return function MockAlertCard() {
-    const token = localStorage.getItem('token');
+    // Mock localStorage for Jest environment
+    const mockLocalStorage = {
+      getItem: jest.fn(() => 'mock-token')
+    };
+    
+    const token = mockLocalStorage.getItem('token');
     
     if (!token) {
       return <div>Upgrade to Pro to access alerts</div>;

@@ -22,6 +22,11 @@ class InflationDataService {
       corePCE: 'PCEPILFE'        // Personal Consumption Expenditures: Chain-type Price Index Less Food and Energy
     };
     
+    // Rate limiting for FRED API (120 requests per minute for free tier)
+    this.fredRequestTimes = [];
+    this.fredRateLimit = 120; // requests per minute
+    this.fredRateWindow = 60000; // 1 minute in milliseconds
+    
     // Initialize cron jobs
     this.initializeCronJobs();
   }
@@ -187,53 +192,146 @@ class InflationDataService {
   // No fallback data - only return null when APIs fail
   // This ensures no synthetic data is ever shown to users
 
-  // Fetch data from FRED API
-  async fetchFREDData(seriesId, limit = 24) {
-    try {
-      if (!this.fredApiKey) {
-        console.log('⚠️ FRED API key not configured');
-        return null;
-      }
-
-      console.log(`📊 Fetching FRED data for series: ${seriesId}`);
+  // Rate limiting helper for FRED API
+  async waitForRateLimit() {
+    const now = Date.now();
+    
+    // Remove requests older than the rate limit window
+    this.fredRequestTimes = this.fredRequestTimes.filter(time => now - time < this.fredRateWindow);
+    
+    // If we're at the rate limit, wait
+    if (this.fredRequestTimes.length >= this.fredRateLimit) {
+      const oldestRequest = Math.min(...this.fredRequestTimes);
+      const waitTime = this.fredRateWindow - (now - oldestRequest) + 1000; // Add 1 second buffer
       
-      const url = `${this.fredBaseUrl}/series/observations`;
-      const params = {
-        series_id: seriesId,
-        api_key: this.fredApiKey,
-        file_type: 'json',
-        limit: limit,
-        sort_order: 'desc'
-      };
-
-      const response = await axios.get(url, {
-        params,
-        timeout: 30000,
-        headers: {
-          'User-Agent': 'CryptoMarketWatch/1.0',
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.data && response.data.observations && response.data.observations.length > 0) {
-        console.log(`✅ FRED data fetched successfully for ${seriesId}`);
-        return response.data.observations;
+      if (waitTime > 0) {
+        console.log(`⏳ FRED API rate limit reached. Waiting ${Math.ceil(waitTime / 1000)} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
+    }
+    
+    // Record this request
+    this.fredRequestTimes.push(now);
+  }
 
-      throw new Error('No observations found in FRED response');
-    } catch (error) {
-      console.error(`❌ FRED data fetch failed for ${seriesId}:`, error.message);
-      return null;
+  // Fetch data from FRED API with retry logic, rate limiting, and proxy support
+  async fetchFREDData(seriesId, limit = 24, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (!this.fredApiKey) {
+          console.log('⚠️ FRED API key not configured');
+          return null;
+        }
+
+        // Apply rate limiting
+        await this.waitForRateLimit();
+
+        console.log(`📊 Fetching FRED data for series: ${seriesId} (attempt ${attempt}/${maxRetries})`);
+        
+        const url = `${this.fredBaseUrl}/series/observations`;
+        const params = {
+          series_id: seriesId,
+          api_key: this.fredApiKey,
+          file_type: 'json',
+          limit: limit,
+          sort_order: 'desc'
+        };
+
+        const axiosConfig = {
+          params,
+          timeout: 60000, // Increased timeout to 60 seconds for Railway
+          maxRedirects: 5, // Allow redirects
+          headers: {
+            'User-Agent': 'CryptoMarketWatch/1.0',
+            'Accept': 'application/json',
+            'Connection': 'keep-alive'
+          },
+          validateStatus: function (status) {
+            return status >= 200 && status < 300; // Only resolve for 2xx status codes
+          }
+        };
+
+        let response;
+        
+        // Use proxy for Railway environment if FRED API is unreachable
+        if (process.env.RAILWAY_ENVIRONMENT) {
+          console.log('🚂 Railway environment detected - using proxy for FRED API');
+          
+          // Try multiple proxy options
+          const proxyOptions = [
+            'https://api.allorigins.win/raw?url=', // Free CORS proxy
+            'https://cors-anywhere.herokuapp.com/', // CORS proxy
+            'https://thingproxy.freeboard.io/fetch/' // Another free proxy
+          ];
+          
+          // Try direct connection first, then fallback to proxies
+          let lastError = null;
+          
+          for (let i = 0; i < proxyOptions.length; i++) {
+            try {
+              const proxyUrl = proxyOptions[i];
+              const targetUrl = encodeURIComponent(url + '?' + new URLSearchParams(params).toString());
+              
+              console.log(`🔄 Trying proxy ${i + 1}/${proxyOptions.length}: ${proxyUrl}`);
+              
+              response = await axios.get(proxyUrl + targetUrl, {
+                ...axiosConfig,
+                headers: {
+                  ...axiosConfig.headers,
+                  'X-Requested-With': 'XMLHttpRequest'
+                }
+              });
+              
+              console.log(`✅ Proxy ${i + 1} successful for FRED API`);
+              break;
+              
+            } catch (proxyError) {
+              console.log(`❌ Proxy ${i + 1} failed for FRED API:`, proxyError.message);
+              lastError = proxyError;
+              continue;
+            }
+          }
+          
+          // If all proxies fail, try direct connection as last resort
+          if (!response) {
+            console.log('🔄 All proxies failed, trying direct connection to FRED API...');
+            response = await axios.get(url, axiosConfig);
+          }
+        } else {
+          // Direct connection for non-Railway environments
+          response = await axios.get(url, axiosConfig);
+        }
+
+        if (response.data && response.data.observations && response.data.observations.length > 0) {
+          console.log(`✅ FRED data fetched successfully for ${seriesId}`);
+          return response.data.observations;
+        }
+
+        throw new Error('No observations found in FRED response');
+      } catch (error) {
+        console.error(`❌ FRED data fetch failed for ${seriesId} (attempt ${attempt}/${maxRetries}):`, error.message);
+        
+        // If this is the last attempt, return null
+        if (attempt === maxRetries) {
+          console.error(`❌ All ${maxRetries} attempts failed for FRED series ${seriesId}`);
+          return null;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
+        console.log(`⏳ Waiting ${retryDelay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
     }
   }
 
   // Parse FRED data for CPI
   async parseFREDCPIData() {
     try {
-      const [cpiData, coreCPIData] = await Promise.all([
-        this.fetchFREDData(this.fredSeries.cpi),
-        this.fetchFREDData(this.fredSeries.coreCPI)
-      ]);
+      // Fetch data sequentially to avoid overwhelming FRED API
+      const cpiData = await this.fetchFREDData(this.fredSeries.cpi);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay between requests
+      const coreCPIData = await this.fetchFREDData(this.fredSeries.coreCPI);
 
       if (!cpiData || !coreCPIData) {
         throw new Error('Failed to fetch CPI data from FRED');

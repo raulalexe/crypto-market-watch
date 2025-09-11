@@ -332,10 +332,42 @@ const initDatabase = async () => {
         core_value DECIMAL,
         yoy_change DECIMAL,
         core_yoy_change DECIMAL,
+        mom_change DECIMAL,
+        core_mom_change DECIMAL,
         source VARCHAR(10),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(type, date)
       )
     `);
+    
+    // Add missing columns if they don't exist (for existing tables)
+    try {
+      await client.query(`
+        ALTER TABLE inflation_data 
+        ADD COLUMN IF NOT EXISTS mom_change DECIMAL
+      `);
+    } catch (error) {
+      // Column might already exist, ignore error
+    }
+    
+    try {
+      await client.query(`
+        ALTER TABLE inflation_data 
+        ADD COLUMN IF NOT EXISTS core_mom_change DECIMAL
+      `);
+    } catch (error) {
+      // Column might already exist, ignore error
+    }
+    
+    // Add unique constraint if it doesn't exist
+    try {
+      await client.query(`
+        ALTER TABLE inflation_data 
+        ADD CONSTRAINT IF NOT EXISTS inflation_data_type_date_unique UNIQUE (type, date)
+      `);
+    } catch (error) {
+      // Constraint might already exist, ignore error
+    }
     
     await client.query(`
       CREATE TABLE IF NOT EXISTS inflation_releases (

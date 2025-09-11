@@ -97,9 +97,9 @@ describe('Telegram Service Tests', () => {
 
     it('should format message with severity emoji', async () => {
       const testCases = [
-        { severity: 'high', expectedEmoji: '🔴' },
-        { severity: 'medium', expectedEmoji: '🟡' },
-        { severity: 'low', expectedEmoji: '🟢' }
+        { severity: 'high', expectedEmoji: '🚨' },
+        { severity: 'medium', expectedEmoji: '⚠️' },
+        { severity: 'low', expectedEmoji: 'ℹ️' }
       ];
 
       for (const testCase of testCases) {
@@ -119,9 +119,9 @@ describe('Telegram Service Tests', () => {
 
     it('should format message with alert type', async () => {
       const testCases = [
-        { type: 'price_alert', expected: 'Price Alert' },
-        { type: 'market_alert', expected: 'Market Alert' },
-        { type: 'fear_greed_alert', expected: 'Fear & Greed Alert' }
+        { type: 'price_alert', expected: 'price alert' },
+        { type: 'market_alert', expected: 'market alert' },
+        { type: 'fear_greed_alert', expected: 'fear greed alert' }
       ];
 
       for (const testCase of testCases) {

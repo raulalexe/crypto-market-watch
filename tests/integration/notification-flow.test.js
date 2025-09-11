@@ -1,9 +1,24 @@
 const { setupTestDatabase, createTestToken, createMockUser } = require('../helpers/testHelpers');
 
 // Mock the notification services
-jest.mock('../../server/services/emailService');
-jest.mock('../../server/services/pushService');
-jest.mock('../../server/services/telegramService');
+jest.mock('../../server/services/emailService', () => {
+  return jest.fn().mockImplementation(() => ({
+    sendBulkAlertEmails: jest.fn().mockResolvedValue(true)
+  }));
+});
+
+jest.mock('../../server/services/pushService', () => {
+  return jest.fn().mockImplementation(() => ({
+    sendBulkPushNotifications: jest.fn().mockResolvedValue(true)
+  }));
+});
+
+jest.mock('../../server/services/telegramService', () => {
+  return jest.fn().mockImplementation(() => ({
+    sendAlertMessage: jest.fn().mockResolvedValue(true)
+  }));
+});
+
 jest.mock('../../server/database');
 
 const EmailService = require('../../server/services/emailService');
@@ -29,11 +44,6 @@ describe('Notification Flow Integration Tests', () => {
     mockEmailService = new EmailService();
     mockPushService = new PushService();
     mockTelegramService = new TelegramService();
-    
-    // Mock successful responses
-    mockEmailService.sendBulkAlertEmails.mockResolvedValue(true);
-    mockPushService.sendBulkPushNotifications.mockResolvedValue(true);
-    mockTelegramService.sendAlertMessage.mockResolvedValue(true);
   });
 
   describe('Complete Notification Flow', () => {

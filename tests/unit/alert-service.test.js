@@ -2,9 +2,24 @@ const AlertService = require('../../server/services/alertService');
 const { setupTestDatabase } = require('../helpers/testHelpers');
 
 // Mock the notification services
-jest.mock('../../server/services/emailService');
-jest.mock('../../server/services/pushService');
-jest.mock('../../server/services/telegramService');
+jest.mock('../../server/services/emailService', () => {
+  return jest.fn().mockImplementation(() => ({
+    sendBulkAlertEmails: jest.fn().mockResolvedValue(true)
+  }));
+});
+
+jest.mock('../../server/services/pushService', () => {
+  return jest.fn().mockImplementation(() => ({
+    sendBulkPushNotifications: jest.fn().mockResolvedValue(true)
+  }));
+});
+
+jest.mock('../../server/services/telegramService', () => {
+  return jest.fn().mockImplementation(() => ({
+    sendAlertMessage: jest.fn().mockResolvedValue(true)
+  }));
+});
+
 jest.mock('../../server/database');
 
 const EmailService = require('../../server/services/emailService');
@@ -24,14 +39,11 @@ describe('Alert Service Notification Tests', () => {
     
     // Create fresh instances
     alertService = new AlertService();
-    mockEmailService = new EmailService();
-    mockPushService = new PushService();
-    mockTelegramService = new TelegramService();
     
-    // Mock the services
-    alertService.emailService = mockEmailService;
-    alertService.pushService = mockPushService;
-    alertService.telegramService = mockTelegramService;
+    // Get the mocked instances
+    mockEmailService = alertService.emailService;
+    mockPushService = alertService.pushService;
+    mockTelegramService = alertService.telegramService;
   });
 
   describe('Alert Generation and Notification', () => {
@@ -54,11 +66,6 @@ describe('Alert Service Notification Tests', () => {
       checkAlertExists.mockResolvedValue(false);
       insertAlert.mockResolvedValue(1);
 
-      // Mock notification services
-      mockEmailService.sendBulkAlertEmails.mockResolvedValue(true);
-      mockPushService.sendBulkPushNotifications.mockResolvedValue(true);
-      mockTelegramService.sendAlertMessage.mockResolvedValue(true);
-
       // Test data with extreme SSR (should trigger alert)
       const metrics = {
         stablecoinMetrics: {
@@ -68,10 +75,25 @@ describe('Alert Service Notification Tests', () => {
 
       const alerts = await alertService.checkAllAlerts(metrics);
 
+      // Debug: Check what was returned
+      console.log('Alerts returned:', alerts.length);
+      console.log('Alert types:', alerts.map(a => a.type));
+
       // Verify alert was generated
       expect(alerts).toHaveLength(1);
       expect(alerts[0].type).toBe('SSR_VERY_BULLISH');
       expect(alerts[0].severity).toBe('high');
+
+      // Wait a bit for async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Debug: Check if mocks are set up correctly
+      console.log('Mock email service:', typeof mockEmailService.sendBulkAlertEmails);
+      console.log('Mock push service:', typeof mockPushService.sendBulkPushNotifications);
+      console.log('Mock telegram service:', typeof mockTelegramService.sendAlertMessage);
+      console.log('Email service calls:', mockEmailService.sendBulkAlertEmails.mock?.calls?.length || 0);
+      console.log('Push service calls:', mockPushService.sendBulkPushNotifications.mock?.calls?.length || 0);
+      console.log('Telegram service calls:', mockTelegramService.sendAlertMessage.mock?.calls?.length || 0);
 
       // Verify notifications were sent
       expect(mockEmailService.sendBulkAlertEmails).toHaveBeenCalled();

@@ -318,7 +318,16 @@ class DataCollector {
       if (!yield2Y && this.fredApiKey) {
         try {
           const fredResponse2Y = await axios.get(
-            `https://api.stlouisfed.org/fred/series/observations?series_id=DGS2&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=1`
+            `https://api.stlouisfed.org/fred/series/observations?series_id=DGS2&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=1`,
+            {
+              timeout: 60000,
+              maxRedirects: 5,
+              headers: {
+                'User-Agent': 'CryptoMarketWatch/1.0',
+                'Accept': 'application/json',
+                'Connection': 'keep-alive'
+              }
+            }
           );
           
           if (fredResponse2Y.data.observations && fredResponse2Y.data.observations.length > 0) {
@@ -334,7 +343,16 @@ class DataCollector {
       if (!yield10Y && this.fredApiKey) {
         try {
           const fredResponse10Y = await axios.get(
-            `https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=1`
+            `https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=1`,
+            {
+              timeout: 60000,
+              maxRedirects: 5,
+              headers: {
+                'User-Agent': 'CryptoMarketWatch/1.0',
+                'Accept': 'application/json',
+                'Connection': 'keep-alive'
+              }
+            }
           );
           
           if (fredResponse10Y.data.observations && fredResponse10Y.data.observations.length > 0) {
