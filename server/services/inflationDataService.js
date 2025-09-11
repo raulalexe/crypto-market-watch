@@ -7,8 +7,20 @@ class InflationDataService {
   constructor() {
     this.beaApiKey = process.env.BEA_API_KEY;
     this.blsApiKey = process.env.BLS_API_KEY;
+    this.fredApiKey = process.env.FRED_API_KEY;
     this.beaBaseUrl = 'https://apps.bea.gov/api/data';
     this.blsBaseUrl = 'https://api.bls.gov/publicAPI/v2';
+    this.fredBaseUrl = 'https://api.stlouisfed.org/fred';
+    
+    // FRED series codes for inflation data
+    this.fredSeries = {
+      cpi: 'CPIAUCSL',           // Consumer Price Index for All Urban Consumers: All Items
+      coreCPI: 'CPILFESL',       // Consumer Price Index for All Urban Consumers: All Items Less Food and Energy
+      ppi: 'PPIFIS',             // Producer Price Index by Industry: Final Demand
+      corePPI: 'PPIFGS',         // Producer Price Index by Industry: Final Demand Less Foods and Energy
+      pce: 'PCEPI',              // Personal Consumption Expenditures: Chain-type Price Index
+      corePCE: 'PCEPILFE'        // Personal Consumption Expenditures: Chain-type Price Index Less Food and Energy
+    };
     
     // Initialize cron jobs
     this.initializeCronJobs();
@@ -69,16 +81,73 @@ class InflationDataService {
         
         console.log(`📋 Request data:`, JSON.stringify(requestData, null, 2));
         
-        const response = await axios.post(this.blsBaseUrl + '/timeseries/data/', requestData, {
-          timeout: 30000, // Reduced timeout to 30 seconds for production
+        // Use longer timeout for Railway environment
+        const timeout = process.env.RAILWAY_ENVIRONMENT ? 90000 : 30000; // 90s for Railway, 30s for local
+        console.log(`⏱️ Using timeout: ${timeout}ms (Railway: ${process.env.RAILWAY_ENVIRONMENT ? 'Yes' : 'No'})`);
+        
+        // Configure proxy for Railway environment
+        let axiosConfig = {
+          timeout: timeout,
           headers: {
             'User-Agent': 'CryptoMarketWatch/1.0',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           },
           // Add retry configuration
           retry: 1, // Reduced retries for faster fallback
           retryDelay: 1000
-        });
+        };
+
+        let response;
+        
+        // Use proxy for Railway environment if BLS API is unreachable
+        if (process.env.RAILWAY_ENVIRONMENT) {
+          console.log('🚂 Railway environment detected - using proxy for BLS API');
+          
+          // Try multiple proxy options
+          const proxyOptions = [
+            'https://api.allorigins.win/raw?url=', // Free CORS proxy
+            'https://cors-anywhere.herokuapp.com/', // CORS proxy
+            'https://thingproxy.freeboard.io/fetch/' // Another free proxy
+          ];
+          
+          // Try direct connection first, then fallback to proxies
+          let lastError = null;
+          
+          for (let i = 0; i < proxyOptions.length; i++) {
+            try {
+              const proxyUrl = proxyOptions[i];
+              const targetUrl = encodeURIComponent(this.blsBaseUrl + '/timeseries/data/');
+              
+              console.log(`🔄 Trying proxy ${i + 1}/${proxyOptions.length}: ${proxyUrl}`);
+              
+              response = await axios.post(proxyUrl + targetUrl, requestData, {
+                ...axiosConfig,
+                headers: {
+                  ...axiosConfig.headers,
+                  'X-Requested-With': 'XMLHttpRequest'
+                }
+              });
+              
+              console.log(`✅ Proxy ${i + 1} successful`);
+              break;
+              
+            } catch (proxyError) {
+              console.log(`❌ Proxy ${i + 1} failed:`, proxyError.message);
+              lastError = proxyError;
+              continue;
+            }
+          }
+          
+          // If all proxies fail, try direct connection as last resort
+          if (!response) {
+            console.log('🔄 All proxies failed, trying direct connection...');
+            response = await axios.post(this.blsBaseUrl + '/timeseries/data/', requestData, axiosConfig);
+          }
+        } else {
+          // Direct connection for local development
+          response = await axios.post(this.blsBaseUrl + '/timeseries/data/', requestData, axiosConfig);
+        }
 
         if (response.data && response.data.Results && response.data.Results.series) {
           console.log('✅ PPI data fetched successfully');
@@ -117,6 +186,148 @@ class InflationDataService {
 
   // No fallback data - only return null when APIs fail
   // This ensures no synthetic data is ever shown to users
+
+  // Fetch data from FRED API
+  async fetchFREDData(seriesId, limit = 24) {
+    try {
+      if (!this.fredApiKey) {
+        console.log('⚠️ FRED API key not configured');
+        return null;
+      }
+
+      console.log(`📊 Fetching FRED data for series: ${seriesId}`);
+      
+      const url = `${this.fredBaseUrl}/series/observations`;
+      const params = {
+        series_id: seriesId,
+        api_key: this.fredApiKey,
+        file_type: 'json',
+        limit: limit,
+        sort_order: 'desc'
+      };
+
+      const response = await axios.get(url, {
+        params,
+        timeout: 30000,
+        headers: {
+          'User-Agent': 'CryptoMarketWatch/1.0',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.data && response.data.observations && response.data.observations.length > 0) {
+        console.log(`✅ FRED data fetched successfully for ${seriesId}`);
+        return response.data.observations;
+      }
+
+      throw new Error('No observations found in FRED response');
+    } catch (error) {
+      console.error(`❌ FRED data fetch failed for ${seriesId}:`, error.message);
+      return null;
+    }
+  }
+
+  // Parse FRED data for CPI
+  async parseFREDCPIData() {
+    try {
+      const [cpiData, coreCPIData] = await Promise.all([
+        this.fetchFREDData(this.fredSeries.cpi),
+        this.fetchFREDData(this.fredSeries.coreCPI)
+      ]);
+
+      if (!cpiData || !coreCPIData) {
+        throw new Error('Failed to fetch CPI data from FRED');
+      }
+
+      const latestCPI = cpiData[0];
+      const latestCoreCPI = coreCPIData[0];
+
+      if (!latestCPI || !latestCoreCPI || latestCPI.value === '.' || latestCoreCPI.value === '.') {
+        throw new Error('Invalid CPI data from FRED');
+      }
+
+      // Calculate YoY change
+      const cpiYoY = this.calculateYoYChange(cpiData);
+      const coreCPIYoY = this.calculateYoYChange(coreCPIData);
+
+      return {
+        date: latestCPI.date,
+        cpi: parseFloat(latestCPI.value),
+        coreCPI: parseFloat(latestCoreCPI.value),
+        cpiYoY: cpiYoY,
+        coreCPIYoY: coreCPIYoY
+      };
+    } catch (error) {
+      console.error('❌ Error parsing FRED CPI data:', error.message);
+      return null;
+    }
+  }
+
+  // Parse FRED data for PPI
+  async parseFREDPPIData() {
+    try {
+      const [ppiData, corePPIData] = await Promise.all([
+        this.fetchFREDData(this.fredSeries.ppi),
+        this.fetchFREDData(this.fredSeries.corePPI)
+      ]);
+
+      if (!ppiData || !corePPIData) {
+        throw new Error('Failed to fetch PPI data from FRED');
+      }
+
+      const latestPPI = ppiData[0];
+      const latestCorePPI = corePPIData[0];
+
+      if (!latestPPI || !latestCorePPI || latestPPI.value === '.' || latestCorePPI.value === '.') {
+        throw new Error('Invalid PPI data from FRED');
+      }
+
+      // Calculate YoY and MoM changes
+      const ppiYoY = this.calculateYoYChange(ppiData);
+      const corePPIYoY = this.calculateYoYChange(corePPIData);
+      const ppiMoM = this.calculateMoMChange(ppiData);
+      const corePPIMoM = this.calculateMoMChange(corePPIData);
+
+      return {
+        date: latestPPI.date,
+        ppi: parseFloat(latestPPI.value),
+        corePPI: parseFloat(latestCorePPI.value),
+        ppiYoY: ppiYoY,
+        corePPIYoY: corePPIYoY,
+        ppiMoM: ppiMoM,
+        corePPIMoM: corePPIMoM,
+        ppiActual: ppiMoM,  // MoM percentage
+        corePPIActual: corePPIMoM  // MoM percentage
+      };
+    } catch (error) {
+      console.error('❌ Error parsing FRED PPI data:', error.message);
+      return null;
+    }
+  }
+
+  // Calculate Year-over-Year change
+  calculateYoYChange(data) {
+    if (!data || data.length < 12) return null;
+    
+    const current = parseFloat(data[0].value);
+    const yearAgo = parseFloat(data[11].value);
+    
+    if (isNaN(current) || isNaN(yearAgo) || yearAgo === 0) return null;
+    
+    return parseFloat((((current - yearAgo) / yearAgo) * 100).toFixed(2));
+  }
+
+  // Calculate Month-over-Month change
+  calculateMoMChange(data) {
+    if (!data || data.length < 2) return null;
+    
+    const current = parseFloat(data[0].value);
+    const previous = parseFloat(data[1].value);
+    
+    if (isNaN(current) || isNaN(previous) || previous === 0) return null;
+    
+    return parseFloat((((current - previous) / previous) * 100).toFixed(2));
+  }
 
   // Fetch PCE data from BEA API with retry logic
   async fetchPCEData() {
@@ -409,16 +620,73 @@ class InflationDataService {
         
         console.log(`📋 Request data:`, JSON.stringify(requestData, null, 2));
         
-        const response = await axios.post(this.blsBaseUrl + '/timeseries/data/', requestData, {
-          timeout: 30000, // Reduced timeout to 30 seconds for production
+        // Use longer timeout for Railway environment
+        const timeout = process.env.RAILWAY_ENVIRONMENT ? 90000 : 30000; // 90s for Railway, 30s for local
+        console.log(`⏱️ Using timeout: ${timeout}ms (Railway: ${process.env.RAILWAY_ENVIRONMENT ? 'Yes' : 'No'})`);
+        
+        // Configure proxy for Railway environment
+        let axiosConfig = {
+          timeout: timeout,
           headers: {
             'User-Agent': 'CryptoMarketWatch/1.0',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           },
           // Add retry configuration
           retry: 1, // Reduced retries for faster fallback
           retryDelay: 1000
-        });
+        };
+
+        let response;
+        
+        // Use proxy for Railway environment if BLS API is unreachable
+        if (process.env.RAILWAY_ENVIRONMENT) {
+          console.log('🚂 Railway environment detected - using proxy for BLS API');
+          
+          // Try multiple proxy options
+          const proxyOptions = [
+            'https://api.allorigins.win/raw?url=', // Free CORS proxy
+            'https://cors-anywhere.herokuapp.com/', // CORS proxy
+            'https://thingproxy.freeboard.io/fetch/' // Another free proxy
+          ];
+          
+          // Try direct connection first, then fallback to proxies
+          let lastError = null;
+          
+          for (let i = 0; i < proxyOptions.length; i++) {
+            try {
+              const proxyUrl = proxyOptions[i];
+              const targetUrl = encodeURIComponent(this.blsBaseUrl + '/timeseries/data/');
+              
+              console.log(`🔄 Trying proxy ${i + 1}/${proxyOptions.length}: ${proxyUrl}`);
+              
+              response = await axios.post(proxyUrl + targetUrl, requestData, {
+                ...axiosConfig,
+                headers: {
+                  ...axiosConfig.headers,
+                  'X-Requested-With': 'XMLHttpRequest'
+                }
+              });
+              
+              console.log(`✅ Proxy ${i + 1} successful`);
+              break;
+              
+            } catch (proxyError) {
+              console.log(`❌ Proxy ${i + 1} failed:`, proxyError.message);
+              lastError = proxyError;
+              continue;
+            }
+          }
+          
+          // If all proxies fail, try direct connection as last resort
+          if (!response) {
+            console.log('🔄 All proxies failed, trying direct connection...');
+            response = await axios.post(this.blsBaseUrl + '/timeseries/data/', requestData, axiosConfig);
+          }
+        } else {
+          // Direct connection for local development
+          response = await axios.post(this.blsBaseUrl + '/timeseries/data/', requestData, axiosConfig);
+        }
 
 
 
@@ -1208,15 +1476,21 @@ class InflationDataService {
       
       const results = {};
       
-      // Fetch CPI data
+      // Fetch CPI data from FRED API (replacing BLS)
       try {
-        results.cpi = await this.fetchCPIData();
+        console.log('🔄 Using FRED API for CPI data (replacing BLS)');
+        results.cpi = await this.parseFREDCPIData();
+        if (results.cpi) {
+          console.log('✅ CPI data fetched successfully from FRED');
+        } else {
+          console.log('❌ CPI data fetch failed from FRED');
+        }
       } catch (error) {
         console.error('❌ CPI data fetch failed:', error.message);
         results.cpi = null;
       }
       
-      // Fetch PCE data
+      // Fetch PCE data from BEA API (keep existing)
       try {
         results.pce = await this.fetchPCEData();
       } catch (error) {
@@ -1224,9 +1498,15 @@ class InflationDataService {
         results.pce = null;
       }
       
-      // Fetch PPI data
+      // Fetch PPI data from FRED API (replacing BLS)
       try {
-        results.ppi = await this.fetchPPIData();
+        console.log('🔄 Using FRED API for PPI data (replacing BLS)');
+        results.ppi = await this.parseFREDPPIData();
+        if (results.ppi) {
+          console.log('✅ PPI data fetched successfully from FRED');
+        } else {
+          console.log('❌ PPI data fetch failed from FRED');
+        }
       } catch (error) {
         console.error('❌ PPI data fetch failed:', error.message);
         results.ppi = null;

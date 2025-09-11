@@ -76,14 +76,12 @@ const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
         return 'Past event';
       }
       
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-
-      if (diffMins < 60) return `in ${diffMins}m`;
-      if (diffHours < 24) return `in ${diffHours}h`;
-      if (diffDays < 7) return `in ${diffDays}d`;
-      return eventDate.toLocaleDateString();
+      // Always show the actual event date and time for upcoming events
+      return eventDate.toLocaleDateString() + ' ' + eventDate.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
     }
     
     // For other alerts, show when the alert was created

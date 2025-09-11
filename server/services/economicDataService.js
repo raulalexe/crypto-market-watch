@@ -8,6 +8,7 @@ const {
   getInflationReleases, 
   updateInflationRelease 
 } = require('../database');
+const InflationDataService = require('./inflationDataService');
 
 class EconomicDataService {
   constructor() {
@@ -20,80 +21,19 @@ class EconomicDataService {
     this.fredBaseUrl = 'https://api.stlouisfed.org/fred';
     
     this.errorLogger = new (require('./errorLogger'))();
+    this.inflationDataService = new InflationDataService();
   }
 
-  // ===== BLS PPI DATA =====
+  // ===== INFLATION DATA (FRED API) =====
 
-  // Fetch PPI data from BLS
+  // Fetch PPI data using inflation data service (FRED API)
   async fetchPPIData() {
     try {
-      if (!this.blsApiKey) {
-        console.log('⚠️ BLS API key not configured for PPI data');
-        return null;
-      }
-
-      console.log('📊 Fetching PPI data from BLS...');
-      
-      const response = await axios.post(`${this.blsBaseUrl}/timeseries/data`, {
-        seriesid: ['WPSFD4', 'WPSFD41'], // Final Demand PPI and Core PPI
-        startyear: moment().subtract(1, 'year').year(),
-        endyear: moment().year(),
-        registrationkey: this.blsApiKey
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
-      });
-
-      if (response.data.status === 'REQUEST_SUCCEEDED' && response.data.Results.series.length > 0) {
-        const series = response.data.Results.series;
-        const ppiData = {
-          date: null,
-          ppi: null,
-          corePPI: null,
-          ppiMoM: null,
-          corePPIMoM: null,
-          ppiYoY: null,
-          corePPIYoY: null
-        };
-
-        series.forEach(s => {
-          if (!s || !s.data || !Array.isArray(s.data) || s.data.length === 0) return;
-          
-          const latest = s.data[0];
-          if (!latest || !latest.value) return;
-          
-          if (s.seriesID === 'WPSFD4') { // Final Demand PPI
-            ppiData.ppi = parseFloat(latest.value);
-            ppiData.date = `${latest.year}-${latest.periodName}-01`;
-            
-            // Calculate MoM change
-            if (s.data.length > 1) {
-              const previousMonth = s.data[1];
-              if (previousMonth && previousMonth.value) {
-                ppiData.ppiMoM = ((parseFloat(latest.value) - parseFloat(previousMonth.value)) / parseFloat(previousMonth.value)) * 100;
-              }
-            }
-          } else if (s.seriesID === 'WPSFD41') { // Core PPI
-            ppiData.corePPI = parseFloat(latest.value);
-            
-            // Calculate MoM change for core
-            if (s.data.length > 1) {
-              const previousMonth = s.data[1];
-              if (previousMonth && previousMonth.value) {
-                ppiData.corePPIMoM = ((parseFloat(latest.value) - parseFloat(previousMonth.value)) / parseFloat(previousMonth.value)) * 100;
-              }
-            }
-          }
-        });
-
-        console.log('✅ PPI data fetched successfully');
-        return ppiData;
-      } else {
-        console.error('❌ PPI data fetch failed:', response.data.message);
-        return null;
-      }
+      console.log('📊 Fetching PPI data using inflation data service (FRED API)...');
+      return await this.inflationDataService.fetchPPIData();
     } catch (error) {
       console.error('❌ Error fetching PPI data:', error.message);
+      await this.errorLogger.logError('ppi_data', error.message);
       return null;
     }
   }
@@ -432,69 +372,14 @@ class EconomicDataService {
 
   // ===== EXISTING INFLATION DATA METHODS =====
 
-  // Fetch CPI data from BLS (existing method)
+  // Fetch CPI data using inflation data service (FRED API)
   async fetchCPIData() {
     try {
-      if (!this.blsApiKey) {
-        console.log('⚠️ BLS API key not configured for CPI data');
-        return null;
-      }
-
-      console.log('📊 Fetching CPI data from BLS...');
-      
-      const seriesIds = ['CUSR0000SA0', 'CUSR0000SA0L1E']; // Headline and Core CPI
-      const response = await axios.post(`${this.blsBaseUrl}/timeseries/data`, {
-        seriesid: seriesIds,
-        startyear: moment().subtract(2, 'years').year(),
-        endyear: moment().year(),
-        registrationkey: this.blsApiKey
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000 // Increased to 30 seconds for BLS API
-      });
-
-      if (response.data.status === 'REQUEST_SUCCEEDED' && response.data.Results.series.length > 0) {
-        const headlineSeries = response.data.Results.series.find(s => s.seriesID === 'CUSR0000SA0');
-        const coreSeries = response.data.Results.series.find(s => s.seriesID === 'CUSR0000SA0L1E');
-        
-        if (headlineSeries && coreSeries) {
-          const headlineLatest = headlineSeries.data[0];
-          const coreLatest = coreSeries.data[0];
-          
-          // Extract month from period (e.g., "M08" -> "08")
-          console.log(`🔍 CPI Debug - Period: "${headlineLatest.period}", Year: "${headlineLatest.year}"`);
-          
-          // More robust period parsing
-          let month;
-          if (headlineLatest.period.startsWith('M')) {
-            month = headlineLatest.period.substring(1).padStart(2, '0');
-          } else if (headlineLatest.period.length === 2) {
-            month = headlineLatest.period.padStart(2, '0');
-          } else {
-            console.error(`❌ Unexpected period format: "${headlineLatest.period}"`);
-            month = '01'; // fallback
-          }
-          
-          const dateString = headlineLatest.year + '-' + month + '-01';
-          console.log(`🔍 CPI Debug - Formatted date: "${dateString}"`);
-          
-          return {
-            seriesId: 'CPI',
-            date: dateString,
-            value: parseFloat(headlineLatest.value),
-            coreValue: parseFloat(coreLatest.value),
-            previousValue: headlineSeries.data[1] ? parseFloat(headlineSeries.data[1].value) : null,
-            previousCoreValue: coreSeries.data[1] ? parseFloat(coreSeries.data[1].value) : null,
-            source: 'BLS',
-            description: 'Consumer Price Index'
-          };
-        }
-      } else {
-        throw new Error(`BLS API error: ${response.data.message || 'Unknown error'}`);
-      }
+      console.log('📊 Fetching CPI data using inflation data service (FRED API)...');
+      return await this.inflationDataService.fetchCPIData();
     } catch (error) {
       console.error('❌ Error fetching CPI data:', error.message);
-      await this.errorLogger.logError('bls_cpi', error.message);
+      await this.errorLogger.logError('cpi_data', error.message);
       return null;
     }
   }

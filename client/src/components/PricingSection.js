@@ -13,6 +13,7 @@ import {
   Bitcoin
 } from 'lucide-react';
 import ToastNotification from './ToastNotification';
+import WalletPaymentModal from './WalletPaymentModal';
 
 const PricingSection = ({ 
   variant = 'marketing', // 'marketing' or 'app'
@@ -27,7 +28,10 @@ const PricingSection = ({
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [alert, setAlert] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [cryptoPaymentDetails, setCryptoPaymentDetails] = useState(null);
+  const [showWalletPaymentModal, setShowWalletPaymentModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [supportCryptoPayment, setSupportCryptoPayment] = useState(false);
   const [pricing, setPricing] = useState(null);
   const [discountActive, setDiscountActive] = useState(false);
 
@@ -36,6 +40,8 @@ const PricingSection = ({
     fetchPricing();
     // Check if we're in launch phase
     setIsLaunchPhase(process.env.REACT_APP_LAUNCH_PHASE === 'true');
+    // Check if crypto payments are supported
+    setSupportCryptoPayment(process.env.REACT_APP_SUPPORT_CRYPTO_PAYMENT === 'true');
     setLoading(false);
   }, []);
 
@@ -149,8 +155,32 @@ const PricingSection = ({
           const errorData = await response.json();
           showAlert('Subscription failed: ' + (errorData.error || 'Please try again.'), 'error');
         }
+      } else if (method.startsWith('wallet-')) {
+        // Wallet payment
+        const network = method.split('-')[1]; // 'base' or 'solana'
+        const response = await fetch('/api/subscribe/wallet-payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            planId: selectedPlan.id, 
+            network: network,
+            months: 1 // Default to 1 month, can be made configurable
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          setCryptoPaymentDetails(result);
+          setShowWalletPaymentModal(true);
+          setShowPaymentModal(false); // Close the payment method modal
+        } else {
+          showAlert('Wallet payment setup failed. Please try again.', 'error');
+        }
       } else {
-        // Crypto payment
+        // Legacy crypto payment (NOWPayments)
         const response = await fetch('/api/subscribe/crypto-subscription', {
           method: 'POST',
           headers: {
@@ -164,6 +194,17 @@ const PricingSection = ({
           const result = await response.json();
           if (result.hostedUrl) {
             window.open(result.hostedUrl, '_blank');
+          } else if (result.payAddress && result.payAmount && result.payCurrency) {
+            // Show crypto payment details
+            const paymentDetails = `Crypto Payment Setup Complete! 🎉 Send ${result.payAmount} ${result.payCurrency.toUpperCase()} to: ${result.payAddress} (Payment ID: ${result.subscriptionId})`;
+            showAlert(paymentDetails, 'success');
+            
+            // Copy payment address to clipboard
+            navigator.clipboard.writeText(result.payAddress).then(() => {
+              console.log('Payment address copied to clipboard');
+            }).catch(err => {
+              console.error('Failed to copy payment address:', err);
+            });
           } else {
             showAlert('Crypto payment setup failed. Please try again.', 'error');
           }
@@ -587,7 +628,11 @@ const PricingSection = ({
               </div>
               <div>
                 <h4 className="font-semibold mb-2">What payment methods do you accept?</h4>
-                <p className="text-gray-400">We accept all major credit cards via Stripe and over 200 cryptocurrencies via NOWPayments.</p>
+                <p className="text-gray-400">
+                  We accept all major credit cards via Stripe
+                  {supportCryptoPayment && ' and cryptocurrency payments'}
+                  .
+                </p>
               </div>
               <div>
                 <h4 className="font-semibold mb-2">Is there a free trial?</h4>
@@ -635,13 +680,25 @@ const PricingSection = ({
                 <span className="font-semibold">Pay with Credit Card</span>
               </button>
               
-              <button
-                onClick={() => handlePaymentMethod('crypto')}
-                className="w-full flex items-center justify-center space-x-3 bg-gray-700 hover:bg-gray-600 text-white py-4 px-6 rounded-lg transition-colors duration-200"
-              >
-                <Bitcoin className="w-6 h-6" />
-                <span className="font-semibold">Pay with Cryptocurrency</span>
-              </button>
+              {supportCryptoPayment && (
+                <>
+                  <button
+                    onClick={() => handlePaymentMethod('wallet-base')}
+                    className="w-full flex items-center justify-center space-x-3 bg-blue-600 hover:bg-blue-700 text-white py-4 px-6 rounded-lg transition-colors duration-200"
+                  >
+                    <Bitcoin className="w-6 h-6" />
+                    <span className="font-semibold">Pay with USDC (Base)</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => handlePaymentMethod('wallet-solana')}
+                    className="w-full flex items-center justify-center space-x-3 bg-purple-600 hover:bg-purple-700 text-white py-4 px-6 rounded-lg transition-colors duration-200"
+                  >
+                    <Bitcoin className="w-6 h-6" />
+                    <span className="font-semibold">Pay with USDC (Solana)</span>
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="text-center">
@@ -657,7 +714,20 @@ const PricingSection = ({
       )}
       
       {/* Toast Notification */}
-      {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
+      {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} duration={alert.type === 'success' ? 15000 : 5000} />}
+      
+      {/* Wallet Payment Modal */}
+      <WalletPaymentModal
+        isOpen={showWalletPaymentModal}
+        onClose={() => setShowWalletPaymentModal(false)}
+        paymentDetails={cryptoPaymentDetails}
+        onPaymentComplete={() => {
+          setShowWalletPaymentModal(false);
+          setCryptoPaymentDetails(null);
+          // Refresh subscription status
+          fetchSubscriptionStatus();
+        }}
+      />
     </div>
   );
 };

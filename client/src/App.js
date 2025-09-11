@@ -32,6 +32,9 @@ import UnsubscribeSuccess from './components/UnsubscribeSuccess';
 import PasswordReset from './components/PasswordReset';
 import EmailConfirmSuccess from './components/EmailConfirmSuccess';
 import EmailConfirmError from './components/EmailConfirmError';
+import PPIReleasePopup from './components/PPIReleasePopup';
+import ppiNotificationService from './services/ppiNotificationService';
+import RenewalReminder from './components/RenewalReminder';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -41,6 +44,9 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [ppiPopupOpen, setPpiPopupOpen] = useState(false);
+  const [ppiData, setPpiData] = useState(null);
+  const [ppiExpectations, setPpiExpectations] = useState(null);
 
   const fetchUserData = async () => {
     try {
@@ -88,10 +94,26 @@ function App() {
     // Initialize push notifications
     initializePushNotifications();
     
+    // Initialize PPI notification service
+    const unsubscribePPI = ppiNotificationService.addListener((notification) => {
+      if (notification.type === 'PPI_RELEASE') {
+        setPpiData(notification.data);
+        setPpiExpectations(notification.expectations);
+        setPpiPopupOpen(true);
+      }
+    });
+    
+    // Start monitoring for PPI releases
+    ppiNotificationService.startMonitoring();
+    
     // Refresh data every 5 minutes
     const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      unsubscribePPI();
+      ppiNotificationService.stopMonitoring();
+    };
   }, []);
 
   const initializePushNotifications = async () => {
@@ -323,6 +345,16 @@ function App() {
           onAuthSuccess={handleAuthSuccess}
           initialMode={searchParams.get('auth') === 'register' ? 'signup' : 'login'}
         />
+        
+        {/* Renewal Reminder */}
+        {isAuthenticated && userData && (
+          <RenewalReminder 
+            userData={userData}
+            onRenewalComplete={() => {
+              fetchUserData(); // Refresh user data after renewal
+            }}
+          />
+        )}
       </>
     );
   };
@@ -358,6 +390,14 @@ function App() {
           <Route path="/app/*" element={<AppRoutes />} />
         </Routes>
       </div>
+      
+      {/* PPI Release Popup */}
+      <PPIReleasePopup
+        isOpen={ppiPopupOpen}
+        onClose={() => setPpiPopupOpen(false)}
+        ppiData={ppiData}
+        expectations={ppiExpectations}
+      />
     </Router>
   );
 }

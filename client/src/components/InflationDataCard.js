@@ -44,7 +44,7 @@ const InflationDataCard = ({ userData }) => {
 
       if (expectationsRes.ok) {
         const expectationsData = await expectationsRes.json();
-        setExpectations(expectationsData.data);
+        setExpectations(expectationsData);
       }
 
       if (sentimentRes.ok) {
@@ -231,30 +231,52 @@ const InflationDataCard = ({ userData }) => {
             <div className="bg-slate-600 p-3 rounded-lg">
               <div className="text-sm text-slate-400">Headline CPI (YoY %)</div>
               <div className="text-lg font-semibold text-white">
-                {inflationData.cpi.cpiYoY !== null && inflationData.cpi.cpiYoY !== undefined ? `${formatNumber(inflationData.cpi.cpiYoY)}%` : '2.73%'}
+                {inflationData.cpi.cpiYoY !== null && inflationData.cpi.cpiYoY !== undefined ? `${formatNumber(inflationData.cpi.cpiYoY)}%` : 'N/A'}
+                {expectations?.cpi?.headline && inflationData.cpi.cpiYoY !== null && (
+                  <div className="text-xs text-slate-400 mt-1">
+                    Expected: {formatNumber(expectations.cpi.headline.consensus)}%
+                    {(() => {
+                      const actual = parseFloat(inflationData.cpi.cpiYoY);
+                      const expected = parseFloat(expectations.cpi.headline.consensus);
+                      const diff = actual - expected;
+                      const diffColor = diff > 0 ? 'text-red-400' : diff < 0 ? 'text-green-400' : 'text-slate-400';
+                      return (
+                        <span className={`ml-2 ${diffColor}`}>
+                          ({diff > 0 ? '+' : ''}{formatNumber(diff)}%)
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
               <div className="text-xs text-slate-400">
                 Index: {formatNumber(inflationData.cpi.cpi)}
               </div>
-              {expectations?.cpi?.headline && (
-                <div className="text-xs text-slate-400">
-                  Expected: {formatNumber(expectations.cpi.headline.expected)}%
-                </div>
-              )}
             </div>
             <div className="bg-slate-600 p-3 rounded-lg">
               <div className="text-sm text-slate-400">Core CPI (ex. Food & Energy)</div>
               <div className="text-lg font-semibold text-white">
-                {inflationData.cpi.coreCPIYoY !== null && inflationData.cpi.coreCPIYoY !== undefined ? `${formatNumber(inflationData.cpi.coreCPIYoY)}%` : '3.05%'}
+                {inflationData.cpi.coreCPIYoY !== null && inflationData.cpi.coreCPIYoY !== undefined ? `${formatNumber(inflationData.cpi.coreCPIYoY)}%` : 'N/A'}
+                {expectations?.cpi?.core && inflationData.cpi.coreCPIYoY !== null && (
+                  <div className="text-xs text-slate-400 mt-1">
+                    Expected: {formatNumber(expectations.cpi.core.consensus)}%
+                    {(() => {
+                      const actual = parseFloat(inflationData.cpi.coreCPIYoY);
+                      const expected = parseFloat(expectations.cpi.core.consensus);
+                      const diff = actual - expected;
+                      const diffColor = diff > 0 ? 'text-red-400' : diff < 0 ? 'text-green-400' : 'text-slate-400';
+                      return (
+                        <span className={`ml-2 ${diffColor}`}>
+                          ({diff > 0 ? '+' : ''}{formatNumber(diff)}%)
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
               <div className="text-xs text-slate-400">
                 Index: {formatNumber(inflationData.cpi.coreCPI)}
               </div>
-              {expectations?.cpi?.core && (
-                <div className="text-xs text-slate-400">
-                  Expected: {formatNumber(expectations.cpi.core.expected)}%
-                </div>
-              )}
             </div>
           </div>
           <div className="text-xs text-slate-400 mt-2">
@@ -274,30 +296,52 @@ const InflationDataCard = ({ userData }) => {
             <div className="bg-slate-600 p-3 rounded-lg">
               <div className="text-sm text-slate-400">Headline PCE (YoY %)</div>
               <div className="text-lg font-semibold text-white">
-                {inflationData.pce.pceYoY !== null ? `${formatNumber(inflationData.pce.pceYoY)}%` : '9.04%'}
+                {inflationData.pce.pceYoY !== null ? `${formatNumber(inflationData.pce.pceYoY)}%` : 'N/A'}
+                {expectations?.pce?.headline && inflationData.pce.pceYoY !== null && (
+                  <div className="text-xs text-slate-400 mt-1">
+                    Expected: {formatNumber(expectations.pce.headline.consensus)}%
+                    {(() => {
+                      const actual = parseFloat(inflationData.pce.pceYoY);
+                      const expected = parseFloat(expectations.pce.headline.consensus);
+                      const diff = actual - expected;
+                      const diffColor = diff > 0 ? 'text-red-400' : diff < 0 ? 'text-green-400' : 'text-slate-400';
+                      return (
+                        <span className={`ml-2 ${diffColor}`}>
+                          ({diff > 0 ? '+' : ''}{formatNumber(diff)}%)
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
               <div className="text-xs text-slate-400">
                 Index: {formatNumber(inflationData.pce.pce)}
               </div>
-              {expectations?.pce?.headline && (
-                <div className="text-xs text-slate-400">
-                  Expected: {formatNumber(expectations.pce.headline.expected)}%
-                </div>
-              )}
             </div>
             <div className="bg-slate-600 p-3 rounded-lg">
               <div className="text-sm text-slate-400">Core PCE (ex. Food & Energy)</div>
               <div className="text-lg font-semibold text-white">
-                {inflationData.pce.corePCEYoY !== null ? `${formatNumber(inflationData.pce.corePCEYoY)}%` : '9.04%'}
+                {inflationData.pce.corePCEYoY !== null ? `${formatNumber(inflationData.pce.corePCEYoY)}%` : 'N/A'}
+                {expectations?.pce?.core && inflationData.pce.corePCEYoY !== null && (
+                  <div className="text-xs text-slate-400 mt-1">
+                    Expected: {formatNumber(expectations.pce.core.consensus)}%
+                    {(() => {
+                      const actual = parseFloat(inflationData.pce.corePCEYoY);
+                      const expected = parseFloat(expectations.pce.core.consensus);
+                      const diff = actual - expected;
+                      const diffColor = diff > 0 ? 'text-red-400' : diff < 0 ? 'text-green-400' : 'text-slate-400';
+                      return (
+                        <span className={`ml-2 ${diffColor}`}>
+                          ({diff > 0 ? '+' : ''}{formatNumber(diff)}%)
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
               <div className="text-xs text-slate-400">
                 Index: {formatNumber(inflationData.pce.corePCE)}
               </div>
-              {expectations?.pce?.core && (
-                <div className="text-xs text-slate-400">
-                  Expected: {formatNumber(expectations.pce.core.expected)}%
-                </div>
-              )}
             </div>
           </div>
           <div className="text-xs text-slate-400 mt-2">
@@ -313,32 +357,145 @@ const InflationDataCard = ({ userData }) => {
         </div>
       )}
 
-      {/* Market Expectations */}
-      {expectations && (
+      {/* PPI Data */}
+      {inflationData?.ppi ? (
         <div className="bg-slate-700 rounded-lg p-4 mb-4">
-          <h4 className="text-white font-medium mb-3">Market Expectations</h4>
-          <div className="text-xs text-slate-400 mb-3">
-            Sources: {expectations.sources.join(', ')}
-          </div>
+          <h4 className="text-white font-medium mb-3 flex items-center space-x-2">
+            <DollarSign className="w-4 h-4 text-green-400" />
+            <span>Producer Price Index (PPI)</span>
+          </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-slate-600 p-3 rounded-lg">
-              <div className="text-sm font-medium text-white">CPI Consensus</div>
-              <div className="text-sm text-slate-300">
-                Headline: {formatNumber(expectations.cpi?.headline?.consensus)}%
+              <div className="text-sm text-slate-400">Headline PPI (MoM %)</div>
+              <div className="text-lg font-semibold text-white">
+                {inflationData.ppi.ppiMoM !== null && inflationData.ppi.ppiMoM !== undefined ? `${formatNumber(inflationData.ppi.ppiMoM)}%` : 'N/A'}
+                {expectations?.ppi?.headline && inflationData.ppi.ppiMoM !== null && (
+                  <div className="text-xs text-slate-400 mt-1">
+                    Expected: {formatNumber(expectations.ppi.headline.consensus)}%
+                    {(() => {
+                      const actual = parseFloat(inflationData.ppi.ppiMoM);
+                      const expected = parseFloat(expectations.ppi.headline.consensus);
+                      const diff = actual - expected;
+                      const diffColor = diff > 0 ? 'text-red-400' : diff < 0 ? 'text-green-400' : 'text-slate-400';
+                      return (
+                        <span className={`ml-2 ${diffColor}`}>
+                          ({diff > 0 ? '+' : ''}{formatNumber(diff)}%)
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
-              <div className="text-sm text-slate-300">
-                Core: {formatNumber(expectations.cpi?.core?.consensus)}%
+              <div className="text-xs text-slate-400">
+                Index: {formatNumber(inflationData.ppi.ppi)} | YoY: {formatNumber(inflationData.ppi.ppiYoY)}%
               </div>
             </div>
             <div className="bg-slate-600 p-3 rounded-lg">
-              <div className="text-sm font-medium text-white">PCE Consensus</div>
-              <div className="text-sm text-slate-300">
-                Headline: {formatNumber(expectations.pce?.headline?.consensus)}%
+              <div className="text-sm text-slate-400">Core PPI (ex. Food & Energy)</div>
+              <div className="text-lg font-semibold text-white">
+                {inflationData.ppi.corePPIMoM !== null && inflationData.ppi.corePPIMoM !== undefined ? `${formatNumber(inflationData.ppi.corePPIMoM)}%` : 'N/A'}
+                {expectations?.ppi?.core && inflationData.ppi.corePPIMoM !== null && (
+                  <div className="text-xs text-slate-400 mt-1">
+                    Expected: {formatNumber(expectations.ppi.core.consensus)}%
+                    {(() => {
+                      const actual = parseFloat(inflationData.ppi.corePPIMoM);
+                      const expected = parseFloat(expectations.ppi.core.consensus);
+                      const diff = actual - expected;
+                      const diffColor = diff > 0 ? 'text-red-400' : diff < 0 ? 'text-green-400' : 'text-slate-400';
+                      return (
+                        <span className={`ml-2 ${diffColor}`}>
+                          ({diff > 0 ? '+' : ''}{formatNumber(diff)}%)
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
-              <div className="text-sm text-slate-300">
-                Core: {formatNumber(expectations.pce?.core?.consensus)}%
+              <div className="text-xs text-slate-400">
+                Index: {formatNumber(inflationData.ppi.corePPI)} | YoY: {formatNumber(inflationData.ppi.corePPIYoY)}%
               </div>
             </div>
+          </div>
+          <div className="text-xs text-slate-400 mt-2">
+            Date: {formatDate(inflationData.ppi.date)}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-slate-700 rounded-lg p-4 mb-4">
+          <h4 className="text-white font-medium mb-3">Producer Price Index (PPI)</h4>
+          <div className="text-sm text-slate-400 bg-slate-600 p-3 rounded-lg">
+            PPI data temporarily unavailable
+          </div>
+        </div>
+      )}
+
+      {/* AI Analysis Section */}
+      {inflationData && (inflationData.cpi || inflationData.pce || inflationData.ppi) && (
+        <div className="bg-slate-700 rounded-lg p-4 mb-4">
+          <h4 className="text-white font-medium mb-3 flex items-center space-x-2">
+            <Activity className="w-4 h-4 text-crypto-blue" />
+            <span>AI Market Analysis</span>
+          </h4>
+          <div className="bg-slate-600 p-4 rounded-lg">
+            <div 
+              className="text-sm text-slate-300 leading-relaxed"
+              dangerouslySetInnerHTML={{
+                __html: (() => {
+                const analysis = [];
+                
+                // CPI Analysis
+                if (inflationData.cpi) {
+                  const cpiYoY = parseFloat(inflationData.cpi.cpiYoY);
+                  const coreCPIYoY = parseFloat(inflationData.cpi.coreCPIYoY);
+                  
+                  if (cpiYoY > 3.0) {
+                    analysis.push(`📈 <strong>CPI at ${formatNumber(cpiYoY)}%</strong> indicates persistent inflation pressure. This suggests the Fed may need to maintain higher interest rates longer.`);
+                  } else if (cpiYoY < 2.0) {
+                    analysis.push(`📉 <strong>CPI at ${formatNumber(cpiYoY)}%</strong> shows cooling inflation, potentially giving the Fed room to cut rates.`);
+                  } else {
+                    analysis.push(`📊 <strong>CPI at ${formatNumber(cpiYoY)}%</strong> is within the Fed's target range, indicating balanced inflation.`);
+                  }
+                  
+                  if (coreCPIYoY > cpiYoY) {
+                    analysis.push(`Core CPI (${formatNumber(coreCPIYoY)}%) is higher than headline, suggesting underlying inflation pressure.`);
+                  }
+                }
+                
+                // PCE Analysis
+                if (inflationData.pce) {
+                  const pceYoY = parseFloat(inflationData.pce.pceYoY);
+                  if (pceYoY > 2.5) {
+                    analysis.push(`💰 <strong>PCE at ${formatNumber(pceYoY)}%</strong> shows strong consumer spending and price pressure.`);
+                  } else if (pceYoY < 1.5) {
+                    analysis.push(`💸 <strong>PCE at ${formatNumber(pceYoY)}%</strong> indicates weak consumer demand and deflationary pressure.`);
+                  }
+                }
+                
+                // PPI Analysis
+                if (inflationData.ppi) {
+                  const ppiMoM = parseFloat(inflationData.ppi.ppiMoM);
+                  const ppiYoY = parseFloat(inflationData.ppi.ppiYoY);
+                  
+                  if (ppiMoM > 0.5) {
+                    analysis.push(`🏭 <strong>PPI MoM at ${formatNumber(ppiMoM)}%</strong> suggests rising producer costs, which may lead to higher consumer prices.`);
+                  } else if (ppiMoM < -0.2) {
+                    analysis.push(`📉 <strong>PPI MoM at ${formatNumber(ppiMoM)}%</strong> indicates falling producer costs, potentially easing consumer price pressure.`);
+                  }
+                  
+                  if (ppiYoY > 3.0) {
+                    analysis.push(`📊 <strong>PPI YoY at ${formatNumber(ppiYoY)}%</strong> shows sustained producer price inflation.`);
+                  }
+                }
+                
+                // Market Impact Summary
+                if (analysis.length > 0) {
+                  analysis.push(`<br/><strong>Market Impact:</strong> ${sentiment?.marketImpact?.crypto ? `Crypto markets showing ${sentiment.marketImpact.crypto} sentiment. ` : ''}${sentiment?.marketImpact?.stocks ? `Equity markets ${sentiment.marketImpact.stocks}. ` : ''}${sentiment?.marketImpact?.bonds ? `Bond yields ${sentiment.marketImpact.bonds}.` : ''}`);
+                }
+                
+                return analysis.length > 0 ? analysis.join(' ') : 'Inflation data analysis not available.';
+                })()
+              }}
+            />
           </div>
         </div>
       )}
@@ -417,3 +574,4 @@ const InflationDataCard = ({ userData }) => {
 };
 
 export default InflationDataCard;
+

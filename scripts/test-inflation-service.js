@@ -14,35 +14,36 @@ async function testInflationService() {
     const service = require('../server/services/inflationDataService');
     
     console.log('📋 Environment Variables Check:');
-    console.log(`  BLS_API_KEY: ${process.env.BLS_API_KEY ? '✅ Set' : '❌ Not set'}`);
+    console.log(`  FRED_API_KEY: ${process.env.FRED_API_KEY ? '✅ Set' : '❌ Not set'}`);
     console.log(`  BEA_API_KEY: ${process.env.BEA_API_KEY ? '✅ Set' : '❌ Not set'}`);
+    console.log(`  BLS_API_KEY: ${process.env.BLS_API_KEY ? '✅ Set (fallback)' : '❌ Not set'}`);
     console.log(`  DATABASE_URL: ${process.env.DATABASE_URL ? '✅ Set' : '❌ Not set'}\n`);
     
-    console.log('🔍 Testing CPI Data Collection:');
+    console.log('🔍 Testing CPI Data Collection (FRED API):');
     try {
       const cpiData = await service.fetchCPIData();
       if (cpiData) {
-        console.log('  ✅ CPI data collected successfully');
+        console.log('  ✅ CPI data collected successfully from FRED API');
         console.log(`     CPI: ${cpiData.cpi}`);
         console.log(`     Core CPI: ${cpiData.coreCPI}`);
         console.log(`     Source: ${cpiData.source}`);
       } else {
-        console.log('  ⚠️ CPI data collection returned null (API unavailable)');
+        console.log('  ⚠️ CPI data collection returned null (FRED API unavailable)');
       }
     } catch (error) {
       console.log('  ❌ CPI data collection failed:', error.message);
     }
     
-    console.log('\n🔍 Testing PCE Data Collection:');
+    console.log('\n🔍 Testing PCE Data Collection (BEA API):');
     try {
       const pceData = await service.fetchPCEData();
       if (pceData) {
-        console.log('  ✅ PCE data collected successfully');
+        console.log('  ✅ PCE data collected successfully from BEA API');
         console.log(`     PCE: ${pceData.pce}`);
         console.log(`     Core PCE: ${pceData.corePCE}`);
         console.log(`     Source: ${pceData.source}`);
       } else {
-        console.log('  ⚠️ PCE data collection returned null (API unavailable)');
+        console.log('  ⚠️ PCE data collection returned null (BEA API unavailable)');
       }
     } catch (error) {
       console.log('  ❌ PCE data collection failed:', error.message);
@@ -63,7 +64,10 @@ async function testInflationService() {
     }
     
     console.log('\n📚 Summary:');
-    console.log('  - No fallback data is generated');
+    console.log('  - Primary API: FRED (Federal Reserve Economic Data)');
+    console.log('  - Secondary API: BEA (Bureau of Economic Analysis)');
+    console.log('  - Fallback API: BLS (Bureau of Labor Statistics)');
+    console.log('  - No synthetic data is generated');
     console.log('  - Service returns null when APIs are unavailable');
     console.log('  - This ensures data integrity (no fake data)');
     console.log('  - Applications should handle null responses gracefully');

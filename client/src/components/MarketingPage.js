@@ -233,7 +233,7 @@ const MarketingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-              <TrendingUp className="w-8 h-8 text-crypto-blue" />
+              <TrendingUp className="w-8 h-8 text-crypto-green" />
               <span className="text-xl font-bold text-white">Crypto Market Watch</span>
             </Link>
             
@@ -325,8 +325,8 @@ const MarketingPage = () => {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <div className="flex justify-center mb-8">
-              <div className="p-4 bg-crypto-blue/20 rounded-full">
-                <TrendingUp className="w-16 h-16 text-crypto-blue" />
+              <div className="p-4 bg-crypto-green/20 rounded-full">
+                <TrendingUp className="w-16 h-16 text-crypto-green" />
               </div>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white via-blue-200 to-green-200 bg-clip-text text-transparent">

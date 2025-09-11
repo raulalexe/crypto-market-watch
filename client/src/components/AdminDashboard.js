@@ -15,7 +15,10 @@ import {
   Trash2,
   UserCheck,
   UserX,
-  Mail
+  Mail,
+  Calendar,
+  Clock,
+  Filter
 } from 'lucide-react';
 import ToastNotification from './ToastNotification';
 import TelegramManagement from './TelegramManagement';
@@ -36,11 +39,14 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
   const [exporting, setExporting] = useState({});
   const [alert, setAlert] = useState(null);
   const [deletingUser, setDeletingUser] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [eventsFilter, setEventsFilter] = useState('all'); // 'all', 'upcoming', 'past'
 
   const tabs = [
     { id: 'collections', name: 'Database Collections', icon: Database },
     { id: 'ai-analysis', name: 'AI Analysis', icon: Brain },
     { id: 'overview', name: 'Overview', icon: BarChart3 },
+    { id: 'events', name: 'Events Management', icon: Calendar },
     { id: 'users', name: 'User Management', icon: Users },
     { id: 'telegram', name: 'Telegram Bot', icon: MessageCircle }
   ];
@@ -63,6 +69,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
   useEffect(() => {
     fetchAdminData();
     fetchAlerts();
+    fetchEvents();
   }, []);
 
   const fetchAdminData = async () => {
@@ -121,6 +128,31 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
       }
     } catch (error) {
       console.error('Error fetching alerts:', error);
+    }
+  };
+
+  const fetchEvents = async (filter = 'all') => {
+    try {
+      let endpoint = '/api/admin/events/all';
+      if (filter === 'upcoming') {
+        endpoint = '/api/admin/events';
+      } else if (filter === 'past') {
+        endpoint = '/api/admin/events/past';
+      }
+      
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setEvents(data);
+      }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      showAlert('Failed to fetch events', 'error');
     }
   };
 
@@ -632,6 +664,140 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
     </div>
   );
 
+  const renderEventsTab = () => {
+    const filteredEvents = events.filter(event => {
+      if (searchTerm && !event.title.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+
+    const handleEventsFilterChange = (filter) => {
+      setEventsFilter(filter);
+      fetchEvents(filter);
+    };
+
+    const formatEventDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const getEventStatus = (event) => {
+      const now = new Date();
+      const eventDate = new Date(event.date);
+      if (eventDate > now) {
+        return { status: 'upcoming', color: 'text-blue-400', bg: 'bg-blue-900/20' };
+      } else {
+        return { status: 'past', color: 'text-gray-400', bg: 'bg-gray-900/20' };
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search events..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={eventsFilter}
+                onChange={(e) => handleEventsFilterChange(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Events</option>
+                <option value="upcoming">Upcoming Events</option>
+                <option value="past">Past Events</option>
+              </select>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => fetchEvents(eventsFilter)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">
+              Events ({filteredEvents.length})
+            </h3>
+            <div className="text-sm text-gray-400">
+              Filter: {eventsFilter === 'all' ? 'All Events' : eventsFilter === 'upcoming' ? 'Upcoming Only' : 'Past Only'}
+            </div>
+          </div>
+
+          {filteredEvents.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No events found</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredEvents.map((event) => {
+                const eventStatus = getEventStatus(event);
+                return (
+                  <div key={event.id} className={`p-4 rounded-lg border ${eventStatus.bg} border-gray-700`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-medium text-white">{event.title}</h4>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${eventStatus.color} ${eventStatus.bg}`}>
+                            {eventStatus.status}
+                          </span>
+                          {event.ignored && (
+                            <span className="px-2 py-1 rounded text-xs font-medium text-red-400 bg-red-900/20">
+                              Ignored
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-400">Date:</span>
+                            <div className="text-white">{formatEventDate(event.date)}</div>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Category:</span>
+                            <div className="text-white capitalize">{event.category || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Source:</span>
+                            <div className="text-white">{event.source || 'N/A'}</div>
+                          </div>
+                        </div>
+                        
+                        {event.description && (
+                          <div className="mt-2">
+                            <span className="text-gray-400 text-sm">Description:</span>
+                            <div className="text-gray-300 text-sm mt-1">{event.description}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderUsersTab = () => {
     const filteredUsers = users.filter(user => {
       if (searchTerm && !user.email.toLowerCase().includes(searchTerm.toLowerCase())) {
@@ -843,6 +1009,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
           {activeTab === 'collections' && renderCollectionsTab()}
           {activeTab === 'ai-analysis' && renderAiAnalysisTab()}
           {activeTab === 'overview' && renderOverviewTab()}
+          {activeTab === 'events' && renderEventsTab()}
           {activeTab === 'users' && renderUsersTab()}
           {activeTab === 'telegram' && <TelegramManagement />}
         </div>

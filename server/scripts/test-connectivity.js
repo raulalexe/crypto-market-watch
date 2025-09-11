@@ -9,9 +9,9 @@ const axios = require('axios');
 
 const testEndpoints = [
   {
-    name: 'BLS API (CPI Data)',
-    url: 'https://api.bls.gov/publicAPI/v2/timeseries/data/CUSR0000SA0',
-    method: 'POST',
+    name: 'FRED API (CPI Data)',
+    url: 'https://api.stlouisfed.org/fred/series/observations',
+    method: 'GET',
     timeout: 30000
   },
   {
@@ -73,13 +73,34 @@ async function testConnectivity() {
           }
         });
       } else {
-        response = await axios.get(endpoint.url, {
-          timeout: endpoint.timeout,
-          headers: {
-            'User-Agent': 'CryptoMarketWatch/1.0',
-            'Accept': 'application/json'
+        // Special handling for FRED API
+        if (endpoint.name.includes('FRED')) {
+          const fredApiKey = process.env.FRED_API_KEY;
+          if (!fredApiKey) {
+            throw new Error('FRED_API_KEY not configured');
           }
-        });
+          response = await axios.get(endpoint.url, {
+            params: {
+              series_id: 'CPIAUCSL',
+              api_key: fredApiKey,
+              file_type: 'json',
+              limit: 1
+            },
+            timeout: endpoint.timeout,
+            headers: {
+              'User-Agent': 'CryptoMarketWatch/1.0',
+              'Accept': 'application/json'
+            }
+          });
+        } else {
+          response = await axios.get(endpoint.url, {
+            timeout: endpoint.timeout,
+            headers: {
+              'User-Agent': 'CryptoMarketWatch/1.0',
+              'Accept': 'application/json'
+            }
+          });
+        }
       }
       
       const endTime = Date.now();
@@ -147,8 +168,9 @@ async function testConnectivity() {
   // Recommendations
   console.log('\n💡 Recommendations:');
   
-  if (failed.some(f => f.name.includes('BLS') || f.name.includes('BEA'))) {
-    console.log('  - Government APIs (BLS/BEA) may be experiencing issues');
+  if (failed.some(f => f.name.includes('FRED') || f.name.includes('BEA'))) {
+    console.log('  - Government APIs (FRED/BEA) may be experiencing issues');
+    console.log('  - FRED is the primary inflation data source');
     console.log('  - Consider using fallback data or retry mechanisms');
   }
   
