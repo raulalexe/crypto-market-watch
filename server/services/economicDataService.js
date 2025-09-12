@@ -40,7 +40,7 @@ class EconomicDataService {
 
   // ===== BLS EMPLOYMENT DATA =====
 
-  // Fetch Nonfarm Payrolls data from BLS
+  // Fetch Nonfarm Payrolls data from BLS using curl (Railway Akamai edge workaround)
   async fetchNonfarmPayrolls() {
     try {
       if (!this.blsApiKey) {
@@ -51,15 +51,32 @@ class EconomicDataService {
       console.log('📊 Fetching Nonfarm Payrolls data from BLS...');
       
       const seriesId = 'CES0000000001'; // Total nonfarm employment
-      const response = await axios.post(`${this.blsBaseUrl}/timeseries/data`, {
+      const requestData = {
         seriesid: [seriesId],
         startyear: moment().subtract(2, 'years').year(),
         endyear: moment().year(),
         registrationkey: this.blsApiKey
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000 // Increased to 30 seconds for BLS API
-      });
+      };
+      
+      // Use curl workaround for Railway Akamai edge issue
+      const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 -X POST -H "Content-Type: application/json" -d '${JSON.stringify(requestData)}' "${this.blsBaseUrl}/timeseries/data"`;
+      console.log(`🔧 Using curl workaround for Railway Akamai edge issue (NFP)`);
+      
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      
+      const { stdout, stderr } = await execAsync(curlCommand);
+      
+      if (stderr) {
+        console.error(`⚠️ Curl stderr for NFP: ${stderr}`);
+      }
+      
+      if (!stdout) {
+        throw new Error('No response from curl command');
+      }
+      
+      const response = { data: JSON.parse(stdout) };
 
       if (response.data.status === 'REQUEST_SUCCEEDED' && response.data.Results.series.length > 0) {
         const series = response.data.Results.series[0];
@@ -88,7 +105,7 @@ class EconomicDataService {
           value: parseFloat(latestData.value),
           previousValue: series.data[1] ? parseFloat(series.data[1].value) : null,
           change: series.data[1] ? parseFloat(latestData.value) - parseFloat(series.data[1].value) : null,
-          source: 'BLS',
+          source: 'BLS (curl)',
           description: 'Total Nonfarm Payrolls'
         };
       } else {
@@ -101,7 +118,7 @@ class EconomicDataService {
     }
   }
 
-  // Fetch Unemployment Rate data from BLS
+  // Fetch Unemployment Rate data from BLS using curl (Railway Akamai edge workaround)
   async fetchUnemploymentRate() {
     try {
       if (!this.blsApiKey) {
@@ -112,15 +129,32 @@ class EconomicDataService {
       console.log('📊 Fetching Unemployment Rate data from BLS...');
       
       const seriesId = 'LNS14000000'; // Unemployment rate
-      const response = await axios.post(`${this.blsBaseUrl}/timeseries/data`, {
+      const requestData = {
         seriesid: [seriesId],
         startyear: moment().subtract(2, 'years').year(),
         endyear: moment().year(),
         registrationkey: this.blsApiKey
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000 // Increased to 30 seconds for BLS API
-      });
+      };
+      
+      // Use curl workaround for Railway Akamai edge issue
+      const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 -X POST -H "Content-Type: application/json" -d '${JSON.stringify(requestData)}' "${this.blsBaseUrl}/timeseries/data"`;
+      console.log(`🔧 Using curl workaround for Railway Akamai edge issue (Unemployment Rate)`);
+      
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      
+      const { stdout, stderr } = await execAsync(curlCommand);
+      
+      if (stderr) {
+        console.error(`⚠️ Curl stderr for Unemployment Rate: ${stderr}`);
+      }
+      
+      if (!stdout) {
+        throw new Error('No response from curl command');
+      }
+      
+      const response = { data: JSON.parse(stdout) };
 
       if (response.data.status === 'REQUEST_SUCCEEDED' && response.data.Results.series.length > 0) {
         const series = response.data.Results.series[0];
@@ -149,7 +183,7 @@ class EconomicDataService {
           value: parseFloat(latestData.value),
           previousValue: series.data[1] ? parseFloat(series.data[1].value) : null,
           change: series.data[1] ? parseFloat(latestData.value) - parseFloat(series.data[1].value) : null,
-          source: 'BLS',
+          source: 'BLS (curl)',
           description: 'Unemployment Rate'
         };
       } else {

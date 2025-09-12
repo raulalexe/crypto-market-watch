@@ -178,8 +178,36 @@ class EventCollector {
       console.log('⚠️ Failed to fetch BLS release schedule, using fallback calculation');
     }
     
-    // Fallback: Calculate 2nd Tuesday of each month
+    // Fallback: Calculate 2nd Tuesday of each month (more robust)
     const now = moment();
+    
+    // Known CPI release dates for 2025 (as backup)
+    const knownReleaseDates = [
+      '2025-01-14 08:30:00', // January 14, 2025
+      '2025-02-12 08:30:00', // February 12, 2025
+      '2025-03-12 08:30:00', // March 12, 2025
+      '2025-04-10 08:30:00', // April 10, 2025
+      '2025-05-14 08:30:00', // May 14, 2025
+      '2025-06-12 08:30:00', // June 12, 2025
+      '2025-07-10 08:30:00', // July 10, 2025
+      '2025-08-13 08:30:00', // August 13, 2025
+      '2025-09-11 08:30:00', // September 11, 2025
+      '2025-10-10 08:30:00', // October 10, 2025
+      '2025-11-12 08:30:00', // November 12, 2025
+      '2025-12-11 08:30:00'  // December 11, 2025
+    ];
+    
+    // Check if we have a known date for current or next month
+    for (const dateStr of knownReleaseDates) {
+      const releaseDate = moment(dateStr);
+      if (releaseDate.isAfter(now)) {
+        console.log(`📅 Using known CPI release date: ${releaseDate.format('YYYY-MM-DD HH:mm:ss')}`);
+        return releaseDate.format('YYYY-MM-DD HH:mm:ss');
+      }
+    }
+    
+    // Fallback: Calculate 2nd Tuesday of each month
+    console.log('📅 Calculating 2nd Tuesday fallback...');
     
     // Get the 2nd Tuesday of current month
     const firstDay = moment().startOf('month');
@@ -196,6 +224,7 @@ class EventCollector {
       nextCPI = nextSecondTuesday.hour(8).minute(30).second(0).millisecond(0);
     }
     
+    console.log(`📅 Calculated CPI release date: ${nextCPI.format('YYYY-MM-DD HH:mm:ss')}`);
     return nextCPI.format('YYYY-MM-DD HH:mm:ss');
   }
 
@@ -204,7 +233,9 @@ class EventCollector {
       // Try multiple sources for release schedule
       const sources = [
         'https://usinflationcalculator.com/inflation/consumer-price-index-release-schedule/',
-        'https://blsmon1.bls.gov/schedule/news_release/cpi.htm'
+        'https://www.bls.gov/schedule/news_release/cpi.htm',
+        'https://www.federalreserve.gov/calendar.htm',
+        'https://www.tradingeconomics.com/calendar'
       ];
       
       for (const url of sources) {
