@@ -1021,8 +1021,12 @@ const updateSubscription = (subscriptionId, updates) => {
     const values = Object.values(cleanUpdates);
     values.push(subscriptionId);
     
+    // Check if subscriptionId is a Stripe subscription ID (starts with 'sub_') or database ID (integer)
+    const isStripeId = typeof subscriptionId === 'string' && subscriptionId.startsWith('sub_');
+    const whereClause = isStripeId ? 'stripe_subscription_id' : 'id';
+    
     dbAdapter.run(
-      `UPDATE subscriptions SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = $${values.length}`,
+      `UPDATE subscriptions SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE ${whereClause} = $${values.length}`,
       values
     ).then(result => resolve(result.lastID))
      .catch(reject);
