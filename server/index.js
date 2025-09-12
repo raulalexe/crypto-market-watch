@@ -3200,6 +3200,15 @@ app.get('/api/subscription', authenticateToken, async (req, res) => {
     const { getUserById } = require('./database');
     const user = await getUserById(req.user.id);
     
+    // Debug logging
+    console.log(`📊 Subscription status for user ${req.user.id}:`, {
+      plan: status.plan,
+      status: status.status,
+      expiredAt: status.expiredAt,
+      currentPeriodEnd: status.currentPeriodEnd,
+      needsRenewal: status.needsRenewal
+    });
+    
     // Combine user data with subscription status
     const userData = {
       id: user.id,

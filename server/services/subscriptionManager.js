@@ -33,10 +33,33 @@ class SubscriptionManager {
       const subscription = await getActiveSubscription(userId);
       
       if (!subscription) {
+        console.log(`No active subscription found for user ${userId}`);
         return { status: 'free', needsRenewal: false };
       }
+      
+      console.log(`Checking subscription ${subscription.id} for user ${userId}:`, {
+        plan_type: subscription.plan_type,
+        status: subscription.status,
+        current_period_end: subscription.current_period_end
+      });
 
       const now = new Date();
+      
+      // Check if current_period_end is valid
+      if (!subscription.current_period_end) {
+        console.log(`Subscription ${subscription.id} has no current_period_end - treating as expired`);
+        await updateSubscription(subscription.id, {
+          status: 'expired'
+        });
+        
+        return {
+          status: 'expired',
+          needsRenewal: true,
+          expiredAt: new Date(), // Use current date as fallback
+          planType: subscription.plan_type
+        };
+      }
+      
       const endDate = new Date(subscription.current_period_end);
       
       // Check if subscription is expired
@@ -102,8 +125,8 @@ class SubscriptionManager {
           planName: freePlan.name,
           features: freePlan.features,
           needsRenewal: expirationStatus.needsRenewal,
-          expiredAt: expirationStatus.expiredAt,
-          expiredPlan: expirationStatus.planType
+          expiredAt: expirationStatus.status === 'expired' ? expirationStatus.expiredAt : null,
+          expiredPlan: expirationStatus.status === 'expired' ? expirationStatus.planType : null
         };
       }
 

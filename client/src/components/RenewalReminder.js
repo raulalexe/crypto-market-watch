@@ -111,7 +111,7 @@ const RenewalReminder = ({ userData, onRenewalComplete }) => {
             
             <p className="text-sm text-gray-300 mt-1">
               {isExpired 
-                ? `Your ${renewalOptions?.planName || 'subscription'} expired on ${new Date(userData.expiredAt).toLocaleDateString()}. Renew now to continue using premium features.`
+                ? `Your ${renewalOptions?.planName || 'subscription'} expired on ${userData.expiredAt ? new Date(userData.expiredAt).toLocaleDateString() : 'an unknown date'}. Renew now to continue using premium features.`
                 : `Your ${renewalOptions?.planName || 'subscription'} expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Renew now to avoid interruption.`
               }
             </p>

@@ -50,10 +50,11 @@ const PricingSection = ({
     
     if (success === 'true') {
       showAlert('🎉 Payment successful! Your subscription has been activated. Welcome to Pro!', 'success');
-      // Refresh subscription status to show updated plan
+      // The webhook already handled the subscription activation
+      // Just refresh the status to show the updated plan
       setTimeout(() => {
         fetchSubscriptionStatus();
-      }, 1000);
+      }, 2000); // Give webhook time to process
     } else if (canceled === 'true') {
       showAlert('Payment was canceled. You can try again anytime.', 'warning');
     }
