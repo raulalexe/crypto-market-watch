@@ -265,6 +265,9 @@ class PaymentService {
         case 'invoice.payment_action_required':
           await this.handlePaymentActionRequired(event.data.object);
           break;
+        case 'invoice_payment.paid':
+          await this.handleInvoicePaymentPaid(event.data.object);
+          break;
         default:
           console.log(`Unhandled webhook event type: ${event.type}`);
       }
@@ -635,6 +638,103 @@ class PaymentService {
         cryptoPrice: plan.cryptoPrice,
         features: plan.features
       }));
+  }
+
+  async handleInvoicePaymentPaid(invoicePayment) {
+    console.log(`💳 Invoice payment paid: ${invoicePayment.id}`);
+    console.log(`📋 Invoice payment details:`, {
+      id: invoicePayment.id,
+      invoice: invoicePayment.invoice,
+      amount_paid: invoicePayment.amount_paid,
+      currency: invoicePayment.currency,
+      status: invoicePayment.status
+    });
+
+    try {
+      // Get the invoice to find the subscription
+      const invoice = await this.stripe.invoices.retrieve(invoicePayment.invoice);
+      console.log(`📄 Invoice details:`, {
+        id: invoice.id,
+        subscription: invoice.subscription,
+        customer: invoice.customer,
+        status: invoice.status,
+        amount_paid: invoice.amount_paid
+      });
+
+      if (invoice.subscription) {
+        // Get the subscription to find the customer
+        const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
+        console.log(`📋 Subscription details:`, {
+          id: subscription.id,
+          customer: subscription.customer,
+          status: subscription.status,
+          current_period_start: subscription.current_period_start,
+          current_period_end: subscription.current_period_end
+        });
+
+        // Get the customer to find the user
+        const customer = await this.stripe.customers.retrieve(subscription.customer);
+        console.log(`👤 Customer details:`, {
+          id: customer.id,
+          email: customer.email,
+          metadata: customer.metadata
+        });
+
+        if (customer.email) {
+          // Find user by email
+          const user = await getUserByEmail(customer.email);
+          if (user) {
+            console.log(`✅ Found user: ${user.email} (ID: ${user.id})`);
+            
+            // Check if subscription already exists in our database
+            const existingSub = await getActiveSubscription(user.id);
+            if (!existingSub) {
+              console.log(`🔄 Creating subscription for user ${user.email}...`);
+              
+              // Create subscription in our database
+              const subscriptionData = {
+                user_id: user.id,
+                plan_type: 'pro', // Default to pro for now
+                stripe_customer_id: customer.id,
+                stripe_subscription_id: subscription.id,
+                status: subscription.status,
+                current_period_start: new Date(subscription.current_period_start * 1000),
+                current_period_end: new Date(subscription.current_period_end * 1000)
+              };
+              
+              const subscriptionId = await insertSubscription(subscriptionData);
+              console.log(`✅ Subscription created in database: ${subscriptionId}`);
+              
+              // Send upgrade email
+              try {
+                const subscriptionDetails = {
+                  current_period_start: subscriptionData.current_period_start,
+                  current_period_end: subscriptionData.current_period_end,
+                  payment_method: 'stripe',
+                  payment_id: subscription.id,
+                  plan_name: 'Pro Plan'
+                };
+                
+                const emailSent = await emailService.sendUpgradeEmail(user.email, subscriptionDetails);
+                console.log(`📧 Upgrade email sent: ${emailSent}`);
+              } catch (emailError) {
+                console.error('❌ Error sending upgrade email:', emailError);
+              }
+            } else {
+              console.log(`ℹ️ User ${user.email} already has an active subscription`);
+            }
+          } else {
+            console.log(`❌ User not found for email: ${customer.email}`);
+          }
+        } else {
+          console.log(`❌ No email found for customer: ${customer.id}`);
+        }
+      } else {
+        console.log(`❌ No subscription found in invoice: ${invoice.id}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error handling invoice payment paid:`, error);
+    }
   }
 }
 
