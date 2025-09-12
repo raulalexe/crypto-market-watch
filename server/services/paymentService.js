@@ -312,6 +312,23 @@ class PaymentService {
       
       // Get the subscription from the session
       const subscription = await this.stripe.subscriptions.retrieve(session.subscription);
+      console.log(`📊 Retrieved subscription details:`, {
+        id: subscription.id,
+        status: subscription.status,
+        current_period_start: subscription.current_period_start,
+        current_period_end: subscription.current_period_end,
+        plan: subscription.items?.data?.[0]?.price?.nickname || 'Unknown'
+      });
+      
+      // Validate and convert timestamps
+      const currentPeriodStart = subscription.current_period_start 
+        ? new Date(subscription.current_period_start * 1000) 
+        : null;
+      const currentPeriodEnd = subscription.current_period_end 
+        ? new Date(subscription.current_period_end * 1000) 
+        : null;
+      
+      console.log(`📅 Checkout session timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
       
       // Save subscription to database
       await insertSubscription({
@@ -320,11 +337,21 @@ class PaymentService {
         stripe_customer_id: session.customer,
         stripe_subscription_id: subscription.id,
         status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000),
-        current_period_end: new Date(subscription.current_period_end * 1000)
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd
       });
       
-      console.log(`Subscription ${subscription.id} saved to database for user ${userId}`);
+      console.log(`✅ Subscription ${subscription.id} saved to database for user ${userId}`);
+      
+      // Verify the subscription was created
+      const { getActiveSubscription } = require('../database');
+      const createdSub = await getActiveSubscription(userId);
+      console.log(`🔍 Verification - Active subscription for user ${userId}:`, createdSub ? {
+        id: createdSub.id,
+        plan_type: createdSub.plan_type,
+        status: createdSub.status,
+        current_period_end: createdSub.current_period_end
+      } : 'No subscription found');
 
       // Send upgrade email if this is a paid plan (not free or admin)
       if (planId !== 'free' && planId !== 'admin') {
@@ -387,10 +414,20 @@ class PaymentService {
       const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
       console.log(`Retrieved subscription: ${subscription.id}`);
       
+      // Validate and convert timestamps
+      const currentPeriodStart = subscription.current_period_start 
+        ? new Date(subscription.current_period_start * 1000) 
+        : null;
+      const currentPeriodEnd = subscription.current_period_end 
+        ? new Date(subscription.current_period_end * 1000) 
+        : null;
+      
+      console.log(`📅 Timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
+      
       await updateSubscription(subscription.id, {
         status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000),
-        current_period_end: new Date(subscription.current_period_end * 1000)
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd
       });
       
       console.log(`Updated subscription ${subscription.id} status to ${subscription.status}`);
@@ -423,19 +460,41 @@ class PaymentService {
 
   async handleSubscriptionUpdated(subscription) {
     console.log(`Subscription updated: ${subscription.id}`);
+    
+    // Validate and convert timestamps
+    const currentPeriodStart = subscription.current_period_start 
+      ? new Date(subscription.current_period_start * 1000) 
+      : null;
+    const currentPeriodEnd = subscription.current_period_end 
+      ? new Date(subscription.current_period_end * 1000) 
+      : null;
+    
+    console.log(`📅 Subscription timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
+    
     await updateSubscription(subscription.id, {
       status: subscription.status,
-      current_period_start: new Date(subscription.current_period_start * 1000),
-      current_period_end: new Date(subscription.current_period_end * 1000)
+      current_period_start: currentPeriodStart,
+      current_period_end: currentPeriodEnd
     });
   }
 
   async handleSubscriptionCreated(subscription) {
     console.log(`Subscription created: ${subscription.id}`);
+    
+    // Validate and convert timestamps
+    const currentPeriodStart = subscription.current_period_start 
+      ? new Date(subscription.current_period_start * 1000) 
+      : null;
+    const currentPeriodEnd = subscription.current_period_end 
+      ? new Date(subscription.current_period_end * 1000) 
+      : null;
+    
+    console.log(`📅 Created subscription timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
+    
     await updateSubscription(subscription.id, {
       status: subscription.status,
-      current_period_start: new Date(subscription.current_period_start * 1000),
-      current_period_end: new Date(subscription.current_period_end * 1000)
+      current_period_start: currentPeriodStart,
+      current_period_end: currentPeriodEnd
     });
   }
 

@@ -2556,10 +2556,34 @@ app.get('/api/inflation/ppi-test', async (req, res) => {
 // Get market expectations for inflation data
 app.get('/api/inflation/expectations', async (req, res) => {
   try {
-    const InflationDataService = require('./services/inflationDataService');
-    const inflationService = new InflationDataService();
-    const expectations = await inflationService.fetchMarketExpectations();
+    console.log('📊 INFLATION EXPECTATIONS ENDPOINT CALLED - USING DATABASE DATA');
+    // Use database data only, no API calls
+    const { getLatestInflationForecast } = require('./database');
     
+    const [cpiForecast, pceForecast] = await Promise.all([
+      getLatestInflationForecast('CPI'),
+      getLatestInflationForecast('PCE')
+    ]);
+    
+    const expectations = {
+      cpi: cpiForecast ? {
+        expected: cpiForecast.forecast_value,
+        previous: cpiForecast.previous_value,
+        date: cpiForecast.forecast_date,
+        source: 'database'
+      } : null,
+      pce: pceForecast ? {
+        expected: pceForecast.forecast_value,
+        previous: pceForecast.previous_value,
+        date: pceForecast.forecast_date,
+        source: 'database'
+      } : null,
+      sources: ['database'],
+      timestamp: new Date().toISOString(),
+      source: 'database'
+    };
+    
+    console.log('✅ Returning database data for inflation expectations');
     res.json(expectations);
   } catch (error) {
     console.error('Error fetching market expectations:', error);
@@ -2604,7 +2628,7 @@ app.get('/api/money-supply', optionalAuth, async (req, res) => {
     };
     
     res.json(response);
-  } catch (error) {
+    } catch (error) {
     console.error('Error fetching money supply data:', error);
     res.status(500).json({ error: 'Failed to fetch money supply data' });
   }
@@ -2613,12 +2637,21 @@ app.get('/api/money-supply', optionalAuth, async (req, res) => {
 // Get latest inflation data
 app.get('/api/inflation/latest', async (req, res) => {
   try {
-    console.log('🚀 INFLATION LATEST ENDPOINT CALLED - USING FRESH DATA');
-    // Get fresh data from APIs
-    const InflationDataService = require('./services/inflationDataService');
-    const inflationService = new InflationDataService();
-    const freshData = await inflationService.fetchLatestData();
-    console.log('Fresh data fetched successfully');
+    console.log('📊 INFLATION LATEST ENDPOINT CALLED - USING DATABASE DATA');
+    // Get data from database only
+    const { getLatestInflationData } = require('./database');
+    const dbData = await getLatestInflationData();
+    
+    if (!dbData) {
+      console.log('⚠️ No inflation data found in database');
+      return res.json({
+        cpi: null,
+        pce: null,
+        ppi: null,
+        timestamp: new Date().toISOString(),
+        message: 'No data available - data collection may be in progress'
+      });
+    }
     
     // Helper function to format numbers to 2 decimal places
     const formatNumber = (value) => {
@@ -2628,41 +2661,42 @@ app.get('/api/inflation/latest', async (req, res) => {
       return num.toFixed(2);
     };
     
-    // Return fresh data directly
+    // Return data from database
     const response = {
-      cpi: freshData?.cpi ? {
-        cpi: formatNumber(freshData.cpi.cpi),
-        coreCPI: formatNumber(freshData.cpi.coreCPI),
-        cpiYoY: formatNumber(freshData.cpi.cpiYoY),
-        coreCPIYoY: formatNumber(freshData.cpi.coreCPIYoY),
-        date: freshData.cpi.date
+      cpi: dbData.cpi ? {
+        cpi: formatNumber(dbData.cpi.cpi),
+        coreCPI: formatNumber(dbData.cpi.core_cpi),
+        cpiYoY: formatNumber(dbData.cpi.cpi_yoy),
+        coreCPIYoY: formatNumber(dbData.cpi.core_cpi_yoy),
+        date: dbData.cpi.date
       } : null,
-      pce: freshData?.pce ? {
-        pce: formatNumber(freshData.pce.pce),
-        corePCE: formatNumber(freshData.pce.corePCE),
-        pceYoY: formatNumber(freshData.pce.pceYoY),
-        corePCEYoY: formatNumber(freshData.pce.corePCEYoY),
-        date: freshData.pce.date
+      pce: dbData.pce ? {
+        pce: formatNumber(dbData.pce.pce),
+        corePCE: formatNumber(dbData.pce.core_pce),
+        pceYoY: formatNumber(dbData.pce.pce_yoy),
+        corePCEYoY: formatNumber(dbData.pce.core_pce_yoy),
+        date: dbData.pce.date
       } : null,
-      ppi: freshData?.ppi ? {
-        ppi: formatNumber(freshData.ppi.ppi),
-        corePPI: formatNumber(freshData.ppi.corePPI),
-        ppiMoM: formatNumber(freshData.ppi.ppiMoM),
-        corePPIMoM: formatNumber(freshData.ppi.corePPIMoM),
-        ppiActual: formatNumber(freshData.ppi.ppiActual),
-        corePPIActual: formatNumber(freshData.ppi.corePPIActual),
-        ppiYoY: formatNumber(freshData.ppi.ppiYoY),
-        corePPIYoY: formatNumber(freshData.ppi.corePPIYoY),
-        date: freshData.ppi.date
+      ppi: dbData.ppi ? {
+        ppi: formatNumber(dbData.ppi.ppi),
+        corePPI: formatNumber(dbData.ppi.core_ppi),
+        ppiMoM: formatNumber(dbData.ppi.ppi_mom),
+        corePPIMoM: formatNumber(dbData.ppi.core_ppi_mom),
+        ppiActual: formatNumber(dbData.ppi.ppi_actual),
+        corePPIActual: formatNumber(dbData.ppi.core_ppi_actual),
+        ppiYoY: formatNumber(dbData.ppi.ppi_yoy),
+        corePPIYoY: formatNumber(dbData.ppi.core_ppi_yoy),
+        date: dbData.ppi.date
       } : null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      source: 'database'
     };
     
-    console.log('Returning response:', response);
+    console.log('✅ Returning database data for inflation');
     res.json(response);
   } catch (error) {
-    console.error('Error fetching latest inflation data:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching inflation data from database:', error);
+    res.status(500).json({ error: 'Failed to fetch inflation data from database' });
   }
 });
 
