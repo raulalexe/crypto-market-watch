@@ -209,6 +209,9 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         
         <AIAnalysisCard data={dashboardData?.aiAnalysis} />
         
+        {/* Inflation Data Card */}
+        <InflationDataCard userData={userData} />
+        
         {/* Alert Card - Show for all users, component handles upgrade prompts */}
         <AlertCard 
           alerts={alerts} 
@@ -218,7 +221,6 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         
         {/* Other Cards */}
         <CryptoPricesCard data={dashboardData?.cryptoPrices} />
-        <InflationDataCard userData={userData} />
         <UpcomingEventsCard events={dashboardData?.upcomingEvents} />
         <NarrativesCard data={dashboardData?.trendingNarratives} />
         <AdvancedMetricsCard data={dashboardData?.advancedMetrics} />
