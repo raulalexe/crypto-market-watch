@@ -11,7 +11,8 @@ async function testInflationService() {
   console.log('🧪 Testing Inflation Data Service (No Fallback Data)...\n');
   
   try {
-    const service = require('../server/services/inflationDataService');
+    const InflationDataService = require('../server/services/inflationDataService');
+    const service = new InflationDataService();
     
     console.log('📋 Environment Variables Check:');
     console.log(`  FRED_API_KEY: ${process.env.FRED_API_KEY ? '✅ Set' : '❌ Not set'}`);

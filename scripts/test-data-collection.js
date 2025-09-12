@@ -94,7 +94,8 @@ async function testDataCollection() {
     // Test inflation data collection
     try {
       console.log('\n📊 Testing inflation data collection...');
-      const inflationService = require('../server/services/inflationDataService');
+      const InflationDataService = require('../server/services/inflationDataService');
+      const inflationService = new InflationDataService();
       const inflationData = await inflationService.fetchLatestData();
       if (inflationData) {
         console.log('  ✅ Inflation data collected');

@@ -2538,7 +2538,8 @@ app.get('/api/health', async (req, res) => {
 // Test PPI endpoint
 app.get('/api/inflation/ppi-test', async (req, res) => {
   try {
-    const inflationService = require('./services/inflationDataService');
+    const InflationDataService = require('./services/inflationDataService');
+    const inflationService = new InflationDataService();
     const freshData = await inflationService.fetchLatestData();
     
     res.json({
@@ -2555,7 +2556,8 @@ app.get('/api/inflation/ppi-test', async (req, res) => {
 // Get market expectations for inflation data
 app.get('/api/inflation/expectations', async (req, res) => {
   try {
-    const inflationService = require('./services/inflationDataService');
+    const InflationDataService = require('./services/inflationDataService');
+    const inflationService = new InflationDataService();
     const expectations = await inflationService.fetchMarketExpectations();
     
     res.json(expectations);
@@ -2570,7 +2572,8 @@ app.get('/api/inflation/latest', async (req, res) => {
   try {
     console.log('🚀 INFLATION LATEST ENDPOINT CALLED - USING FRESH DATA');
     // Get fresh data from APIs
-    const inflationService = require('./services/inflationDataService');
+    const InflationDataService = require('./services/inflationDataService');
+    const inflationService = new InflationDataService();
     const freshData = await inflationService.fetchLatestData();
     console.log('Fresh data fetched successfully');
     
@@ -2714,7 +2717,8 @@ app.post('/api/inflation/fetch', authenticateToken, requireAdmin, async (req, re
 // Update release schedule manually
 app.post('/api/inflation/update-schedule', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
-    const inflationService = require('./services/inflationDataService');
+    const InflationDataService = require('./services/inflationDataService');
+    const inflationService = new InflationDataService();
     
     await inflationService.updateReleaseSchedule();
     
@@ -2731,7 +2735,8 @@ app.post('/api/inflation/update-schedule', authenticateToken, requireSubscriptio
 // Generate forecasts manually
 app.post('/api/inflation/generate-forecasts', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
-    const inflationService = require('./services/inflationDataService');
+    const InflationDataService = require('./services/inflationDataService');
+    const inflationService = new InflationDataService();
     
     await inflationService.generateForecasts();
     

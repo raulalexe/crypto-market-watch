@@ -314,26 +314,30 @@ class DataCollector {
         await insertMarketData('TREASURY_YIELD', '10Y', yield10Y, {}, 'Alpha Vantage (Cached)');
       }
 
-      // FRED API fallback for Treasury Yields (free tier: 120 requests per minute)
+      // FRED API fallback for Treasury Yields using curl (Railway Akamai edge workaround)
       if (!yield2Y && this.fredApiKey) {
         try {
-          const fredResponse2Y = await axios.get(
-            `https://api.stlouisfed.org/fred/series/observations?series_id=DGS2&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=1`,
-            {
-              timeout: 60000,
-              maxRedirects: 5,
-              headers: {
-                'User-Agent': 'CryptoMarketWatch/1.0',
-                'Accept': 'application/json',
-                'Connection': 'keep-alive'
-              }
-            }
-          );
+          const url = `https://api.stlouisfed.org/fred/series/observations?series_id=DGS2&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=1`;
+          const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 "${url}"`;
+          console.log(`🔧 Using curl workaround for Railway Akamai edge issue (2Y Treasury)`);
           
-          if (fredResponse2Y.data.observations && fredResponse2Y.data.observations.length > 0) {
-            yield2Y = parseFloat(fredResponse2Y.data.observations[0].value);
-            await insertMarketData('TREASURY_YIELD', '2Y', yield2Y, {}, 'FRED API');
-            console.log(`Collected 2Y Treasury Yield from FRED: ${yield2Y}%`);
+          const { exec } = require('child_process');
+          const { promisify } = require('util');
+          const execAsync = promisify(exec);
+          
+          const { stdout, stderr } = await execAsync(curlCommand);
+          
+          if (stderr) {
+            console.error(`⚠️ Curl stderr: ${stderr}`);
+          }
+          
+          if (stdout) {
+            const response = JSON.parse(stdout);
+            if (response.observations && response.observations.length > 0) {
+              yield2Y = parseFloat(response.observations[0].value);
+              await insertMarketData('TREASURY_YIELD', '2Y', yield2Y, {}, 'FRED API (curl)');
+              console.log(`Collected 2Y Treasury Yield from FRED: ${yield2Y}%`);
+            }
           }
         } catch (error) {
           console.error('FRED 2Y Treasury failed:', error.message);
@@ -342,23 +346,27 @@ class DataCollector {
 
       if (!yield10Y && this.fredApiKey) {
         try {
-          const fredResponse10Y = await axios.get(
-            `https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=1`,
-            {
-              timeout: 60000,
-              maxRedirects: 5,
-              headers: {
-                'User-Agent': 'CryptoMarketWatch/1.0',
-                'Accept': 'application/json',
-                'Connection': 'keep-alive'
-              }
-            }
-          );
+          const url = `https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=1`;
+          const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 "${url}"`;
+          console.log(`🔧 Using curl workaround for Railway Akamai edge issue (10Y Treasury)`);
           
-          if (fredResponse10Y.data.observations && fredResponse10Y.data.observations.length > 0) {
-            yield10Y = parseFloat(fredResponse10Y.data.observations[0].value);
-            await insertMarketData('TREASURY_YIELD', '10Y', yield10Y, {}, 'FRED API');
-            console.log(`Collected 10Y Treasury Yield from FRED: ${yield10Y}%`);
+          const { exec } = require('child_process');
+          const { promisify } = require('util');
+          const execAsync = promisify(exec);
+          
+          const { stdout, stderr } = await execAsync(curlCommand);
+          
+          if (stderr) {
+            console.error(`⚠️ Curl stderr: ${stderr}`);
+          }
+          
+          if (stdout) {
+            const response = JSON.parse(stdout);
+            if (response.observations && response.observations.length > 0) {
+              yield10Y = parseFloat(response.observations[0].value);
+              await insertMarketData('TREASURY_YIELD', '10Y', yield10Y, {}, 'FRED API (curl)');
+              console.log(`Collected 10Y Treasury Yield from FRED: ${yield10Y}%`);
+            }
           }
         } catch (error) {
           console.error('FRED 10Y Treasury failed:', error.message);
@@ -2409,7 +2417,8 @@ class DataCollector {
     try {
       console.log('📊 Starting inflation data collection...');
       
-      const inflationService = require('./inflationDataService');
+      const InflationDataService = require('./inflationDataService');
+      const inflationService = new InflationDataService();
       const data = await inflationService.fetchLatestData();
       
       if (data) {

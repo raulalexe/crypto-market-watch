@@ -175,30 +175,28 @@ class EconomicDataService {
 
         console.log(`📊 Fetching ${description} from FRED... (attempt ${attempt}/${maxRetries})`);
         
-        const url = `${this.fredBaseUrl}/series/observations`;
-        const params = {
-          series_id: seriesId,
-          api_key: this.fredApiKey,
-          file_type: 'json',
-          limit: 2,
-          sort_order: 'desc'
-        };
-
-        const axiosConfig = {
-          params,
-          timeout: 60000, // Increased to 60 seconds for Railway
-          maxRedirects: 5, // Allow redirects
-          headers: {
-            'User-Agent': 'CryptoMarketWatch/1.0',
-            'Accept': 'application/json',
-            'Connection': 'keep-alive'
-          },
-          validateStatus: function (status) {
-            return status >= 200 && status < 300;
-          }
-        };
-
-        const response = await axios.get(url, axiosConfig);
+        // Build curl command for FRED API
+        // Railway Akamai edge issue: axios fails with timeout, but curl works
+        const url = `${this.fredBaseUrl}/series/observations?series_id=${seriesId}&api_key=${this.fredApiKey}&file_type=json&limit=2&sort_order=desc`;
+        
+        const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 "${url}"`;
+        console.log(`🔧 Using curl workaround for Railway Akamai edge issue`);
+        
+        const { exec } = require('child_process');
+        const { promisify } = require('util');
+        const execAsync = promisify(exec);
+        
+        const { stdout, stderr } = await execAsync(curlCommand);
+        
+        if (stderr) {
+          console.error(`⚠️ Curl stderr: ${stderr}`);
+        }
+        
+        if (!stdout) {
+          throw new Error('No response from curl command');
+        }
+        
+        const response = { data: JSON.parse(stdout) };
 
         if (response.data.observations && response.data.observations.length > 0) {
           const latest = response.data.observations[0];

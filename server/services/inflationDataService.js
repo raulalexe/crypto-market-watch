@@ -228,30 +228,28 @@ class InflationDataService {
 
         console.log(`📊 Fetching FRED data for series: ${seriesId} (attempt ${attempt}/${maxRetries})`);
         
-        const url = `${this.fredBaseUrl}/series/observations`;
-        const params = {
-          series_id: seriesId,
-          api_key: this.fredApiKey,
-          file_type: 'json',
-          limit: limit,
-          sort_order: 'desc'
-        };
-
-        const axiosConfig = {
-          params,
-          timeout: 60000, // Increased timeout to 60 seconds for Railway
-          maxRedirects: 5, // Allow redirects
-          headers: {
-            'User-Agent': 'CryptoMarketWatch/1.0',
-            'Accept': 'application/json',
-            'Connection': 'keep-alive'
-          },
-          validateStatus: function (status) {
-            return status >= 200 && status < 300; // Only resolve for 2xx status codes
-          }
-        };
-
-        const response = await axios.get(url, axiosConfig);
+        // Build curl command for FRED API
+        // Railway Akamai edge issue: axios fails with timeout, but curl works
+        const url = `${this.fredBaseUrl}/series/observations?series_id=${seriesId}&api_key=${this.fredApiKey}&file_type=json&limit=${limit}&sort_order=desc`;
+        
+        const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 "${url}"`;
+        console.log(`🔧 Using curl workaround for Railway Akamai edge issue`);
+        
+        const { exec } = require('child_process');
+        const { promisify } = require('util');
+        const execAsync = promisify(exec);
+        
+        const { stdout, stderr } = await execAsync(curlCommand);
+        
+        if (stderr) {
+          console.error(`⚠️ Curl stderr: ${stderr}`);
+        }
+        
+        if (!stdout) {
+          throw new Error('No response from curl command');
+        }
+        
+        const response = { data: JSON.parse(stdout) };
 
         if (response.data && response.data.observations && response.data.observations.length > 0) {
           console.log(`✅ FRED data fetched successfully for ${seriesId}`);
@@ -1194,19 +1192,35 @@ class InflationDataService {
       for (const seriesId of series) {
         try {
           const url = `${baseUrl}?series_id=${seriesId}&api_key=${fredApiKey}&file_type=json&limit=1&sort_order=desc`;
-          const response = await fetch(url);
-          const data = await response.json();
           
-          if (data.observations && data.observations.length > 0) {
-            const latest = data.observations[0];
-            if (latest.value !== '.') {
-              results[seriesId] = {
-                value: parseFloat(latest.value),
-                date: latest.date
-              };
+          // Use curl workaround for Railway Akamai edge issue
+          const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 "${url}"`;
+          console.log(`🔧 Using curl workaround for Railway Akamai edge issue (${seriesId})`);
+          
+          const { exec } = require('child_process');
+          const { promisify } = require('util');
+          const execAsync = promisify(exec);
+          
+          const { stdout, stderr } = await execAsync(curlCommand);
+          
+          if (stderr) {
+            console.error(`⚠️ Curl stderr for ${seriesId}: ${stderr}`);
+          }
+          
+          if (stdout) {
+            const data = JSON.parse(stdout);
+            if (data.observations && data.observations.length > 0) {
+              const latest = data.observations[0];
+              if (latest.value !== '.') {
+                results[seriesId] = {
+                  value: parseFloat(latest.value),
+                  date: latest.date
+                };
+                console.log(`✅ Successfully fetched ${seriesId}: ${latest.value}`);
+              }
             }
           }
-      } catch (error) {
+        } catch (error) {
           console.log(`Failed to fetch ${seriesId}:`, error.message);
         }
       }
@@ -1576,4 +1590,4 @@ class InflationDataService {
   }
 }
 
-module.exports = new InflationDataService();
+module.exports = InflationDataService;
