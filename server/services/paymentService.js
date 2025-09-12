@@ -235,7 +235,13 @@ class PaymentService {
 
   async handleStripeWebhook(event) {
     try {
-      console.log(`Processing Stripe webhook: ${event.type}`);
+      console.log(`🔄 Processing Stripe webhook: ${event.type} (ID: ${event.id})`);
+      console.log(`📊 Webhook event data:`, {
+        type: event.type,
+        id: event.id,
+        created: event.created,
+        livemode: event.livemode
+      });
       
       switch (event.type) {
         case 'checkout.session.completed':
@@ -263,15 +269,27 @@ class PaymentService {
           console.log(`Unhandled webhook event type: ${event.type}`);
       }
     } catch (error) {
-      console.error('Stripe webhook error:', error);
+      console.error(`❌ Stripe webhook error: ${event.type} (ID: ${event.id})`, error);
+      console.error(`❌ Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        eventType: event.type,
+        eventId: event.id
+      });
       // Don't throw the error to prevent 400 responses
       // Just log it and continue
     }
   }
 
   async handleCheckoutSessionCompleted(session) {
-    console.log(`Checkout session completed: ${session.id}`);
-
+    console.log(`💳 Checkout session completed: ${session.id}`);
+    console.log(`📋 Session details:`, {
+      id: session.id,
+      customer_email: session.customer_email,
+      payment_status: session.payment_status,
+      metadata: session.metadata,
+      subscription: session.subscription
+    });
     
     try {
       // Check if metadata exists

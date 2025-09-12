@@ -4136,6 +4136,48 @@ app.get('/api/v1/analysis', authenticateApiKey, apiRateLimit(), async (req, res)
 });
 
 
+// ===== WEBHOOK TEST ENDPOINT =====
+
+// Test endpoint to verify webhook processing (remove in production)
+app.post('/api/test-webhook', async (req, res) => {
+  try {
+    console.log('🧪 Test webhook endpoint called');
+    console.log('📊 Request body:', req.body);
+    
+    // Simulate a checkout.session.completed event
+    const mockEvent = {
+      id: 'evt_test_' + Date.now(),
+      type: 'checkout.session.completed',
+      created: Math.floor(Date.now() / 1000),
+      livemode: false,
+      data: {
+        object: {
+          id: 'cs_test_' + Date.now(),
+          customer_email: 'test@example.com',
+          payment_status: 'paid',
+          metadata: {
+            userId: '1',
+            planId: 'pro'
+          },
+          subscription: 'sub_test_' + Date.now()
+        }
+      }
+    };
+    
+    console.log('🔄 Processing mock webhook event...');
+    await paymentService.handleStripeWebhook(mockEvent);
+    
+    res.json({ 
+      success: true, 
+      message: 'Test webhook processed successfully',
+      eventId: mockEvent.id
+    });
+  } catch (error) {
+    console.error('❌ Test webhook error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ===== ADVANCED DATA EXPORT ENDPOINTS =====
 
 // Get scheduled exports
