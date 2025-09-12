@@ -200,7 +200,8 @@ const initDatabase = async () => {
         stripe_subscription_id VARCHAR(100),
         current_period_start TIMESTAMP,
         current_period_end TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
@@ -234,6 +235,20 @@ const initDatabase = async () => {
     `);
     
     // Ensure all required columns exist (for existing databases)
+    
+    // Add updated_at column to subscriptions table if it doesn't exist
+    await client.query(`
+      ALTER TABLE subscriptions 
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `);
+    
+    // Update existing subscription records to have updated_at = created_at
+    await client.query(`
+      UPDATE subscriptions 
+      SET updated_at = created_at 
+      WHERE updated_at IS NULL
+    `);
+    
     const alertsColumns = [
       { name: 'user_id', type: 'INTEGER' },
       { name: 'alert_type', type: 'VARCHAR(50)' },

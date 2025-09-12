@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { 
   Check, 
   X, 
@@ -23,6 +23,7 @@ const PricingSection = ({
   showHeader = true,
   showCTA = true
 }) => {
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [isLaunchPhase, setIsLaunchPhase] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
@@ -42,8 +43,23 @@ const PricingSection = ({
     setIsLaunchPhase(process.env.REACT_APP_LAUNCH_PHASE === 'true');
     // Check if crypto payments are supported (default to true since wallet payment is implemented)
     setSupportCryptoPayment(process.env.REACT_APP_SUPPORT_CRYPTO_PAYMENT === 'true' || true);
+    
+    // Handle success parameter from Stripe redirect
+    const success = searchParams.get('success');
+    const canceled = searchParams.get('canceled');
+    
+    if (success === 'true') {
+      showAlert('🎉 Payment successful! Your subscription has been activated. Welcome to Pro!', 'success');
+      // Refresh subscription status to show updated plan
+      setTimeout(() => {
+        fetchSubscriptionStatus();
+      }, 1000);
+    } else if (canceled === 'true') {
+      showAlert('Payment was canceled. You can try again anytime.', 'warning');
+    }
+    
     setLoading(false);
-  }, []);
+  }, [searchParams]);
 
   const fetchSubscriptionStatus = async () => {
     try {
