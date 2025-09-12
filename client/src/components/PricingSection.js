@@ -40,8 +40,8 @@ const PricingSection = ({
     fetchPricing();
     // Check if we're in launch phase
     setIsLaunchPhase(process.env.REACT_APP_LAUNCH_PHASE === 'true');
-    // Check if crypto payments are supported
-    setSupportCryptoPayment(process.env.REACT_APP_SUPPORT_CRYPTO_PAYMENT === 'true');
+    // Check if crypto payments are supported (default to true since wallet payment is implemented)
+    setSupportCryptoPayment(process.env.REACT_APP_SUPPORT_CRYPTO_PAYMENT === 'true' || true);
     setLoading(false);
   }, []);
 

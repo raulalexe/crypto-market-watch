@@ -3185,39 +3185,74 @@ app.get('/api/subscription', authenticateToken, async (req, res) => {
 
 // ===== WEBHOOKS =====
 
-// Stripe webhook
+// Stripe webhook - must be before express.json() middleware
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   
+  console.log('🔔 Stripe webhook received');
+  console.log('📝 Signature header:', sig ? 'Present' : 'Missing');
+  console.log('📦 Body length:', req.body ? req.body.length : 'No body');
+  console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
+  
   if (!sig) {
-    console.error('Stripe webhook: Missing signature');
+    console.error('❌ Stripe webhook: Missing signature');
     return res.status(400).json({ error: 'Missing stripe-signature header' });
   }
 
   // Webhook secret selection based on NODE_ENV
   // Production: STRIPE_WEBHOOK_SECRET (live webhook)
   // Development: STRIPE_TEST_WEBHOOK_SECRET (test webhook)
-  const webhookSecret = process.env.NODE_ENV === 'production' 
+  const isProduction = process.env.NODE_ENV === 'production';
+  const envVarName = isProduction ? 'STRIPE_WEBHOOK_SECRET' : 'STRIPE_TEST_WEBHOOK_SECRET';
+  const webhookSecret = isProduction 
     ? process.env.STRIPE_WEBHOOK_SECRET 
     : process.env.STRIPE_TEST_WEBHOOK_SECRET;
 
+  console.log('🔔 Stripe webhook received');
+  console.log('📝 Signature header:', sig ? 'Present' : 'Missing');
+  console.log('📦 Body length:', req.body ? req.body.length : 'No body');
+  console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
+  console.log('🔧 Using environment variable:', envVarName);
+  console.log('🔧 Environment variable exists:', !!webhookSecret);
+
   if (!webhookSecret) {
-    console.error('Stripe webhook: Missing webhook secret environment variable');
+    console.error('❌ Stripe webhook: Missing webhook secret environment variable');
+    console.error('STRIPE_WEBHOOK_SECRET exists:', !!process.env.STRIPE_WEBHOOK_SECRET);
+    console.error('STRIPE_TEST_WEBHOOK_SECRET exists:', !!process.env.STRIPE_TEST_WEBHOOK_SECRET);
     return res.status(500).json({ error: 'Webhook secret not configured' });
   }
 
+  console.log('🔐 Webhook secret found, verifying signature...');
+  console.log('🔑 Secret starts with:', webhookSecret.substring(0, 15) + '...');
+  console.log('🔑 Secret length:', webhookSecret.length);
+  console.log('🔑 Using secret type:', isProduction ? 'PRODUCTION' : 'TEST');
+
   try {
     const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    console.log(`Received Stripe webhook: ${event.type} (ID: ${event.id})`);
+    console.log(`✅ Received Stripe webhook: ${event.type} (ID: ${event.id})`);
+    console.log(`📊 Webhook data:`, {
+      type: event.type,
+      id: event.id,
+      created: event.created,
+      livemode: event.livemode,
+      data: event.data ? Object.keys(event.data) : 'No data'
+    });
     
     await paymentService.handleStripeWebhook(event);
     
-    console.log(`Successfully processed Stripe webhook: ${event.type}`);
-    res.json({ received: true });
+    console.log(`✅ Successfully processed Stripe webhook: ${event.type} (ID: ${event.id})`);
+    res.json({ received: true, eventType: event.type, eventId: event.id });
   } catch (error) {
-    console.error('Stripe webhook error:', error);
+    console.error('❌ Stripe webhook error:', error);
+    console.error('❌ Error details:', {
+      type: error.type,
+      message: error.message,
+      stack: error.stack
+    });
     
     if (error.type === 'StripeSignatureVerificationError') {
+      console.error('❌ Invalid signature. Check webhook secret in Stripe Dashboard.');
+      console.error('Expected secret starts with:', webhookSecret.substring(0, 10) + '...');
       return res.status(400).json({ error: 'Invalid signature' });
     }
     
@@ -4100,6 +4135,7 @@ app.get('/api/v1/analysis', authenticateApiKey, apiRateLimit(), async (req, res)
   }
 });
 
+
 // ===== ADVANCED DATA EXPORT ENDPOINTS =====
 
 // Get scheduled exports
@@ -4194,6 +4230,19 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+  
+  // Log Stripe webhook configuration
+  const isProduction = process.env.NODE_ENV === 'production';
+  const webhookEnvVar = isProduction ? 'STRIPE_WEBHOOK_SECRET' : 'STRIPE_TEST_WEBHOOK_SECRET';
+  const webhookSecret = isProduction ? process.env.STRIPE_WEBHOOK_SECRET : process.env.STRIPE_TEST_WEBHOOK_SECRET;
+  
+  console.log(`💳 Stripe webhook configuration:`);
+  console.log(`   Environment variable: ${webhookEnvVar}`);
+  console.log(`   Secret exists: ${!!webhookSecret}`);
+  console.log(`   Secret type: ${isProduction ? 'PRODUCTION' : 'TEST'}`);
+  if (webhookSecret) {
+    console.log(`   Secret starts with: ${webhookSecret.substring(0, 15)}...`);
+  }
   
   // Log Railway-specific info
   if (process.env.RAILWAY_STATIC_URL) {

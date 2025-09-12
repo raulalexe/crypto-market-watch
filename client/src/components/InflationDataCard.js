@@ -465,9 +465,9 @@ const InflationDataCard = ({ userData }) => {
                 if (inflationData.pce) {
                   const pceYoY = parseFloat(inflationData.pce.pceYoY);
                   if (pceYoY > 2.5) {
-                    analysis.push(`💰 <br/><strong>PCE at ${formatNumber(pceYoY)}%</strong> shows strong consumer spending and price pressure.`);
+                    analysis.push(`<br/>💰 <strong>PCE at ${formatNumber(pceYoY)}%</strong> shows strong consumer spending and price pressure.`);
                   } else if (pceYoY < 1.5) {
-                    analysis.push(`💸 <br/><strong>PCE at ${formatNumber(pceYoY)}%</strong> indicates weak consumer demand and deflationary pressure.`);
+                    analysis.push(`<br/>💸 <strong>PCE at ${formatNumber(pceYoY)}%</strong> indicates weak consumer demand and deflationary pressure.`);
                   }
                 }
                 

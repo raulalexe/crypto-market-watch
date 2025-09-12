@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap } from 'lucide-react';
-import CryptoPricesCard from './CryptoPricesCard';
 import NarrativesCard from './NarrativesCard';
 import Layer1Card from './Layer1Card';
 import AdvancedMetricsCard from './AdvancedMetricsCard';
@@ -11,6 +10,7 @@ import BacktestCard from './BacktestCard';
 import UpcomingEventsCard from './UpcomingEventsCard';
 import AlertCard from './AlertCard';
 import InflationDataCard from './InflationDataCard';
+import CoinGeckoWidget from './CoinGeckoWidget';
 
 const Dashboard = ({ isAuthenticated, userData }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -220,7 +220,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         />
         
         {/* Other Cards */}
-        <CryptoPricesCard data={dashboardData?.cryptoPrices} />
+        <CoinGeckoWidget />
         <UpcomingEventsCard events={dashboardData?.upcomingEvents} />
         <NarrativesCard data={dashboardData?.trendingNarratives} />
         <AdvancedMetricsCard data={dashboardData?.advancedMetrics} />
