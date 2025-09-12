@@ -320,15 +320,40 @@ class PaymentService {
         plan: subscription.items?.data?.[0]?.price?.nickname || 'Unknown'
       });
       
-      // Validate and convert timestamps
-      const currentPeriodStart = subscription.current_period_start 
-        ? new Date(subscription.current_period_start * 1000) 
-        : null;
-      const currentPeriodEnd = subscription.current_period_end 
-        ? new Date(subscription.current_period_end * 1000) 
-        : null;
+      // Validate and convert timestamps with more robust checks
+      let currentPeriodStart = null;
+      let currentPeriodEnd = null;
       
-      console.log(`📅 Checkout session timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
+      console.log(`📊 Raw subscription data from checkout:`, {
+        id: subscription.id,
+        status: subscription.status,
+        current_period_start: subscription.current_period_start,
+        current_period_end: subscription.current_period_end,
+        current_period_start_type: typeof subscription.current_period_start,
+        current_period_end_type: typeof subscription.current_period_end
+      });
+      
+      if (subscription.current_period_start && 
+          typeof subscription.current_period_start === 'number' && 
+          !isNaN(subscription.current_period_start) && 
+          subscription.current_period_start > 0) {
+        currentPeriodStart = new Date(subscription.current_period_start * 1000);
+        console.log(`✅ Valid start timestamp: ${subscription.current_period_start} -> ${currentPeriodStart}`);
+      } else {
+        console.log(`❌ Invalid start timestamp: ${subscription.current_period_start} (type: ${typeof subscription.current_period_start})`);
+      }
+      
+      if (subscription.current_period_end && 
+          typeof subscription.current_period_end === 'number' && 
+          !isNaN(subscription.current_period_end) && 
+          subscription.current_period_end > 0) {
+        currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+        console.log(`✅ Valid end timestamp: ${subscription.current_period_end} -> ${currentPeriodEnd}`);
+      } else {
+        console.log(`❌ Invalid end timestamp: ${subscription.current_period_end} (type: ${typeof subscription.current_period_end})`);
+      }
+      
+      console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
       
       // Save subscription to database
       await insertSubscription({
@@ -414,15 +439,40 @@ class PaymentService {
       const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
       console.log(`Retrieved subscription: ${subscription.id}`);
       
-      // Validate and convert timestamps
-      const currentPeriodStart = subscription.current_period_start 
-        ? new Date(subscription.current_period_start * 1000) 
-        : null;
-      const currentPeriodEnd = subscription.current_period_end 
-        ? new Date(subscription.current_period_end * 1000) 
-        : null;
+      // Validate and convert timestamps with more robust checks
+      let currentPeriodStart = null;
+      let currentPeriodEnd = null;
       
-      console.log(`📅 Timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
+      console.log(`📊 Raw subscription data from payment:`, {
+        id: subscription.id,
+        status: subscription.status,
+        current_period_start: subscription.current_period_start,
+        current_period_end: subscription.current_period_end,
+        current_period_start_type: typeof subscription.current_period_start,
+        current_period_end_type: typeof subscription.current_period_end
+      });
+      
+      if (subscription.current_period_start && 
+          typeof subscription.current_period_start === 'number' && 
+          !isNaN(subscription.current_period_start) && 
+          subscription.current_period_start > 0) {
+        currentPeriodStart = new Date(subscription.current_period_start * 1000);
+        console.log(`✅ Valid start timestamp: ${subscription.current_period_start} -> ${currentPeriodStart}`);
+      } else {
+        console.log(`❌ Invalid start timestamp: ${subscription.current_period_start} (type: ${typeof subscription.current_period_start})`);
+      }
+      
+      if (subscription.current_period_end && 
+          typeof subscription.current_period_end === 'number' && 
+          !isNaN(subscription.current_period_end) && 
+          subscription.current_period_end > 0) {
+        currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+        console.log(`✅ Valid end timestamp: ${subscription.current_period_end} -> ${currentPeriodEnd}`);
+      } else {
+        console.log(`❌ Invalid end timestamp: ${subscription.current_period_end} (type: ${typeof subscription.current_period_end})`);
+      }
+      
+      console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
       
       await updateSubscription(subscription.id, {
         status: subscription.status,
@@ -460,16 +510,40 @@ class PaymentService {
 
   async handleSubscriptionUpdated(subscription) {
     console.log(`Subscription updated: ${subscription.id}`);
+    console.log(`📊 Raw subscription data:`, {
+      id: subscription.id,
+      status: subscription.status,
+      current_period_start: subscription.current_period_start,
+      current_period_end: subscription.current_period_end,
+      current_period_start_type: typeof subscription.current_period_start,
+      current_period_end_type: typeof subscription.current_period_end
+    });
     
-    // Validate and convert timestamps
-    const currentPeriodStart = subscription.current_period_start 
-      ? new Date(subscription.current_period_start * 1000) 
-      : null;
-    const currentPeriodEnd = subscription.current_period_end 
-      ? new Date(subscription.current_period_end * 1000) 
-      : null;
+    // Validate and convert timestamps with more robust checks
+    let currentPeriodStart = null;
+    let currentPeriodEnd = null;
     
-    console.log(`📅 Subscription timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
+    if (subscription.current_period_start && 
+        typeof subscription.current_period_start === 'number' && 
+        !isNaN(subscription.current_period_start) && 
+        subscription.current_period_start > 0) {
+      currentPeriodStart = new Date(subscription.current_period_start * 1000);
+      console.log(`✅ Valid start timestamp: ${subscription.current_period_start} -> ${currentPeriodStart}`);
+    } else {
+      console.log(`❌ Invalid start timestamp: ${subscription.current_period_start} (type: ${typeof subscription.current_period_start})`);
+    }
+    
+    if (subscription.current_period_end && 
+        typeof subscription.current_period_end === 'number' && 
+        !isNaN(subscription.current_period_end) && 
+        subscription.current_period_end > 0) {
+      currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+      console.log(`✅ Valid end timestamp: ${subscription.current_period_end} -> ${currentPeriodEnd}`);
+    } else {
+      console.log(`❌ Invalid end timestamp: ${subscription.current_period_end} (type: ${typeof subscription.current_period_end})`);
+    }
+    
+    console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
     
     await updateSubscription(subscription.id, {
       status: subscription.status,
@@ -480,16 +554,40 @@ class PaymentService {
 
   async handleSubscriptionCreated(subscription) {
     console.log(`Subscription created: ${subscription.id}`);
+    console.log(`📊 Raw subscription data:`, {
+      id: subscription.id,
+      status: subscription.status,
+      current_period_start: subscription.current_period_start,
+      current_period_end: subscription.current_period_end,
+      current_period_start_type: typeof subscription.current_period_start,
+      current_period_end_type: typeof subscription.current_period_end
+    });
     
-    // Validate and convert timestamps
-    const currentPeriodStart = subscription.current_period_start 
-      ? new Date(subscription.current_period_start * 1000) 
-      : null;
-    const currentPeriodEnd = subscription.current_period_end 
-      ? new Date(subscription.current_period_end * 1000) 
-      : null;
+    // Validate and convert timestamps with more robust checks
+    let currentPeriodStart = null;
+    let currentPeriodEnd = null;
     
-    console.log(`📅 Created subscription timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
+    if (subscription.current_period_start && 
+        typeof subscription.current_period_start === 'number' && 
+        !isNaN(subscription.current_period_start) && 
+        subscription.current_period_start > 0) {
+      currentPeriodStart = new Date(subscription.current_period_start * 1000);
+      console.log(`✅ Valid start timestamp: ${subscription.current_period_start} -> ${currentPeriodStart}`);
+    } else {
+      console.log(`❌ Invalid start timestamp: ${subscription.current_period_start} (type: ${typeof subscription.current_period_start})`);
+    }
+    
+    if (subscription.current_period_end && 
+        typeof subscription.current_period_end === 'number' && 
+        !isNaN(subscription.current_period_end) && 
+        subscription.current_period_end > 0) {
+      currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+      console.log(`✅ Valid end timestamp: ${subscription.current_period_end} -> ${currentPeriodEnd}`);
+    } else {
+      console.log(`❌ Invalid end timestamp: ${subscription.current_period_end} (type: ${typeof subscription.current_period_end})`);
+    }
+    
+    console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
     
     await updateSubscription(subscription.id, {
       status: subscription.status,
