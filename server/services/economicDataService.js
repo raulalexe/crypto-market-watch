@@ -272,6 +272,26 @@ class EconomicDataService {
     return await this.fetchFREDData('FEDFUNDS', 'Federal Funds Rate');
   }
 
+  // Fetch M1 Money Supply
+  async fetchM1MoneySupply() {
+    return await this.fetchFREDData('M1SL', 'M1 Money Supply');
+  }
+
+  // Fetch M2 Money Supply
+  async fetchM2MoneySupply() {
+    return await this.fetchFREDData('M2SL', 'M2 Money Supply');
+  }
+
+  // Fetch M3 Money Supply (if available)
+  async fetchM3MoneySupply() {
+    return await this.fetchFREDData('MABMM301USM189S', 'M3 Money Supply');
+  }
+
+  // Fetch Bank Reserves
+  async fetchBankReserves() {
+    return await this.fetchFREDData('WRESBAL', 'Bank Reserves');
+  }
+
   // Fetch GDP data
   async fetchGDP() {
     return await this.fetchFREDData('GDP', 'Gross Domestic Product');
@@ -513,6 +533,7 @@ class EconomicDataService {
         employment: {},
         inflation: {},
         monetary: {},
+        moneySupply: {},
         gdp: {},
         retail: {},
         newReleases: []
@@ -530,6 +551,12 @@ class EconomicDataService {
 
       // Collect monetary policy data
       results.monetary.federalFundsRate = await this.fetchFederalFundsRate();
+
+      // Collect money supply data
+      results.moneySupply.m1 = await this.fetchM1MoneySupply();
+      results.moneySupply.m2 = await this.fetchM2MoneySupply();
+      results.moneySupply.m3 = await this.fetchM3MoneySupply();
+      results.moneySupply.bankReserves = await this.fetchBankReserves();
 
       // Collect GDP data
       results.gdp = await this.fetchGDP();

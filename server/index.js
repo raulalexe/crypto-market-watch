@@ -2567,6 +2567,49 @@ app.get('/api/inflation/expectations', async (req, res) => {
   }
 });
 
+// Get money supply data
+app.get('/api/money-supply', optionalAuth, async (req, res) => {
+  try {
+    const { getLatestMarketData } = require('./database');
+    
+    // Get latest money supply data
+    const m1Data = await getLatestMarketData('MONEY_SUPPLY', 'M1');
+    const m2Data = await getLatestMarketData('MONEY_SUPPLY', 'M2');
+    const m3Data = await getLatestMarketData('MONEY_SUPPLY', 'M3');
+    const bankReservesData = await getLatestMarketData('MONEY_SUPPLY', 'BANK_RESERVES');
+    
+    // Calculate 30-day changes (simplified - in production you'd want historical data)
+    const response = {
+      m1: {
+        value: m1Data?.value,
+        date: m1Data?.timestamp,
+        change_30d: null // Would need historical data to calculate
+      },
+      m2: {
+        value: m2Data?.value,
+        date: m2Data?.timestamp,
+        change_30d: null
+      },
+      m3: {
+        value: m3Data?.value,
+        date: m3Data?.timestamp,
+        change_30d: null
+      },
+      bank_reserves: {
+        value: bankReservesData?.value,
+        date: bankReservesData?.timestamp,
+        change_30d: null
+      },
+      last_updated: new Date().toISOString()
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching money supply data:', error);
+    res.status(500).json({ error: 'Failed to fetch money supply data' });
+  }
+});
+
 // Get latest inflation data
 app.get('/api/inflation/latest', async (req, res) => {
   try {

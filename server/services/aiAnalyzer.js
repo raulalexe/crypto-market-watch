@@ -414,9 +414,10 @@ CRITICAL ANALYSIS REQUIREMENTS:
 4. **Macro Factors**: Evaluate DXY (dollar strength), Treasury yields, equity markets, and oil prices
 5. **Inflation Impact**: Assess how inflation data (CPI, PCE, PPI) affects crypto markets specifically
 6. **PPI Analysis**: Pay special attention to Producer Price Index (PPI) data as it often leads consumer inflation and affects corporate margins, which impacts equity markets and risk sentiment
-7. **Technical Indicators**: Consider price levels, volume, and market structure
-8. **Fundamental Factors**: Upcoming events, regulatory news, and adoption trends
-9. **Trending Narratives**: Consider trending narratives for the crypto market
+7. **Money Supply Analysis**: Analyze M1, M2, M3 money supply and bank reserves data for liquidity conditions and monetary policy implications
+8. **Technical Indicators**: Consider price levels, volume, and market structure
+9. **Fundamental Factors**: Upcoming events, regulatory news, and adoption trends
+10. **Trending Narratives**: Consider trending narratives for the crypto market
 
 MARKET DATA:
 ${marketDataStr}
@@ -466,6 +467,17 @@ Please provide a structured JSON response with detailed reasoning:
       "dollar": "strong_negative|negative|slightly_negative|neutral|slightly_positive|positive|strong_positive"
     },
     "description": "DETAILED explanation of how inflation data specifically impacts crypto markets, including correlation analysis and historical context. Minimum 2-3 sentences."
+  },
+  "money_supply_analysis": {
+    "liquidity_conditions": "very_tight|tight|neutral|loose|very_loose",
+    "monetary_policy_stance": "very_restrictive|restrictive|neutral|accommodative|very_accommodative",
+    "market_impact": {
+      "crypto": "strong_negative|negative|slightly_negative|neutral|slightly_positive|positive|strong_positive",
+      "stocks": "strong_negative|negative|slightly_negative|neutral|slightly_positive|positive|strong_positive",
+      "bonds": "strong_negative|negative|slightly_negative|neutral|slightly_positive|positive|strong_positive",
+      "dollar": "strong_negative|negative|slightly_negative|neutral|slightly_positive|positive|strong_positive"
+    },
+    "description": "DETAILED analysis of M1, M2, M3 money supply and bank reserves data, including trends, liquidity implications, and impact on crypto markets. Explain how money supply changes affect market liquidity, risk appetite, and crypto valuations. Minimum 3-4 sentences."
   }
 }
 
@@ -479,6 +491,8 @@ ANALYSIS REQUIREMENTS:
 - **MUST** analyze Treasury yield impact on risk assets
 - **MUST** consider equity market correlation (SP500, NASDAQ)
 - **MUST** assess oil price impact on inflation and crypto
+- **MUST** analyze M1, M2, M3 money supply trends and their impact on liquidity and crypto markets
+- **MUST** evaluate bank reserves levels and their implications for monetary policy and market liquidity
 - **MUST** assess future planned economic events and their impact on the crypto market
 - Provide realistic confidence scores (0-100) based on data strength
 - Include specific price levels, percentages, and data points in reasoning

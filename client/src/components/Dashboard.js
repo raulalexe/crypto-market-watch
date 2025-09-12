@@ -10,7 +10,7 @@ import BacktestCard from './BacktestCard';
 import UpcomingEventsCard from './UpcomingEventsCard';
 import AlertCard from './AlertCard';
 import InflationDataCard from './InflationDataCard';
-import CoinGeckoWidget from './CoinGeckoWidget';
+import MoneySupplyCard from './MoneySupplyCard';
 
 const Dashboard = ({ isAuthenticated, userData }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -212,6 +212,9 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         {/* Inflation Data Card */}
         <InflationDataCard userData={userData} />
         
+        {/* Money Supply Card */}
+        <MoneySupplyCard />
+        
         {/* Alert Card - Show for all users, component handles upgrade prompts */}
         <AlertCard 
           alerts={alerts} 
@@ -220,7 +223,6 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         />
         
         {/* Other Cards */}
-        <CoinGeckoWidget />
         <UpcomingEventsCard events={dashboardData?.upcomingEvents} />
         <NarrativesCard data={dashboardData?.trendingNarratives} />
         <AdvancedMetricsCard data={dashboardData?.advancedMetrics} />

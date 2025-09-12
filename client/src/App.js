@@ -28,6 +28,7 @@ import Profile from './components/Profile';
 import ContactForm from './components/ContactForm';
 import UpcomingEventsPage from './components/UpcomingEventsPage';
 import MarketingPage from './components/MarketingPage';
+import PricesPage from './components/PricesPage';
 import UnsubscribeSuccess from './components/UnsubscribeSuccess';
 import PasswordReset from './components/PasswordReset';
 import EmailConfirmSuccess from './components/EmailConfirmSuccess';
@@ -249,6 +250,10 @@ function App() {
               <Route 
                 path="events" 
                 element={<UpcomingEventsPage />} 
+              />
+              <Route 
+                path="prices" 
+                element={<PricesPage />} 
               />
               <Route 
                 path="advanced-analytics" 

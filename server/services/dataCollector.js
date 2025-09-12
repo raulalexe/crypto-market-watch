@@ -1356,6 +1356,12 @@ class DataCollector {
       const vix = await getLatestMarketData('VOLATILITY', 'VIX');
       const oil = await getLatestMarketData('COMMODITY', 'OIL');
       
+      // Get money supply data
+      const m1MoneySupply = await getLatestMarketData('MONEY_SUPPLY', 'M1');
+      const m2MoneySupply = await getLatestMarketData('MONEY_SUPPLY', 'M2');
+      const m3MoneySupply = await getLatestMarketData('MONEY_SUPPLY', 'M3');
+      const bankReserves = await getLatestMarketData('MONEY_SUPPLY', 'BANK_RESERVES');
+      
       // Get latest crypto prices with 24h changes
       const cryptoPrices = {};
       const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
@@ -1378,7 +1384,11 @@ class DataCollector {
         sp500?.timestamp,
         nasdaq?.timestamp,
         vix?.timestamp,
-        oil?.timestamp
+        oil?.timestamp,
+        m1MoneySupply?.timestamp,
+        m2MoneySupply?.timestamp,
+        m3MoneySupply?.timestamp,
+        bankReserves?.timestamp
       ].filter(Boolean);
       
       const latestTimestamp = timestamps.length > 0 
@@ -1396,6 +1406,10 @@ class DataCollector {
         nasdaq: nasdaq?.value,
         vix: vix?.value || 25, // Default VIX value if not available
         oil: oil?.value,
+        m1_money_supply: m1MoneySupply?.value,
+        m2_money_supply: m2MoneySupply?.value,
+        m3_money_supply: m3MoneySupply?.value,
+        bank_reserves: bankReserves?.value,
         crypto_prices: cryptoPrices
       };
     } catch (error) {
@@ -1515,6 +1529,62 @@ class DataCollector {
     }
   }
 
+  // Collect money supply data
+  async collectMoneySupplyData() {
+    try {
+      console.log('💰 Collecting money supply data...');
+      
+      const EconomicDataService = require('./economicDataService');
+      const economicService = new EconomicDataService();
+      
+      // Collect money supply data
+      const m1Data = await economicService.fetchM1MoneySupply();
+      const m2Data = await economicService.fetchM2MoneySupply();
+      const m3Data = await economicService.fetchM3MoneySupply();
+      const bankReservesData = await economicService.fetchBankReserves();
+      
+      // Store the data in the database
+      const { insertMarketData } = require('../database');
+      
+      if (m1Data && m1Data.value !== null) {
+        await insertMarketData('MONEY_SUPPLY', 'M1', m1Data.value, {
+          date: m1Data.date,
+          source: 'FRED API'
+        }, 'FRED API');
+        console.log(`✅ M1 Money Supply: $${m1Data.value.toLocaleString()} billion`);
+      }
+      
+      if (m2Data && m2Data.value !== null) {
+        await insertMarketData('MONEY_SUPPLY', 'M2', m2Data.value, {
+          date: m2Data.date,
+          source: 'FRED API'
+        }, 'FRED API');
+        console.log(`✅ M2 Money Supply: $${m2Data.value.toLocaleString()} billion`);
+      }
+      
+      if (m3Data && m3Data.value !== null) {
+        await insertMarketData('MONEY_SUPPLY', 'M3', m3Data.value, {
+          date: m3Data.date,
+          source: 'FRED API'
+        }, 'FRED API');
+        console.log(`✅ M3 Money Supply: $${m3Data.value.toLocaleString()} billion`);
+      }
+      
+      if (bankReservesData && bankReservesData.value !== null) {
+        await insertMarketData('MONEY_SUPPLY', 'BANK_RESERVES', bankReservesData.value, {
+          date: bankReservesData.date,
+          source: 'FRED API'
+        }, 'FRED API');
+        console.log(`✅ Bank Reserves: $${bankReservesData.value.toLocaleString()} billion`);
+      }
+      
+      console.log('✅ Money supply data collection completed');
+    } catch (error) {
+      console.error('❌ Error collecting money supply data:', error.message);
+      await this.errorLogger.logError('money_supply_collection', error.message);
+    }
+  }
+
   // Collect all market data (optimized to reduce API calls)
   async collectAllData() {
     console.log('Starting optimized data collection...');
@@ -1560,7 +1630,8 @@ class DataCollector {
         this.collectLayer1DataOptimized(), // Uses data from collectCryptoPrices
         this.collectExchangeFlows(), // Collect exchange flows from Binance
         this.collectInflationData(), // Collect and store inflation data
-        this.collectEconomicCalendarData() // Collect and analyze economic calendar data
+        this.collectEconomicCalendarData(), // Collect and analyze economic calendar data
+        this.collectMoneySupplyData() // Collect money supply data
       ]);
       
       // Clean up duplicate events before collecting new ones
