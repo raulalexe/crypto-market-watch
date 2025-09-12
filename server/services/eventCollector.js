@@ -13,6 +13,9 @@ class EventCollector {
     try {
       console.log('Collecting upcoming events...');
       
+      // Get actual CPI release date from BLS
+      const cpiReleaseDate = await this.getNextCPIDate();
+      
       const events = [
         // Federal Reserve Events
         {
@@ -36,7 +39,7 @@ class EventCollector {
           description: 'Consumer Price Index inflation data release',
           category: 'fed',
           impact: 'high',
-          date: this.getNextCPIDate(),
+          date: cpiReleaseDate,
           source: 'Bureau of Labor Statistics'
         },
         {
@@ -164,24 +167,139 @@ class EventCollector {
     return nextSpeech.format('YYYY-MM-DD HH:mm:ss');
   }
 
-  getNextCPIDate() {
-    // CPI is typically released around the 13th of each month at 8:30 AM ET
-    const now = moment();
-    let nextCPI = moment().date(13).hour(8).minute(30).second(0).millisecond(0);
-    
-    // If the 13th has passed this month, move to next month
-    if (nextCPI.isBefore(now)) {
-      nextCPI = nextCPI.add(1, 'month').date(13).hour(8).minute(30).second(0).millisecond(0);
+  async getNextCPIDate() {
+    try {
+      // Try to fetch actual release schedule from BLS
+      const releaseDate = await this.fetchBLSReleaseSchedule('CPI');
+      if (releaseDate) {
+        return releaseDate;
+      }
+    } catch (error) {
+      console.log('⚠️ Failed to fetch BLS release schedule, using fallback calculation');
     }
     
-    // If the 13th falls on a weekend, move to the following Monday
-    if (nextCPI.day() === 0) { // Sunday
-      nextCPI = nextCPI.add(1, 'day');
-    } else if (nextCPI.day() === 6) { // Saturday
-      nextCPI = nextCPI.add(2, 'days');
+    // Fallback: Calculate 2nd Tuesday of each month
+    const now = moment();
+    
+    // Get the 2nd Tuesday of current month
+    const firstDay = moment().startOf('month');
+    const firstTuesday = firstDay.clone().day(2); // First Tuesday
+    const secondTuesday = firstTuesday.clone().add(1, 'week'); // Second Tuesday
+    
+    let nextCPI = secondTuesday.hour(8).minute(30).second(0).millisecond(0);
+    
+    // If the 2nd Tuesday has passed this month, move to next month
+    if (nextCPI.isBefore(now)) {
+      const nextMonth = moment().add(1, 'month').startOf('month');
+      const nextFirstTuesday = nextMonth.clone().day(2);
+      const nextSecondTuesday = nextFirstTuesday.clone().add(1, 'week');
+      nextCPI = nextSecondTuesday.hour(8).minute(30).second(0).millisecond(0);
     }
     
     return nextCPI.format('YYYY-MM-DD HH:mm:ss');
+  }
+
+  async fetchBLSReleaseSchedule(dataType) {
+    try {
+      // Try multiple sources for release schedule
+      const sources = [
+        'https://usinflationcalculator.com/inflation/consumer-price-index-release-schedule/',
+        'https://blsmon1.bls.gov/schedule/news_release/cpi.htm'
+      ];
+      
+      for (const url of sources) {
+        try {
+          // Use curl workaround for Railway Akamai edge issue
+          const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 "${url}"`;
+          console.log(`🔧 Fetching release schedule from: ${url.split('/')[2]}`);
+          
+          const { exec } = require('child_process');
+          const { promisify } = require('util');
+          const execAsync = promisify(exec);
+          
+          const { stdout, stderr } = await execAsync(curlCommand);
+          
+          if (stderr) {
+            console.error(`⚠️ Curl stderr for ${url.split('/')[2]}: ${stderr}`);
+          }
+          
+          if (stdout) {
+            // Parse HTML to extract release dates
+            const releaseDate = this.parseBLSReleaseSchedule(stdout, dataType);
+            if (releaseDate) {
+              console.log(`✅ Found ${dataType} release date from ${url.split('/')[2]}: ${releaseDate}`);
+              return releaseDate;
+            }
+          }
+        } catch (error) {
+          console.log(`⚠️ Failed to fetch from ${url.split('/')[2]}: ${error.message}`);
+          continue;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching release schedule:', error.message);
+      return null;
+    }
+  }
+
+  parseBLSReleaseSchedule(html, dataType) {
+    try {
+      // Look for release dates in various formats
+      const datePatterns = [
+        // "October 15, 2025"
+        /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s+(\d{4})/g,
+        // "Oct 15, 2025"
+        /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s+(\d{4})/g,
+        // "2025-10-15"
+        /(\d{4})-(\d{1,2})-(\d{1,2})/g,
+        // "10/15/2025"
+        /(\d{1,2})\/(\d{1,2})\/(\d{4})/g
+      ];
+      
+      const now = moment();
+      let nextRelease = null;
+      
+      for (const pattern of datePatterns) {
+        const matches = html.match(pattern);
+        if (matches && matches.length > 0) {
+          for (const match of matches) {
+            let releaseDate;
+            
+            // Parse different date formats
+            if (match.includes(',')) {
+              // "October 15, 2025" or "Oct 15, 2025"
+              releaseDate = moment(match, ['MMMM D, YYYY', 'MMM D, YYYY']).hour(8).minute(30).second(0).millisecond(0);
+            } else if (match.includes('-')) {
+              // "2025-10-15"
+              releaseDate = moment(match, 'YYYY-M-D').hour(8).minute(30).second(0).millisecond(0);
+            } else if (match.includes('/')) {
+              // "10/15/2025"
+              releaseDate = moment(match, 'M/D/YYYY').hour(8).minute(30).second(0).millisecond(0);
+            }
+            
+            if (releaseDate && releaseDate.isValid()) {
+              // Find the next release date after today
+              if (releaseDate.isAfter(now)) {
+                if (!nextRelease || releaseDate.isBefore(nextRelease)) {
+                  nextRelease = releaseDate;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      if (nextRelease) {
+        return nextRelease.format('YYYY-MM-DD HH:mm:ss');
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error parsing release schedule:', error.message);
+      return null;
+    }
   }
 
   getNextNFPDate() {
