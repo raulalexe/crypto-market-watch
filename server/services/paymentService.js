@@ -419,25 +419,55 @@ class PaymentService {
 
   async handlePaymentSucceeded(invoice) {
     console.log(`Payment succeeded for invoice: ${invoice.id}`);
-
+    console.log(`📊 Invoice data:`, {
+      id: invoice.id,
+      subscription: invoice.subscription,
+      customer: invoice.customer,
+      lines: invoice.lines ? invoice.lines.data?.length : 'no lines',
+      subscription_id: invoice.subscription_id
+    });
     
     // Check if this invoice is associated with a subscription
-    if (!invoice.subscription) {
+    let subscriptionId = invoice.subscription || invoice.subscription_id;
+    
+    if (!subscriptionId) {
       console.log(`Invoice ${invoice.id} is not associated with a subscription - this is normal for one-time payments`);
       return;
     }
 
-    console.log(`Invoice subscription ID: ${invoice.subscription}`);
+    console.log(`Invoice subscription ID: ${subscriptionId}`);
 
     // Validate subscription ID format
-    if (typeof invoice.subscription !== 'string' || !invoice.subscription.startsWith('sub_')) {
-      console.log(`Invalid subscription ID format: ${invoice.subscription}`);
+    if (typeof subscriptionId !== 'string' || !subscriptionId.startsWith('sub_')) {
+      console.log(`Invalid subscription ID format: ${subscriptionId}`);
       return;
     }
 
     try {
-      const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
       console.log(`Retrieved subscription: ${subscription.id}`);
+      
+      // Find the user ID from the customer ID
+      let userId = null;
+      if (subscription.customer) {
+        try {
+          const { getUserByStripeCustomerId } = require('../database');
+          const user = await getUserByStripeCustomerId(subscription.customer);
+          if (user) {
+            userId = user.id;
+            console.log(`✅ Found user ID ${userId} for customer ${subscription.customer}`);
+          } else {
+            console.log(`❌ No user found for customer ${subscription.customer}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error finding user for customer ${subscription.customer}:`, error);
+        }
+      }
+      
+      if (!userId) {
+        console.log(`❌ Cannot process payment succeeded for subscription ${subscriptionId} - no user ID found`);
+        return;
+      }
       
       // Validate and convert timestamps with more robust checks
       let currentPeriodStart = null;
@@ -474,7 +504,7 @@ class PaymentService {
       
       console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
       
-      await updateSubscription(subscription.id, {
+      await this.upsertSubscription(subscription.id, userId, {
         status: subscription.status,
         current_period_start: currentPeriodStart,
         current_period_end: currentPeriodEnd
@@ -482,7 +512,7 @@ class PaymentService {
       
       console.log(`Updated subscription ${subscription.id} status to ${subscription.status}`);
     } catch (error) {
-      console.error(`Error handling payment succeeded for subscription ${invoice.subscription}:`, error);
+      console.error(`Error handling payment succeeded for subscription ${subscriptionId}:`, error);
       // Don't throw the error, just log it
     }
   }
@@ -524,8 +554,8 @@ class PaymentService {
       console.log(`⚠️ Subscription ${subscription.id} is ${subscription.status} - no billing periods set yet`);
       console.log(`📝 This is normal for incomplete subscriptions. Billing periods will be set when payment is completed.`);
       
-      await updateSubscription(subscription.id, {
-        status: subscription.status,
+    await updateSubscription(subscription.id, {
+      status: subscription.status,
         current_period_start: null,
         current_period_end: null
       });
@@ -567,23 +597,77 @@ class PaymentService {
     });
   }
 
+  async upsertSubscription(stripeSubscriptionId, userId, subscriptionData) {
+    try {
+      const { insertSubscription, updateSubscription } = require('../database');
+      
+      // Try to update first
+      try {
+        const result = await updateSubscription(stripeSubscriptionId, {
+          user_id: userId,
+          stripe_subscription_id: stripeSubscriptionId,
+          ...subscriptionData
+        });
+        console.log(`✅ Updated subscription ${stripeSubscriptionId} for user ${userId}`);
+        return result;
+      } catch (updateError) {
+        // If update fails, try to insert
+        console.log(`Update failed, trying to insert subscription ${stripeSubscriptionId}`);
+        const result = await insertSubscription({
+          user_id: userId,
+          stripe_subscription_id: stripeSubscriptionId,
+          ...subscriptionData
+        });
+        console.log(`✅ Inserted subscription ${stripeSubscriptionId} for user ${userId}`);
+        return result;
+      }
+    } catch (error) {
+      console.error(`❌ Error upserting subscription ${stripeSubscriptionId}:`, error);
+      throw error;
+    }
+  }
+
   async handleSubscriptionCreated(subscription) {
     console.log(`Subscription created: ${subscription.id}`);
     console.log(`📊 Raw subscription data:`, {
       id: subscription.id,
       status: subscription.status,
+      customer: subscription.customer,
       current_period_start: subscription.current_period_start,
       current_period_end: subscription.current_period_end,
       current_period_start_type: typeof subscription.current_period_start,
       current_period_end_type: typeof subscription.current_period_end
     });
     
+    // Find the user ID from the customer ID
+    let userId = null;
+    if (subscription.customer) {
+      try {
+        const { getUserByStripeCustomerId } = require('../database');
+        const user = await getUserByStripeCustomerId(subscription.customer);
+        if (user) {
+          userId = user.id;
+          console.log(`✅ Found user ID ${userId} for customer ${subscription.customer}`);
+      } else {
+          console.log(`❌ No user found for customer ${subscription.customer}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error finding user for customer ${subscription.customer}:`, error);
+      }
+    }
+    
+    if (!userId) {
+      console.log(`❌ Cannot process subscription ${subscription.id} - no user ID found`);
+      return;
+    }
+    
     // Handle incomplete subscriptions (no billing periods yet)
     if (subscription.status === 'incomplete' || subscription.status === 'trialing') {
       console.log(`⚠️ Subscription ${subscription.id} is ${subscription.status} - no billing periods set yet`);
       console.log(`📝 This is normal for incomplete subscriptions. Billing periods will be set when payment is completed.`);
       
-      await updateSubscription(subscription.id, {
+      // Insert or update subscription with user ID
+      await this.upsertSubscription(subscription.id, userId, {
         status: subscription.status,
         current_period_start: null,
         current_period_end: null
@@ -603,7 +687,7 @@ class PaymentService {
         subscription.current_period_start > 0) {
       currentPeriodStart = new Date(subscription.current_period_start * 1000);
       console.log(`✅ Valid start timestamp: ${subscription.current_period_start} -> ${currentPeriodStart}`);
-    } else {
+      } else {
       console.log(`❌ Invalid start timestamp: ${subscription.current_period_start} (type: ${typeof subscription.current_period_start})`);
     }
     
@@ -613,13 +697,13 @@ class PaymentService {
         subscription.current_period_end > 0) {
       currentPeriodEnd = new Date(subscription.current_period_end * 1000);
       console.log(`✅ Valid end timestamp: ${subscription.current_period_end} -> ${currentPeriodEnd}`);
-    } else {
+      } else {
       console.log(`❌ Invalid end timestamp: ${subscription.current_period_end} (type: ${typeof subscription.current_period_end})`);
     }
     
     console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
     
-    await updateSubscription(subscription.id, {
+    await this.upsertSubscription(subscription.id, userId, {
       status: subscription.status,
       current_period_start: currentPeriodStart,
       current_period_end: currentPeriodEnd

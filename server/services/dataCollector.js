@@ -654,8 +654,11 @@ class DataCollector {
     try {
       console.log('🌍 Fetching global crypto metrics from CoinGecko...');
       
-      // Get global market data
-      const globalResponse = await this.makeCoinGeckoRequest('global');
+      // Use cache to avoid redundant API calls
+      const cacheKey = 'global_metrics';
+      const globalResponse = await this.getCachedCoinGeckoData(cacheKey, async () => {
+        return await this.makeCoinGeckoRequest('global');
+      });
       
       if (globalResponse && globalResponse.data) {
         const globalData = globalResponse.data;

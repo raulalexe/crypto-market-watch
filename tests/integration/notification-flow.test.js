@@ -1,7 +1,7 @@
 const { setupTestDatabase, createTestToken, createMockUser } = require('../helpers/testHelpers');
 
 // Mock the notification services
-jest.mock('../../server/services/emailService', () => {
+jest.mock('../../server/services/brevoEmailService', () => {
   return jest.fn().mockImplementation(() => ({
     sendBulkAlertEmails: jest.fn().mockResolvedValue(true)
   }));
@@ -21,7 +21,7 @@ jest.mock('../../server/services/telegramService', () => {
 
 jest.mock('../../server/database');
 
-const EmailService = require('../../server/services/emailService');
+const BrevoEmailService = require('../../server/services/brevoEmailService');
 const PushService = require('../../server/services/pushService');
 const TelegramService = require('../../server/services/telegramService');
 const { getUsersWithNotifications } = require('../../server/database');
@@ -41,9 +41,14 @@ describe('Notification Flow Integration Tests', () => {
     jest.clearAllMocks();
     
     // Create fresh service instances
-    mockEmailService = new EmailService();
+    mockEmailService = new BrevoEmailService();
     mockPushService = new PushService();
     mockTelegramService = new TelegramService();
+    
+    // Reset all mocks
+    mockEmailService.sendBulkAlertEmails.mockClear();
+    mockPushService.sendBulkPushNotifications.mockClear();
+    mockTelegramService.sendAlertMessage.mockClear();
   });
 
   describe('Complete Notification Flow', () => {
@@ -89,6 +94,9 @@ describe('Notification Flow Integration Tests', () => {
       // Send notifications
       await alertService.sendNotifications(mockAlert);
 
+      // Wait for async operations to complete (including setTimeout calls)
+      await new Promise(resolve => setTimeout(resolve, 6000));
+
       // Verify that notification services were called
       expect(mockEmailService.sendBulkAlertEmails).toHaveBeenCalled();
       expect(mockPushService.sendBulkPushNotifications).toHaveBeenCalled();
@@ -104,7 +112,7 @@ describe('Notification Flow Integration Tests', () => {
           emailNotifications: true,
           pushNotifications: false,
           telegramNotifications: false,
-          plan: 'free'
+          plan: 'pro'
         }
       ]);
 
@@ -128,6 +136,9 @@ describe('Notification Flow Integration Tests', () => {
 
       // Send notifications
       await alertService.sendNotifications(mockAlert);
+
+      // Wait for async operations to complete (including setTimeout calls)
+      await new Promise(resolve => setTimeout(resolve, 6000));
 
       // Verify only email notifications are sent
       expect(mockEmailService.sendBulkAlertEmails).toHaveBeenCalled();

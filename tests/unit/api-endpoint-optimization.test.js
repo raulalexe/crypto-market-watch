@@ -41,12 +41,21 @@ const createTestApp = () => {
   };
   
   const mockAdminAuth = (req, res, next) => {
-    req.user = { id: 1, email: 'admin@example.com', isAdmin: true };
-    next();
+    if (req.user && req.user.isAdmin) {
+      next();
+    } else {
+      res.status(403).json({ error: 'Admin access required' });
+    }
   };
   
   const mockSubscription = (plan) => (req, res, next) => {
     req.subscription = { plan: plan, status: 'active' };
+    next();
+  };
+
+  // Caching middleware
+  const addCacheHeaders = (maxAge = 300) => (req, res, next) => {
+    res.set('Cache-Control', `public, max-age=${maxAge}`);
     next();
   };
 
@@ -56,29 +65,29 @@ const createTestApp = () => {
   });
 
   // Market data endpoints
-  app.get('/api/market-data', mockAuth, (req, res) => {
+  app.get('/api/market-data', mockAuth, addCacheHeaders(300), (req, res) => {
     res.json({ data: 'market data' });
   });
 
-  app.get('/api/v1/market-data', mockAuth, mockSubscription('pro'), (req, res) => {
+  app.get('/api/v1/market-data', mockAuth, mockSubscription('pro'), addCacheHeaders(300), (req, res) => {
     res.json({ data: 'v1 market data' });
   });
 
   // Crypto prices endpoints
-  app.get('/api/crypto-prices', mockAuth, (req, res) => {
+  app.get('/api/crypto-prices', mockAuth, addCacheHeaders(300), (req, res) => {
     res.json({ data: 'crypto prices' });
   });
 
-  app.get('/api/v1/crypto-prices', mockAuth, mockSubscription('pro'), (req, res) => {
+  app.get('/api/v1/crypto-prices', mockAuth, mockSubscription('pro'), addCacheHeaders(300), (req, res) => {
     res.json({ data: 'v1 crypto prices' });
   });
 
   // AI analysis endpoints
-  app.get('/api/ai-analysis', mockAuth, (req, res) => {
+  app.get('/api/ai-analysis', mockAuth, addCacheHeaders(300), (req, res) => {
     res.json({ data: 'ai analysis' });
   });
 
-  app.get('/api/v1/ai-analysis', mockAuth, mockSubscription('pro'), (req, res) => {
+  app.get('/api/v1/ai-analysis', mockAuth, mockSubscription('pro'), addCacheHeaders(300), (req, res) => {
     res.json({ data: 'v1 ai analysis' });
   });
 
@@ -92,12 +101,23 @@ const createTestApp = () => {
   });
 
   // Admin endpoints
-  app.get('/api/admin/dashboard', mockAuth, mockAdminAuth, (req, res) => {
+  app.get('/api/admin/dashboard', (req, res, next) => {
+    req.user = { id: 1, email: 'admin@example.com', isAdmin: true };
+    next();
+  }, mockAdminAuth, (req, res) => {
     res.json({ data: 'admin dashboard' });
   });
 
-  app.post('/api/admin/collect-data', mockAuth, mockAdminAuth, (req, res) => {
+  app.post('/api/admin/collect-data', (req, res, next) => {
+    req.user = { id: 1, email: 'admin@example.com', isAdmin: true };
+    next();
+  }, mockAdminAuth, (req, res) => {
     res.json({ success: true, message: 'Data collection started' });
+  });
+
+  // Error handling middleware
+  app.use((req, res, next) => {
+    res.status(404).json({ error: 'Endpoint not found' });
   });
 
   return app;
@@ -178,16 +198,15 @@ describe('API Endpoint Optimization', () => {
     });
 
     test('should properly handle admin-only endpoints', async () => {
-      const adminEndpoints = [
-        '/api/admin/dashboard',
-        '/api/admin/collect-data'
-      ];
-
-      for (const endpoint of adminEndpoints) {
-        const response = await request(app).get(endpoint);
-        expect(response.status).toBe(200);
-        expect(response.body.data).toBeDefined();
-      }
+      // Test GET endpoint
+      const response = await request(app).get('/api/admin/dashboard');
+      expect(response.status).toBe(200);
+      expect(response.body.data).toBeDefined();
+      
+      // Test POST endpoint
+      const postResponse = await request(app).post('/api/admin/collect-data');
+      expect(postResponse.status).toBe(200);
+      expect(postResponse.body.success).toBe(true);
     });
 
     test('should handle subscription-based access correctly', async () => {

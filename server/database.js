@@ -1011,6 +1011,15 @@ const getActiveSubscription = (userId) => {
   });
 };
 
+const getUserByStripeCustomerId = (stripeCustomerId) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.get(
+      'SELECT * FROM users WHERE stripe_customer_id = $1',
+      [stripeCustomerId]
+    ).then(resolve).catch(reject);
+  });
+};
+
 const updateSubscription = (subscriptionId, updates) => {
   return new Promise((resolve, reject) => {
     // Remove updated_at from updates if it exists to avoid duplicate assignment
@@ -2336,6 +2345,7 @@ module.exports = {
   insertSubscription,
   getActiveSubscription,
   updateSubscription,
+  getUserByStripeCustomerId,
   // API usage tracking
   trackApiUsage,
   getApiUsage,
