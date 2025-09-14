@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { 
   Check, 
@@ -35,6 +35,56 @@ const PricingSection = ({
   const [supportCryptoPayment, setSupportCryptoPayment] = useState(false);
   const [pricing, setPricing] = useState(null);
   const [discountActive, setDiscountActive] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentProcessingMessage, setPaymentProcessingMessage] = useState('');
+
+  const pollForSubscriptionUpdate = useCallback(async () => {
+    let attempts = 0;
+    const maxAttempts = 30; // Poll for up to 30 seconds (30 * 1 second intervals)
+    
+    const poll = async () => {
+      attempts++;
+      setPaymentProcessingMessage(`Processing your payment... (${attempts}/${maxAttempts})`);
+      
+      const status = await fetchSubscriptionStatus();
+      
+      if (status && status.subscription && status.subscription.plan_type === 'pro') {
+        // Payment processed successfully
+        setProcessingPayment(false);
+        setPaymentProcessingMessage('');
+        showAlert('🎉 Welcome to Pro! Your subscription has been activated successfully.', 'success');
+        
+        // Clean up URL parameters
+        const url = new URL(window.location);
+        url.searchParams.delete('success');
+        url.searchParams.delete('canceled');
+        window.history.replaceState({}, '', url);
+        
+        return;
+      }
+      
+      if (attempts >= maxAttempts) {
+        // Timeout - payment might still be processing
+        setProcessingPayment(false);
+        setPaymentProcessingMessage('');
+        showAlert('⏳ Payment is still being processed. Please refresh the page in a few moments to see your updated subscription status.', 'warning');
+        
+        // Clean up URL parameters even on timeout
+        const url = new URL(window.location);
+        url.searchParams.delete('success');
+        url.searchParams.delete('canceled');
+        window.history.replaceState({}, '', url);
+        
+        return;
+      }
+      
+      // Continue polling
+      setTimeout(poll, 1000);
+    };
+    
+    // Start polling after a short delay to give the webhook time to process
+    setTimeout(poll, 2000);
+  }, []);
 
   useEffect(() => {
     fetchSubscriptionStatus();
@@ -44,23 +94,35 @@ const PricingSection = ({
     // Check if crypto payments are supported (default to true since wallet payment is implemented)
     setSupportCryptoPayment(process.env.REACT_APP_SUPPORT_CRYPTO_PAYMENT === 'true' || true);
     
-    // Handle success parameter from Stripe redirect
+    setLoading(false);
+  }, []);
+
+  // Handle success parameter from Stripe redirect after subscription status is loaded
+  useEffect(() => {
     const success = searchParams.get('success');
     const canceled = searchParams.get('canceled');
     
     if (success === 'true') {
-      showAlert('🎉 Payment successful! Your subscription has been activated. Welcome to Pro!', 'success');
-      // The webhook already handled the subscription activation
-      // Just refresh the status to show the updated plan
-      setTimeout(() => {
-        fetchSubscriptionStatus();
-      }, 2000); // Give webhook time to process
+      // Check if user is already on Pro plan (in case of page refresh)
+      if (subscriptionStatus?.subscription?.plan_type === 'pro') {
+        showAlert('🎉 Welcome to Pro! Your subscription is already active.', 'success');
+        // Clean up URL parameters
+        const url = new URL(window.location);
+        url.searchParams.delete('success');
+        url.searchParams.delete('canceled');
+        window.history.replaceState({}, '', url);
+      } else {
+        setProcessingPayment(true);
+        setPaymentProcessingMessage('Processing your payment...');
+        showAlert('🎉 Payment successful! Processing your subscription...', 'info');
+        
+        // Poll for subscription status until webhook processes the payment
+        pollForSubscriptionUpdate();
+      }
     } else if (canceled === 'true') {
       showAlert('Payment was canceled. You can try again anytime.', 'warning');
     }
-    
-    setLoading(false);
-  }, [searchParams]);
+  }, [searchParams, subscriptionStatus, pollForSubscriptionUpdate]);
 
   const fetchSubscriptionStatus = async () => {
     try {
@@ -77,10 +139,12 @@ const PricingSection = ({
       if (response.ok) {
         const status = await response.json();
         setSubscriptionStatus(status);
+        return status;
       }
     } catch (error) {
       console.error('Error fetching subscription status:', error);
     }
+    return null;
   };
 
   const fetchPricing = async () => {
@@ -460,6 +524,22 @@ const PricingSection = ({
 
   return (
     <div className={variant === 'marketing' ? 'py-24' : 'min-h-screen bg-gray-900 text-white p-6'}>
+      {/* Payment Processing Overlay */}
+      {processingPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-8 max-w-md mx-4 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-crypto-blue mx-auto mb-4"></div>
+            <h3 className="text-xl font-semibold text-white mb-2">Processing Payment</h3>
+            <p className="text-gray-300 mb-4">{paymentProcessingMessage}</p>
+            <div className="flex items-center justify-center space-x-2 text-sm text-gray-400">
+              <div className="w-2 h-2 bg-crypto-blue rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-crypto-blue rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-2 h-2 bg-crypto-blue rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className={variant === 'marketing' ? 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' : 'max-w-7xl mx-auto'}>
         {/* Header */}
         {showHeader && (

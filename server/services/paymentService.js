@@ -17,7 +17,8 @@ const {
   updateUser,
   getUserById,
   getUserByEmail,
-  getActiveSubscription
+  getActiveSubscription,
+  getUserByStripeCustomerId
 } = require('../database');
 
 class PaymentService {
@@ -91,6 +92,60 @@ class PaymentService {
   }
 
   // ===== STRIPE PAYMENTS =====
+
+  async processProUpgrade(userId, planId, invoiceId) {
+    try {
+      console.log(`🚀 Processing Pro upgrade for user ${userId}, plan ${planId}, invoice ${invoiceId}`);
+      
+      const { updateUser } = require('../database');
+      
+      // Update user to Pro plan
+      await updateUser(userId, {
+        plan: planId,
+        stripe_customer_id: invoiceId, // Store invoice ID for reference
+        updated_at: new Date().toISOString()
+      });
+      
+      console.log(`✅ Successfully upgraded user ${userId} to ${planId} plan`);
+      
+      // Send upgrade email
+      try {
+        const user = await getUserById(userId);
+        if (user && user.email) {
+          const EmailService = require('./emailService');
+          const emailService = new EmailService();
+          
+          const plan = this.subscriptionPlans[planId];
+          const subscriptionDetails = {
+            current_period_start: new Date(),
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+            payment_method: 'stripe',
+            payment_id: invoiceId
+          };
+
+          const emailSent = await emailService.sendUpgradeEmail(
+            user.email, 
+            user.email.split('@')[0], 
+            plan.name, 
+            subscriptionDetails
+          );
+          
+          if (emailSent) {
+            console.log(`✅ Upgrade email sent to ${user.email}`);
+          } else {
+            console.log(`⚠️ Failed to send upgrade email to ${user.email}`);
+          }
+        }
+      } catch (emailError) {
+        console.error(`❌ Error sending upgrade email:`, emailError);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`❌ Error processing Pro upgrade:`, error);
+      return false;
+    }
+  }
 
   async createDiscountCoupon(discountAmount, originalAmount) {
     try {
@@ -431,7 +486,59 @@ class PaymentService {
     let subscriptionId = invoice.subscription || invoice.subscription_id;
     
     if (!subscriptionId) {
-      console.log(`Invoice ${invoice.id} is not associated with a subscription - this is normal for one-time payments`);
+      console.log(`Invoice ${invoice.id} is not associated with a subscription - checking if this is a Pro upgrade payment`);
+      
+      // For Pro upgrades, we might receive invoice.payment_succeeded before subscription creation
+      // Let's check if this customer has any recent checkout sessions or subscriptions
+      try {
+        const user = await getUserByStripeCustomerId(invoice.customer);
+        
+        if (user) {
+          console.log(`✅ Found user ${user.id} for customer ${invoice.customer} - checking for recent Pro upgrade`);
+          console.log(`📊 Current user plan: ${user.plan}, invoice amount: ${invoice.amount_paid} cents`);
+          
+          // Check if this is a Pro upgrade by looking at recent checkout sessions
+          const sessions = await this.stripe.checkout.sessions.list({
+            customer: invoice.customer,
+            limit: 5,
+            status: 'complete'
+          });
+          
+          console.log(`📊 Found ${sessions.data.length} recent checkout sessions for customer ${invoice.customer}`);
+          sessions.data.forEach((session, index) => {
+            console.log(`  Session ${index + 1}: ${session.id}, plan: ${session.metadata?.planId}, status: ${session.payment_status}, created: ${new Date(session.created * 1000).toISOString()}`);
+          });
+          
+          // Look for recent completed sessions with Pro plan
+          const recentProSession = sessions.data.find(session => 
+            session.metadata?.planId === 'pro' && 
+            session.payment_status === 'paid' &&
+            (Date.now() - session.created * 1000) < 5 * 60 * 1000 // Within last 5 minutes
+          );
+          
+          if (recentProSession) {
+            console.log(`✅ Found recent Pro checkout session ${recentProSession.id} - processing upgrade`);
+            
+            // Process the Pro upgrade
+            await this.processProUpgrade(user.id, 'pro', invoice.id);
+            return;
+          }
+          
+          // Fallback: Check if this is a Pro upgrade by looking at the invoice amount
+          // Pro plan is $29.99, so check if the invoice amount matches
+          if (invoice.amount_paid && invoice.amount_paid >= 2999 && user.plan === 'free') { // $29.99 in cents
+            console.log(`✅ Invoice amount ${invoice.amount_paid} suggests Pro upgrade for free user - processing upgrade`);
+            
+            // Process the Pro upgrade
+            await this.processProUpgrade(user.id, 'pro', invoice.id);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error checking for Pro upgrade:`, error);
+      }
+      
+      console.log(`Invoice ${invoice.id} is not associated with a subscription and no Pro upgrade found`);
       return;
     }
 
