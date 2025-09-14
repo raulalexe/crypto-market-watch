@@ -65,7 +65,7 @@ const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
   };
 
   const formatEventTime = (alert) => {
-    // For upcoming events, show when the event is happening, not when the alert was created
+    // For upcoming events, show time remaining, not when the alert was created
     if (alert.type === 'UPCOMING_EVENT' && alert.eventDate) {
       const eventDate = new Date(alert.eventDate);
       const now = new Date();
@@ -76,12 +76,26 @@ const AlertCard = ({ alerts = [], onAcknowledge, userData = null }) => {
         return 'Past event';
       }
       
-      // Always show the actual event date and time for upcoming events
-      return eventDate.toLocaleDateString() + ' ' + eventDate.toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: true 
-      });
+      // Calculate time remaining
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      
+      if (diffDays > 0) {
+        if (diffHours > 0) {
+          return `${diffDays} days and ${diffHours} hours`;
+        } else {
+          return `${diffDays} days`;
+        }
+      } else if (diffHours > 0) {
+        if (diffMinutes > 0) {
+          return `${diffHours} hours and ${diffMinutes} minutes`;
+        } else {
+          return `${diffHours} hours`;
+        }
+      } else {
+        return `${diffMinutes} minutes`;
+      }
     }
     
     // For other alerts, show when the alert was created

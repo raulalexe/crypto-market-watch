@@ -71,10 +71,10 @@ class EventNotificationService {
       // Calculate time remaining
       const timeRemaining = this.formatTimeRemaining(daysUntilEvent, hoursUntilEvent);
       
-      // Create alert message
+      // Create alert message (without time - time will be calculated dynamically in frontend)
       const alert = {
         type: 'UPCOMING_EVENT',
-        message: `${event.title} is likely to impact the market in ${timeRemaining}. ${event.description}`,
+        message: `${event.title} is likely to impact the market. ${event.description}`,
         severity: this.getEventSeverity(event.impact),
         metric: 'event',
         value: event.impact,

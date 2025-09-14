@@ -934,11 +934,13 @@ class InflationDataService {
   // Process inflation data and check for alerts
   async processInflationData(data, type) {
     try {
+      console.log(`📊 Processing ${type} data:`, data);
+      
       // Get previous data for comparison
       const previousData = await getLatestInflationData(type);
+      console.log(`📊 Previous ${type} data:`, previousData);
       
-      // Store new data
-      await insertInflationData({
+      const insertData = {
         type,
         date: data.date,
         value: type === 'CPI' ? data.cpi : (type === 'PCE' ? data.pce : data.ppi),
@@ -948,7 +950,13 @@ class InflationDataService {
         momChange: type === 'PPI' ? data.ppiMoM : null,
         coreMomChange: type === 'PPI' ? data.corePPIMoM : null,
         source: type === 'CPI' || type === 'PPI' ? 'BLS' : 'BEA'
-      });
+      };
+      
+      console.log(`📊 Inserting ${type} data:`, insertData);
+      
+      // Store new data
+      const result = await insertInflationData(insertData);
+      console.log(`✅ ${type} data inserted successfully:`, result);
       
       // Check for significant changes and create alerts
       if (previousData) {

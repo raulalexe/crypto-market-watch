@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown, Minus, Target, RefreshCw, AlertTriangle, Calendar, BarChart3, DollarSign, Activity } from 'lucide-react';
 
 const InflationDataCard = ({ userData }) => {
@@ -9,9 +9,14 @@ const InflationDataCard = ({ userData }) => {
   const [sentiment, setSentiment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const hasFetched = useRef(false);
 
   useEffect(() => {
-    fetchInflationData();
+    // Only fetch once per component instance
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      fetchInflationData();
+    }
   }, []);
 
   const fetchInflationData = async () => {

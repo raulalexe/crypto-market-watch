@@ -194,12 +194,18 @@ describe('Push Service Tests', () => {
   describe('Bulk Push Notifications', () => {
     const mockSubscriptions = [
       {
-        endpoint: 'https://fcm.googleapis.com/fcm/send/endpoint1',
-        keys: { p256dh: 'key1', auth: 'auth1' }
+        pushNotifications: true,
+        subscription: {
+          endpoint: 'https://fcm.googleapis.com/fcm/send/endpoint1',
+          keys: { p256dh: 'key1', auth: 'auth1' }
+        }
       },
       {
-        endpoint: 'https://fcm.googleapis.com/fcm/send/endpoint2',
-        keys: { p256dh: 'key2', auth: 'auth2' }
+        pushNotifications: true,
+        subscription: {
+          endpoint: 'https://fcm.googleapis.com/fcm/send/endpoint2',
+          keys: { p256dh: 'key2', auth: 'auth2' }
+        }
       }
     ];
 

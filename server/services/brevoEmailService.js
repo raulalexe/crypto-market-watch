@@ -296,7 +296,44 @@ class BrevoEmailService {
 
   generateYahooCompatibleAlertEmail(alert, userEmail = null) {
     const severityColor = this.getSeverityColor(alert.severity);
-    const timestamp = new Date(alert.timestamp).toLocaleString();
+    
+    // Fix timestamp formatting - handle both alert.timestamp and alert.eventDate
+    let timestamp = 'Just now';
+    try {
+      if (alert.type === 'UPCOMING_EVENT' && alert.eventDate) {
+        // For upcoming events, show event date and time remaining
+        const eventDate = new Date(alert.eventDate);
+        const now = new Date();
+        const diffMs = eventDate - now;
+        
+        if (diffMs > 0) {
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          
+          if (diffDays > 0) {
+            timestamp = `Event in ${diffDays} days and ${diffHours} hours (${eventDate.toLocaleDateString()} ${eventDate.toLocaleTimeString()})`;
+          } else if (diffHours > 0) {
+            timestamp = `Event in ${diffHours} hours (${eventDate.toLocaleDateString()} ${eventDate.toLocaleTimeString()})`;
+          } else {
+            timestamp = `Event today (${eventDate.toLocaleDateString()} ${eventDate.toLocaleTimeString()})`;
+          }
+        } else {
+          timestamp = `Event passed (${eventDate.toLocaleDateString()} ${eventDate.toLocaleTimeString()})`;
+        }
+      } else if (alert.timestamp) {
+        // For regular alerts, show when the alert was created
+        const alertDate = new Date(alert.timestamp);
+        if (!isNaN(alertDate.getTime())) {
+          timestamp = alertDate.toLocaleString();
+        } else {
+          timestamp = 'Time unavailable';
+        }
+      }
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      timestamp = 'Time unavailable';
+    }
+    
     const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const unsubscribeUrl = userEmail ? this.generateUnsubscribeUrl(userEmail) : null;
@@ -310,10 +347,10 @@ class BrevoEmailService {
         <title>Market Alert - Crypto Market Watch</title>
         <style>
           body { 
-            font-family: Arial, Helvetica, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
             line-height: 1.6; 
-            color: #333333; 
-            background-color: #f4f4f4;
+            color: #f8fafc; 
+            background-color: #0f172a;
             margin: 0;
             padding: 0;
           }
@@ -321,49 +358,73 @@ class BrevoEmailService {
           .container { 
             max-width: 600px; 
             margin: 0 auto; 
-            background-color: #ffffff;
+            background-color: #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          }
+          .brand-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f8fafc;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #3b82f6;
+          }
+          .brand-logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 8px;
+            display: inline-block;
+          }
+          .brand-name {
+            font-size: 14px;
+            color: #94a3b8;
+            margin: 0;
           }
           .header { 
             background-color: ${severityColor};
             color: #ffffff; 
-            padding: 30px 20px;
+            padding: 20px;
             text-align: center;
           }
           .header h1 { 
             margin: 0;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
           }
           .header p {
-            margin: 10px 0 0;
+            margin: 8px 0 0;
             font-size: 16px;
+            opacity: 0.9;
           }
           .content { 
-            background-color: #ffffff;
+            background-color: #1e293b;
             padding: 30px 20px;
-            color: #333333;
+            color: #f8fafc;
           }
           .alert-message { 
             font-size: 18px; 
             margin: 20px 0;
             padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
+            background-color: #334155;
+            border-radius: 8px;
             border-left: 4px solid ${severityColor};
           }
           .alert-details { 
-            background-color: #f8f9fa;
+            background-color: #334155;
             padding: 20px;
-            border-radius: 5px;
+            border-radius: 8px;
             margin: 20px 0;
+            color: #f8fafc;
             border: 1px solid #dee2e6;
           }
           .alert-details p {
             margin: 8px 0;
-            color: #666666;
+            color: #cbd5e1;
           }
           .alert-details strong {
-            color: #333333;
+            color: #3b82f6;
           }
           .cta-button { 
             display: inline-block; 
@@ -380,8 +441,8 @@ class BrevoEmailService {
           .footer { 
             text-align: center; 
             padding: 30px 20px;
-            background-color: #f8f9fa;
-            color: #666666; 
+            background-color: #0f172a;
+            color: #94a3b8; 
             font-size: 14px;
           }
           .footer-links { 
@@ -393,28 +454,34 @@ class BrevoEmailService {
             margin: 0 10px;
           }
           .disclaimer {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
+            background-color: #1e293b;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
             padding: 15px;
             margin: 20px 0;
             text-align: center;
           }
           .disclaimer p {
             margin: 0;
-            color: #856404;
+            color: #cbd5e1;
             font-size: 14px;
           }
         </style>
       </head>
       <body>
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a;">
           <tr>
             <td align="center">
               <table class="container" cellpadding="0" cellspacing="0">
                 <tr>
+                  <td class="brand-header">
+                    <div class="brand-logo">₿ Crypto Market Watch</div>
+                    <p class="brand-name">Real-time market intelligence & alerts</p>
+                  </td>
+                </tr>
+                <tr>
                   <td class="header">
-                    <h1>Market Alert</h1>
+                    <h1>${this.getSeverityEmoji(alert.severity)} Market Alert</h1>
                     <p><strong>${alert.type.replace(/_/g, ' ')}</strong></p>
                   </td>
                 </tr>
@@ -928,8 +995,8 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
           .footer { 
             text-align: center; 
             padding: 30px 20px;
-            background-color: #f8f9fa;
-            color: #666666; 
+            background-color: #0f172a;
+            color: #94a3b8; 
             font-size: 14px;
           }
           .footer-links { 
@@ -2143,6 +2210,612 @@ Special Offer: Save up to 20% when you prepay for multiple months!
 Renew now: ${process.env.FRONTEND_URL}/app/subscription
 
 If you have any questions, please contact our support team.
+
+Crypto Market Watch - Your trusted crypto market intelligence platform
+    `;
+  }
+
+  // Generate inflation data update email HTML
+  generateInflationDataEmailHTML(data, userEmail) {
+    const inflationData = data.latestData;
+    const currentDate = new Date().toLocaleDateString();
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Inflation Data Available</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+          .content { padding: 30px; }
+          .inflation-card { background: #f8f9fa; border-left: 4px solid #007bff; padding: 20px; margin: 15px 0; border-radius: 4px; }
+          .metric { display: flex; justify-content: space-between; margin: 10px 0; }
+          .metric-label { font-weight: bold; color: #495057; }
+          .metric-value { color: #007bff; font-weight: bold; }
+          .change-positive { color: #28a745; }
+          .change-negative { color: #dc3545; }
+          .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+          .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📊 New Inflation Data Available</h1>
+            <p>Updated economic indicators for ${currentDate}</p>
+          </div>
+          <div class="content">
+            <h2>Latest Inflation Data</h2>
+            <p>New inflation data has been collected and is now available in your dashboard.</p>
+            
+            ${inflationData ? `
+              <div class="inflation-card">
+                <h3>Consumer Price Index (CPI)</h3>
+                <div class="metric">
+                  <span class="metric-label">Headline CPI:</span>
+                  <span class="metric-value">${inflationData.cpi?.cpi || 'N/A'}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Core CPI:</span>
+                  <span class="metric-value">${inflationData.cpi?.coreCPI || 'N/A'}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Year-over-Year:</span>
+                  <span class="metric-value ${(inflationData.cpi?.cpiYoY || 0) >= 0 ? 'change-positive' : 'change-negative'}">
+                    ${inflationData.cpi?.cpiYoY || 'N/A'}%
+                  </span>
+                </div>
+              </div>
+              
+              <div class="inflation-card">
+                <h3>Personal Consumption Expenditures (PCE)</h3>
+                <div class="metric">
+                  <span class="metric-label">Headline PCE:</span>
+                  <span class="metric-value">${inflationData.pce?.pce || 'N/A'}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Core PCE:</span>
+                  <span class="metric-value">${inflationData.pce?.corePCE || 'N/A'}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Year-over-Year:</span>
+                  <span class="metric-value ${(inflationData.pce?.pceYoY || 0) >= 0 ? 'change-positive' : 'change-negative'}">
+                    ${inflationData.pce?.pceYoY || 'N/A'}%
+                  </span>
+                </div>
+              </div>
+            ` : '<p>Data is being processed and will be available shortly.</p>'}
+            
+            <a href="${process.env.FRONTEND_URL}/app" class="button">View Full Dashboard</a>
+            
+            <p>This data helps inform our AI analysis and market predictions. Stay tuned for updated insights!</p>
+          </div>
+          <div class="footer">
+            <p>Crypto Market Watch - Your trusted crypto market intelligence platform</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Generate inflation data update email text
+  generateInflationDataEmailText(data, userEmail) {
+    const inflationData = data.latestData;
+    const currentDate = new Date().toLocaleDateString();
+    
+    return `
+New Inflation Data Available - ${currentDate}
+
+New inflation data has been collected and is now available in your dashboard.
+
+${inflationData ? `
+LATEST INFLATION DATA:
+
+Consumer Price Index (CPI):
+- Headline CPI: ${inflationData.cpi?.cpi || 'N/A'}
+- Core CPI: ${inflationData.cpi?.coreCPI || 'N/A'}
+- Year-over-Year: ${inflationData.cpi?.cpiYoY || 'N/A'}%
+
+Personal Consumption Expenditures (PCE):
+- Headline PCE: ${inflationData.pce?.pce || 'N/A'}
+- Core PCE: ${inflationData.pce?.corePCE || 'N/A'}
+- Year-over-Year: ${inflationData.pce?.pceYoY || 'N/A'}%
+` : 'Data is being processed and will be available shortly.'}
+
+View full dashboard: ${process.env.FRONTEND_URL}/app
+
+This data helps inform our AI analysis and market predictions. Stay tuned for updated insights!
+
+Crypto Market Watch - Your trusted crypto market intelligence platform
+    `;
+  }
+
+  // Generate event reminder email HTML
+  generateEventReminderEmailHTML(data, userEmail) {
+    const currentDate = new Date().toLocaleDateString();
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Upcoming Economic Events</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+          .content { padding: 30px; }
+          .event-card { background: #f8f9fa; border-left: 4px solid #28a745; padding: 20px; margin: 15px 0; border-radius: 4px; }
+          .event-title { font-weight: bold; color: #495057; margin-bottom: 10px; }
+          .event-details { color: #6c757d; font-size: 14px; }
+          .impact-high { border-left-color: #dc3545; }
+          .impact-medium { border-left-color: #ffc107; }
+          .impact-low { border-left-color: #28a745; }
+          .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+          .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📅 Upcoming Economic Events</h1>
+            <p>${data.events.length} event${data.events.length > 1 ? 's' : ''} approaching</p>
+          </div>
+          <div class="content">
+            <h2>Events to Watch</h2>
+            <p>Here are the upcoming economic events that may impact the markets:</p>
+            
+            ${data.events.map(event => `
+              <div class="event-card impact-${event.impact || 'low'}">
+                <div class="event-title">${event.title}</div>
+                <div class="event-details">
+                  <strong>Date:</strong> ${new Date(event.date).toLocaleDateString()}<br>
+                  <strong>Impact:</strong> ${(event.impact || 'Low').toUpperCase()}<br>
+                  ${event.description ? `<strong>Description:</strong> ${event.description}<br>` : ''}
+                  ${event.time ? `<strong>Time:</strong> ${event.time}<br>` : ''}
+                </div>
+              </div>
+            `).join('')}
+            
+            <a href="${process.env.FRONTEND_URL}/app/events" class="button">View All Events</a>
+            
+            <p>These events can significantly impact market volatility. Stay informed and adjust your strategies accordingly.</p>
+          </div>
+          <div class="footer">
+            <p>Crypto Market Watch - Your trusted crypto market intelligence platform</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Generate event reminder email text
+  generateEventReminderEmailText(data, userEmail) {
+    const currentDate = new Date().toLocaleDateString();
+    
+    return `
+Upcoming Economic Events - ${currentDate}
+
+Here are the upcoming economic events that may impact the markets:
+
+${data.events.map(event => `
+${event.title}
+Date: ${new Date(event.date).toLocaleDateString()}
+Impact: ${(event.impact || 'Low').toUpperCase()}
+${event.description ? `Description: ${event.description}` : ''}
+${event.time ? `Time: ${event.time}` : ''}
+`).join('\n')}
+
+View all events: ${process.env.FRONTEND_URL}/app/events
+
+These events can significantly impact market volatility. Stay informed and adjust your strategies accordingly.
+
+Crypto Market Watch - Your trusted crypto market intelligence platform
+    `;
+  }
+
+  // Send bulk alert emails to multiple users
+  async sendBulkAlertEmails(users, alert) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Brevo email service not configured, skipping bulk email send');
+      return false;
+    }
+
+    try {
+      const results = [];
+      
+      for (const user of users) {
+        try {
+          const result = await this.sendAlertEmail(user.email, alert, user);
+          results.push({ user: user.email, success: result });
+        } catch (error) {
+          console.error(`❌ Failed to send alert email to ${user.email}:`, error);
+          results.push({ user: user.email, success: false, error: error.message });
+        }
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      console.log(`📧 Bulk alert emails sent: ${successCount}/${users.length} successful`);
+      
+      return results;
+    } catch (error) {
+      console.error('❌ Error sending bulk alert emails:', error);
+      return false;
+    }
+  }
+
+  // Send event reminder email
+  async sendEventReminderEmail(userEmail, event, daysUntilEvent) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Brevo email service not configured, skipping event reminder email');
+      return false;
+    }
+
+    try {
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      
+      sendSmtpEmail.subject = `📅 Upcoming Event: ${event.title}`;
+      sendSmtpEmail.htmlContent = this.generateEventReminderEmailHTML({ events: [event] }, userEmail);
+      sendSmtpEmail.textContent = this.generateEventReminderEmailText({ events: [event] }, userEmail);
+      sendSmtpEmail.sender = {
+        name: 'Crypto Market Watch',
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+      };
+      sendSmtpEmail.to = [{
+        email: userEmail,
+        name: userEmail.split('@')[0]
+      }];
+
+      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log(`📧 Event reminder email sent to ${userEmail}: ${result.messageId}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error sending event reminder email to ${userEmail}:`, error);
+      return false;
+    }
+  }
+
+  // Generate event reminder email HTML (overloaded method for single event)
+  generateEventReminderEmailHTML(event, userEmail, daysUntilEvent) {
+    // If first parameter is an event object, wrap it in data structure
+    if (event.title && event.description) {
+      return this.generateEventReminderEmailHTML({ events: [event], daysUntilEvent }, userEmail);
+    }
+    
+    // Otherwise, treat as data object with events array
+    const data = event;
+    const currentDate = new Date().toLocaleDateString();
+    
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upcoming Economic Events - Crypto Market Watch</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      line-height: 1.6;
+      color: #f8fafc;
+      background-color: #0f172a;
+      margin: 0;
+      padding: 0;
+    }
+    table { border-collapse: collapse; }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .brand-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f8fafc;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 2px solid #3b82f6;
+    }
+    .brand-logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #3b82f6;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+    .brand-name {
+      font-size: 14px;
+      color: #94a3b8;
+      margin: 0;
+    }
+    .header {
+      background-color: #3b82f6;
+      color: #ffffff;
+      padding: 20px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    .content {
+      background-color: #1e293b;
+      padding: 30px 20px;
+      color: #f8fafc;
+    }
+    .event-item {
+      background-color: #334155;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border-left: 4px solid #3b82f6;
+    }
+    .event-item h3 {
+      margin: 0 0 10px 0;
+      color: #3b82f6;
+    }
+    .event-details {
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+    .footer {
+      text-align: center;
+      padding: 30px 20px;
+      background-color: #0f172a;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a;">
+    <tr>
+      <td align="center">
+        <table class="container" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="brand-header">
+              <div class="brand-logo">₿ Crypto Market Watch</div>
+              <p class="brand-name">Real-time market intelligence & alerts</p>
+            </td>
+          </tr>
+              <tr>
+                <td class="header">
+                  <h1>📅 Upcoming Economic Events</h1>
+                  <p>${data.events ? data.events.length : 1} event${(data.events ? data.events.length : 1) > 1 ? 's' : ''} approaching</p>
+                  ${data.daysUntilEvent ? `<p>Event in ${data.daysUntilEvent} day${data.daysUntilEvent > 1 ? 's' : ''}</p>` : ''}
+                </td>
+              </tr>
+          <tr>
+            <td class="content">
+              <h2>Events to Watch</h2>
+              ${(data.events || [data]).map(event => `
+                <div class="event-item">
+                  <h3>${event.title}</h3>
+                  <div class="event-details">
+                    <p><strong>Date:</strong> ${new Date(event.date).toLocaleDateString()}</p>
+                    <p><strong>Impact:</strong> ${(event.impact || 'Low').toUpperCase()}</p>
+                    ${event.description ? `<p><strong>Description:</strong> ${event.description}</p>` : ''}
+                    ${event.time ? `<p><strong>Time:</strong> ${event.time}</p>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </td>
+          </tr>
+          <tr>
+            <td class="footer">
+              <p><strong>Crypto Market Watch</strong></p>
+              <p>Advanced cryptocurrency analytics with AI-powered insights</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+  }
+
+  // Send inflation update email
+  async sendInflationUpdateEmail(userEmail, inflationData) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Brevo email service not configured, skipping inflation update email');
+      return false;
+    }
+
+    try {
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      
+      sendSmtpEmail.subject = `📊 Inflation Data Update - ${new Date().toLocaleDateString()}`;
+      sendSmtpEmail.htmlContent = this.generateInflationUpdateEmailHTML(inflationData, userEmail);
+      sendSmtpEmail.textContent = this.generateInflationUpdateEmailText(inflationData, userEmail);
+      sendSmtpEmail.sender = {
+        name: 'Crypto Market Watch',
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+      };
+      sendSmtpEmail.to = [{
+        email: userEmail,
+        name: userEmail.split('@')[0]
+      }];
+
+      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log(`📧 Inflation update email sent to ${userEmail}: ${result.messageId}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error sending inflation update email to ${userEmail}:`, error);
+      return false;
+    }
+  }
+
+  // Generate inflation update email HTML
+  generateInflationUpdateEmailHTML(data, userEmail) {
+    const currentDate = new Date().toLocaleDateString();
+    
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inflation Data Update - Crypto Market Watch</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      line-height: 1.6;
+      color: #f8fafc;
+      background-color: #0f172a;
+      margin: 0;
+      padding: 0;
+    }
+    table { border-collapse: collapse; }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .brand-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f8fafc;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 2px solid #3b82f6;
+    }
+    .brand-logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #3b82f6;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+    .brand-name {
+      font-size: 14px;
+      color: #94a3b8;
+      margin: 0;
+    }
+    .header {
+      background-color: #3b82f6;
+      color: #ffffff;
+      padding: 20px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    .content {
+      background-color: #1e293b;
+      padding: 30px 20px;
+      color: #f8fafc;
+    }
+    .data-item {
+      background-color: #334155;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border-left: 4px solid #3b82f6;
+    }
+    .data-item h3 {
+      margin: 0 0 10px 0;
+      color: #3b82f6;
+    }
+    .data-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #f8fafc;
+    }
+    .footer {
+      text-align: center;
+      padding: 30px 20px;
+      background-color: #0f172a;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a;">
+    <tr>
+      <td align="center">
+        <table class="container" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="brand-header">
+              <div class="brand-logo">₿ Crypto Market Watch</div>
+              <p class="brand-name">Real-time market intelligence & alerts</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="header">
+              <h1>📊 Inflation Data Update</h1>
+              <p>Latest economic indicators - ${currentDate}</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="content">
+              <div class="data-item">
+                <h3>Consumer Price Index (CPI)</h3>
+                <div class="data-value">${data.cpi?.value || 'N/A'}%</div>
+                <p>Month-over-month change: ${data.cpi?.momChange || 'N/A'}%</p>
+              </div>
+              <div class="data-item">
+                <h3>Personal Consumption Expenditures (PCE)</h3>
+                <div class="data-value">${data.pce?.value || 'N/A'}%</div>
+                <p>Month-over-month change: ${data.pce?.momChange || 'N/A'}%</p>
+              </div>
+              <div class="data-item">
+                <h3>Producer Price Index (PPI)</h3>
+                <div class="data-value">${data.ppi?.value || 'N/A'}%</div>
+                <p>Month-over-month change: ${data.ppi?.momChange || 'N/A'}%</p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="footer">
+              <p><strong>Crypto Market Watch</strong></p>
+              <p>Advanced cryptocurrency analytics with AI-powered insights</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+  }
+
+  // Generate inflation update email text
+  generateInflationUpdateEmailText(data, userEmail) {
+    const currentDate = new Date().toLocaleDateString();
+    
+    return `
+Inflation Data Update - ${currentDate}
+
+Latest Economic Indicators:
+
+Consumer Price Index (CPI): ${data.cpi?.value || 'N/A'}%
+Month-over-month change: ${data.cpi?.momChange || 'N/A'}%
+
+Personal Consumption Expenditures (PCE): ${data.pce?.value || 'N/A'}%
+Month-over-month change: ${data.pce?.momChange || 'N/A'}%
+
+Producer Price Index (PPI): ${data.ppi?.value || 'N/A'}%
+Month-over-month change: ${data.ppi?.momChange || 'N/A'}%
+
+View detailed analysis: ${process.env.FRONTEND_URL}/dashboard
 
 Crypto Market Watch - Your trusted crypto market intelligence platform
     `;

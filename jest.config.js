@@ -1,52 +1,73 @@
 module.exports = {
   testEnvironment: 'node',
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  testMatch: [
+    '<rootDir>/tests/unit/**/*.test.js',
+    '<rootDir>/tests/integration/**/*.test.js'
+  ],
   projects: [
     {
-      displayName: 'server',
+      displayName: 'node',
       testEnvironment: 'node',
-      testMatch: ['<rootDir>/tests/unit/**/*.test.js', '<rootDir>/tests/integration/notification-flow.test.js'],
       setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+      testMatch: [
+        '<rootDir>/tests/unit/**/*.test.js',
+        '<rootDir>/tests/integration/**/*.test.js'
+      ],
     },
     {
-      displayName: 'client',
+      displayName: 'jsdom',
       testEnvironment: 'jsdom',
-      testMatch: ['<rootDir>/tests/integration/frontend.test.js'],
-      setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-      globals: {
-        TextEncoder: require('util').TextEncoder,
-        TextDecoder: require('util').TextDecoder
-      }
+      setupFilesAfterEnv: ['<rootDir>/tests/frontend/setup.js'],
+      testMatch: [
+        '<rootDir>/tests/frontend/**/*.test.js'
+      ],
     }
   ],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  moduleNameMapper: {
-    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/tests/__mocks__/fileMock.js'
-  },
-  transform: {
-    '^.+\\.(js|jsx)$': 'babel-jest'
-  },
   collectCoverageFrom: [
-    'client/src/**/*.{js,jsx}',
     'server/**/*.js',
+    'client/src/**/*.js',
+    '!client/src/index.js',
+    '!client/src/reportWebVitals.js',
     '!**/node_modules/**',
     '!**/coverage/**',
-    '!**/tests/**'
+    '!**/tests/**',
+    '!**/build/**',
+    '!**/public/**'
   ],
-  testMatch: [
-    '<rootDir>/tests/**/*.test.{js,jsx}',
-    '<rootDir>/tests/**/*.spec.{js,jsx}'
-  ],
-  moduleDirectories: ['node_modules', 'src'],
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/cypress/'
-  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70
+    }
+  },
+  testTimeout: 30000,
   verbose: true,
   clearMocks: true,
+  resetMocks: true,
   restoreMocks: true,
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/client/src/$1',
+    '^@server/(.*)$': '<rootDir>/server/$1'
+  },
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
+  transformIgnorePatterns: [
+    'node_modules/(?!(axios|@getbrevo)/)'
+  ],
+  testPathIgnorePatterns: [
+    '<rootDir>/node_modules/',
+    '<rootDir>/client/node_modules/',
+    '<rootDir>/build/',
+    '<rootDir>/public/'
+  ],
+  moduleFileExtensions: ['js', 'json', 'jsx'],
   globals: {
-    TextEncoder: require('util').TextEncoder,
-    TextDecoder: require('util').TextDecoder
+    'process.env.NODE_ENV': 'test'
   }
 };

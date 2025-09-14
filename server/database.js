@@ -1624,6 +1624,40 @@ const getUpcomingEvents = (limit = 20) => {
   });
 };
 
+// Get approaching events for email notifications (3 days, 1 day, or same day)
+const getApproachingEvents = () => {
+  return new Promise((resolve, reject) => {
+    const today = new Date();
+    const threeDaysFromNow = new Date(today);
+    threeDaysFromNow.setDate(today.getDate() + 3);
+    
+    dbAdapter.all(`
+      SELECT * FROM upcoming_events 
+      WHERE date >= NOW() 
+      AND date <= $1 
+      AND ignored = false 
+      ORDER BY date ASC
+    `, [threeDaysFromNow.toISOString()]).then(resolve).catch(reject);
+  });
+};
+
+// Get historical market data for a specific data type and symbol within a date range
+const getMarketDataHistory = (dataType, symbol, startDate, endDate, limit = 10) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.all(`
+      SELECT * FROM market_data 
+      WHERE data_type = $1 
+      AND symbol = $2 
+      AND timestamp >= $3 
+      AND timestamp <= $4 
+      ORDER BY timestamp DESC 
+      LIMIT $5
+    `, [dataType, symbol, startDate.toISOString(), endDate.toISOString(), limit])
+    .then(resolve)
+    .catch(reject);
+  });
+};
+
 // Clean up duplicate events
 const cleanupDuplicateEvents = () => {
   return new Promise((resolve, reject) => {
@@ -1881,6 +1915,38 @@ const getLatestInflationData = (type) => {
       LIMIT 1
     `, [type])
     .then(result => resolve(result.rows[0] || null))
+    .catch(reject);
+  });
+};
+
+// Get latest inflation data for all types (CPI, PCE, PPI)
+const getLatestInflationDataAll = () => {
+  return new Promise((resolve, reject) => {
+    db.query(`
+      SELECT DISTINCT ON (type) 
+        type, date, value, core_value, yoy_change, core_yoy_change, 
+        mom_change, core_mom_change, source, created_at
+      FROM inflation_data 
+      ORDER BY type, created_at DESC
+    `)
+    .then(result => {
+      // Organize data by type
+      const data = {};
+      result.rows.forEach(row => {
+        data[row.type.toLowerCase()] = {
+          date: row.date,
+          [row.type.toLowerCase()]: row.value,
+          [`core${row.type}`]: row.core_value,
+          [`${row.type.toLowerCase()}YoY`]: row.yoy_change,
+          [`core${row.type}YoY`]: row.core_yoy_change,
+          ...(row.type === 'PPI' && {
+            [`${row.type.toLowerCase()}MoM`]: row.mom_change,
+            [`core${row.type}MoM`]: row.core_mom_change
+          })
+        };
+      });
+      resolve(data);
+    })
     .catch(reject);
   });
 };
@@ -2309,6 +2375,7 @@ module.exports = {
   // Upcoming Events
   insertUpcomingEvent,
   getUpcomingEvents,
+  getApproachingEvents,
   getAllUpcomingEvents,
   getPastEvents,
   getAllEvents,
@@ -2316,6 +2383,8 @@ module.exports = {
   ignoreUpcomingEvent,
   unignoreUpcomingEvent,
   deleteUpcomingEvent,
+  // Market Data History
+  getMarketDataHistory,
   // API Key management
   createApiKey,
   getUserApiKeys,
@@ -2327,6 +2396,7 @@ module.exports = {
   // Inflation data functions
   insertInflationData,
   getLatestInflationData,
+  getLatestInflationDataAll,
   getInflationDataHistory,
   
   // Economic data functions

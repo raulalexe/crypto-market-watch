@@ -104,7 +104,11 @@ class PushService {
   async sendBulkPushNotifications(subscriptions, alert) {
     if (!this.isConfigured) {
       console.log('⚠️ Push service not configured, skipping bulk push notifications');
-      return { sent: 0, failed: 0, expired: 0 };
+      return false;
+    }
+
+    if (subscriptions.length === 0) {
+      return true; // Empty array is considered success
     }
 
     const results = { sent: 0, failed: 0, expired: 0 };
@@ -124,17 +128,19 @@ class PushService {
     }
 
     console.log(`📱 Bulk push results: ${results.sent} sent, ${results.failed} failed, ${results.expired} expired`);
-    return results;
+    
+    // Return true if at least one notification was sent successfully
+    return results.sent > 0;
   }
 
   getSeverityEmoji(severity) {
     switch (severity) {
       case 'high':
-        return '🚨';
+        return '🔴';
       case 'medium':
-        return '⚠️';
+        return '🟡';
       case 'low':
-        return 'ℹ️';
+        return '🟢';
       default:
         return '📢';
     }

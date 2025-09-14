@@ -519,6 +519,21 @@ class PaymentService {
       current_period_end_type: typeof subscription.current_period_end
     });
     
+    // Handle incomplete subscriptions (no billing periods yet)
+    if (subscription.status === 'incomplete' || subscription.status === 'trialing') {
+      console.log(`⚠️ Subscription ${subscription.id} is ${subscription.status} - no billing periods set yet`);
+      console.log(`📝 This is normal for incomplete subscriptions. Billing periods will be set when payment is completed.`);
+      
+      await updateSubscription(subscription.id, {
+        status: subscription.status,
+        current_period_start: null,
+        current_period_end: null
+      });
+      
+      console.log(`✅ Updated subscription ${subscription.id} with ${subscription.status} status (no billing periods)`);
+      return;
+    }
+    
     // Validate and convert timestamps with more robust checks
     let currentPeriodStart = null;
     let currentPeriodEnd = null;
@@ -562,6 +577,21 @@ class PaymentService {
       current_period_start_type: typeof subscription.current_period_start,
       current_period_end_type: typeof subscription.current_period_end
     });
+    
+    // Handle incomplete subscriptions (no billing periods yet)
+    if (subscription.status === 'incomplete' || subscription.status === 'trialing') {
+      console.log(`⚠️ Subscription ${subscription.id} is ${subscription.status} - no billing periods set yet`);
+      console.log(`📝 This is normal for incomplete subscriptions. Billing periods will be set when payment is completed.`);
+      
+      await updateSubscription(subscription.id, {
+        status: subscription.status,
+        current_period_start: null,
+        current_period_end: null
+      });
+      
+      console.log(`✅ Updated subscription ${subscription.id} with ${subscription.status} status (no billing periods)`);
+      return;
+    }
     
     // Validate and convert timestamps with more robust checks
     let currentPeriodStart = null;

@@ -149,41 +149,12 @@ const emailService = new BrevoEmailService();
 const pushService = new PushService();
 const telegramService = new TelegramService();
 
-// Setup cron jobs for data collection (only when explicitly enabled)
-const setupDataCollectionCron = () => {
-  if (process.env.ENABLE_CRON_JOBS === 'true') {
-    console.log('Setting up data collection cron jobs...');
-    
-    // Run data collection every 30 minutes in development
-    const dataCollectionJob = cron.schedule('0 * * * *', async () => {
-      console.log('🕐 Cron job triggered: Starting data collection...');
-      try {
-        const success = await dataCollector.collectAllData();
-        if (success) {
-    
-        } else {
-          console.log('❌ Data collection failed');
-        }
-      } catch (error) {
-        console.error('❌ Cron job error:', error);
-      }
-    }, {
-      scheduled: true,
-      timezone: 'UTC'
-    });
-    
-    console.log('✅ Cron jobs set up successfully');
-    console.log('📅 Schedule: Every 30 minutes');
-    
-    return dataCollectionJob;
-  } else {
-    console.log('⏭️ Skipping cron job setup (ENABLE_CRON_JOBS not set to true)');
-    return null;
-  }
-};
+// Setup enhanced cron job system
+const CronJobManager = require('./services/cronJobManager');
+const cronJobManager = new CronJobManager();
 
-// Start cron jobs
-const cronJob = setupDataCollectionCron();
+// Start enhanced cron jobs
+cronJobManager.setupCronJobs();
 
 // API Routes
 
@@ -2292,6 +2263,27 @@ app.post('/api/collect-data', authenticateToken, requireAdmin, async (req, res) 
   }
 });
 
+// Manual money supply data collection trigger - Admin only
+app.post('/api/collect-money-supply', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    console.log('💰 Admin triggered manual money supply data collection...');
+    
+    await dataCollector.collectMoneySupplyData();
+    
+    res.json({ 
+      success: true, 
+      message: 'Money supply data collection completed successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error in manual money supply data collection:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to collect money supply data',
+      message: error.message
+    });
+  }
+});
 
 app.get('/api/economic-data/latest', async (req, res) => {
   try {
@@ -2556,6 +2548,15 @@ app.get('/api/inflation/ppi-test', async (req, res) => {
 // Get market expectations for inflation data
 app.get('/api/inflation/expectations', async (req, res) => {
   try {
+    const now = new Date();
+    
+    // Check if we have cached data that's still fresh
+    if (inflationExpectationsCache && inflationExpectationsCacheTime && 
+        (now - inflationExpectationsCacheTime) < INFLATION_CACHE_DURATION) {
+      console.log('📊 INFLATION EXPECTATIONS ENDPOINT CALLED - USING CACHED DATA');
+      return res.json(inflationExpectationsCache);
+    }
+    
     console.log('📊 INFLATION EXPECTATIONS ENDPOINT CALLED - USING DATABASE DATA');
     // Use database data only, no API calls
     const { getLatestInflationForecast } = require('./database');
@@ -2583,6 +2584,10 @@ app.get('/api/inflation/expectations', async (req, res) => {
       source: 'database'
     };
     
+    // Cache the response
+    inflationExpectationsCache = expectations;
+    inflationExpectationsCacheTime = now;
+    
     console.log('✅ Returning database data for inflation expectations');
     res.json(expectations);
   } catch (error) {
@@ -2596,33 +2601,119 @@ app.get('/api/money-supply', optionalAuth, async (req, res) => {
   try {
     const { getLatestMarketData } = require('./database');
     
-    // Get latest money supply data
-    const m1Data = await getLatestMarketData('MONEY_SUPPLY', 'M1');
-    const m2Data = await getLatestMarketData('MONEY_SUPPLY', 'M2');
-    const m3Data = await getLatestMarketData('MONEY_SUPPLY', 'M3');
-    const bankReservesData = await getLatestMarketData('MONEY_SUPPLY', 'BANK_RESERVES');
+    // Get latest money supply data from database
+    let m1Data = await getLatestMarketData('MONEY_SUPPLY', 'M1');
+    let m2Data = await getLatestMarketData('MONEY_SUPPLY', 'M2');
+    let m3Data = await getLatestMarketData('MONEY_SUPPLY', 'M3');
+    let bankReservesData = await getLatestMarketData('MONEY_SUPPLY', 'BANK_RESERVES');
     
-    // Calculate 30-day changes (simplified - in production you'd want historical data)
+    // If no data in database, try to fetch from FRED API
+    if (!m1Data || !m2Data || !m3Data || !bankReservesData) {
+      console.log('📊 Some money supply data missing from database, fetching from FRED API...');
+      
+      try {
+        const EconomicDataService = require('./services/economicDataService');
+        const economicService = new EconomicDataService();
+        
+        // Fetch missing data from FRED API
+        if (!m1Data) {
+          const m1ApiData = await economicService.fetchM1MoneySupply();
+          if (m1ApiData) {
+            m1Data = {
+              value: m1ApiData.value.toString(),
+              timestamp: new Date().toISOString()
+            };
+          }
+        }
+        
+        if (!m2Data) {
+          const m2ApiData = await economicService.fetchM2MoneySupply();
+          if (m2ApiData) {
+            m2Data = {
+              value: m2ApiData.value.toString(),
+              timestamp: new Date().toISOString()
+            };
+          }
+        }
+        
+        if (!m3Data) {
+          const m3ApiData = await economicService.fetchM3MoneySupply();
+          if (m3ApiData) {
+            m3Data = {
+              value: m3ApiData.value.toString(),
+              timestamp: new Date().toISOString()
+            };
+          }
+        }
+        
+        if (!bankReservesData) {
+          const bankReservesApiData = await economicService.fetchBankReserves();
+          if (bankReservesApiData) {
+            bankReservesData = {
+              value: bankReservesApiData.value.toString(),
+              timestamp: new Date().toISOString()
+            };
+          }
+        }
+      } catch (apiError) {
+        console.error('Error fetching money supply data from FRED API:', apiError);
+      }
+    }
+    
+    // Helper function to calculate 30-day change
+    const calculateChange = async (dataType, symbol, currentValue) => {
+      if (!currentValue) return null;
+      
+      try {
+        // Get data from 30 days ago
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const { getMarketDataHistory } = require('./database');
+        const historicalData = await getMarketDataHistory(dataType, symbol, thirtyDaysAgo, new Date(), 1);
+        
+        if (historicalData && historicalData.length > 0) {
+          const oldValue = parseFloat(historicalData[0].value);
+          const newValue = parseFloat(currentValue);
+          if (oldValue > 0) {
+            return ((newValue - oldValue) / oldValue) * 100;
+          }
+        }
+      } catch (error) {
+        console.error(`Error calculating change for ${symbol}:`, error);
+      }
+      
+      return null;
+    };
+    
+    // Calculate 30-day changes
+    const [m1Change, m2Change, m3Change, bankReservesChange] = await Promise.all([
+      calculateChange('MONEY_SUPPLY', 'M1', m1Data?.value),
+      calculateChange('MONEY_SUPPLY', 'M2', m2Data?.value),
+      calculateChange('MONEY_SUPPLY', 'M3', m3Data?.value),
+      calculateChange('MONEY_SUPPLY', 'BANK_RESERVES', bankReservesData?.value)
+    ]);
+    
     const response = {
       m1: {
-        value: m1Data?.value,
+        value: m1Data?.value ? parseFloat(m1Data.value) : null,
         date: m1Data?.timestamp,
-        change_30d: null // Would need historical data to calculate
+        change_30d: m1Change
       },
       m2: {
-        value: m2Data?.value,
+        value: m2Data?.value ? parseFloat(m2Data.value) : null,
         date: m2Data?.timestamp,
-        change_30d: null
+        change_30d: m2Change
       },
       m3: {
-        value: m3Data?.value,
+        value: m3Data?.value ? parseFloat(m3Data.value) : null,
         date: m3Data?.timestamp,
-        change_30d: null
+        change_30d: m3Change
       },
       bank_reserves: {
-        value: bankReservesData?.value,
+        value: bankReservesData?.value ? parseFloat(bankReservesData.value) : null,
         date: bankReservesData?.timestamp,
-        change_30d: null
+        change_30d: bankReservesChange
       },
       last_updated: new Date().toISOString()
     };
@@ -2634,23 +2725,45 @@ app.get('/api/money-supply', optionalAuth, async (req, res) => {
   }
 });
 
+// Cache for inflation data to reduce database calls
+let inflationDataCache = null;
+let inflationDataCacheTime = null;
+let inflationExpectationsCache = null;
+let inflationExpectationsCacheTime = null;
+const INFLATION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // Get latest inflation data
 app.get('/api/inflation/latest', async (req, res) => {
   try {
+    const now = new Date();
+    
+    // Check if we have cached data that's still fresh
+    if (inflationDataCache && inflationDataCacheTime && 
+        (now - inflationDataCacheTime) < INFLATION_CACHE_DURATION) {
+      console.log('📊 INFLATION LATEST ENDPOINT CALLED - USING CACHED DATA');
+      return res.json(inflationDataCache);
+    }
+    
     console.log('📊 INFLATION LATEST ENDPOINT CALLED - USING DATABASE DATA');
     // Get data from database only
-    const { getLatestInflationData } = require('./database');
-    const dbData = await getLatestInflationData();
+    const { getLatestInflationDataAll } = require('./database');
+    const dbData = await getLatestInflationDataAll();
     
     if (!dbData) {
       console.log('⚠️ No inflation data found in database');
-      return res.json({
+      const noDataResponse = {
         cpi: null,
         pce: null,
         ppi: null,
         timestamp: new Date().toISOString(),
         message: 'No data available - data collection may be in progress'
-      });
+      };
+      
+      // Cache the no-data response too
+      inflationDataCache = noDataResponse;
+      inflationDataCacheTime = now;
+      
+      return res.json(noDataResponse);
     }
     
     // Helper function to format numbers to 2 decimal places
@@ -2665,32 +2778,34 @@ app.get('/api/inflation/latest', async (req, res) => {
     const response = {
       cpi: dbData.cpi ? {
         cpi: formatNumber(dbData.cpi.cpi),
-        coreCPI: formatNumber(dbData.cpi.core_cpi),
-        cpiYoY: formatNumber(dbData.cpi.cpi_yoy),
-        coreCPIYoY: formatNumber(dbData.cpi.core_cpi_yoy),
+        coreCPI: formatNumber(dbData.cpi.coreCPI),
+        cpiYoY: formatNumber(dbData.cpi.cpiYoY),
+        coreCPIYoY: formatNumber(dbData.cpi.coreCPIYoY),
         date: dbData.cpi.date
       } : null,
       pce: dbData.pce ? {
         pce: formatNumber(dbData.pce.pce),
-        corePCE: formatNumber(dbData.pce.core_pce),
-        pceYoY: formatNumber(dbData.pce.pce_yoy),
-        corePCEYoY: formatNumber(dbData.pce.core_pce_yoy),
+        corePCE: formatNumber(dbData.pce.corePCE),
+        pceYoY: formatNumber(dbData.pce.pceYoY),
+        corePCEYoY: formatNumber(dbData.pce.corePCEYoY),
         date: dbData.pce.date
       } : null,
       ppi: dbData.ppi ? {
         ppi: formatNumber(dbData.ppi.ppi),
-        corePPI: formatNumber(dbData.ppi.core_ppi),
-        ppiMoM: formatNumber(dbData.ppi.ppi_mom),
-        corePPIMoM: formatNumber(dbData.ppi.core_ppi_mom),
-        ppiActual: formatNumber(dbData.ppi.ppi_actual),
-        corePPIActual: formatNumber(dbData.ppi.core_ppi_actual),
-        ppiYoY: formatNumber(dbData.ppi.ppi_yoy),
-        corePPIYoY: formatNumber(dbData.ppi.core_ppi_yoy),
+        corePPI: formatNumber(dbData.ppi.corePPI),
+        ppiMoM: formatNumber(dbData.ppi.ppiMoM),
+        corePPIMoM: formatNumber(dbData.ppi.corePPIMoM),
+        ppiYoY: formatNumber(dbData.ppi.ppiYoY),
+        corePPIYoY: formatNumber(dbData.ppi.corePPIYoY),
         date: dbData.ppi.date
       } : null,
       timestamp: new Date().toISOString(),
       source: 'database'
     };
+    
+    // Cache the response
+    inflationDataCache = response;
+    inflationDataCacheTime = now;
     
     console.log('✅ Returning database data for inflation');
     res.json(response);
@@ -2777,7 +2892,8 @@ app.post('/api/inflation/fetch', authenticateToken, requireAdmin, async (req, re
     console.log('🔄 Admin triggered manual inflation data fetch...');
     
     // Use data collector to fetch fresh data (single entry point)
-    const dataCollector = require('./services/dataCollector');
+    const DataCollector = require('./services/dataCollector');
+    const dataCollector = new DataCollector();
     const data = await dataCollector.collectInflationData();
     
     res.json({
@@ -4170,8 +4286,8 @@ app.delete('/api/keys/:id', authenticateToken, async (req, res) => {
 
 const { authenticateApiKey, apiRateLimit } = require('./middleware/apiKeyAuth');
 
-// Market data API endpoint
-app.get('/api/v1/market-data', authenticateApiKey, apiRateLimit(), async (req, res) => {
+// Market data API endpoint (Public API with API key)
+app.get('/api/public/market-data', authenticateApiKey, apiRateLimit(), async (req, res) => {
   try {
     const { getLatestMarketData } = require('./database');
     const marketData = await getLatestMarketData();
@@ -4187,8 +4303,8 @@ app.get('/api/v1/market-data', authenticateApiKey, apiRateLimit(), async (req, r
   }
 });
 
-// Crypto prices API endpoint
-app.get('/api/v1/crypto-prices', authenticateApiKey, apiRateLimit(), async (req, res) => {
+// Crypto prices API endpoint (Public API with API key)
+app.get('/api/public/crypto-prices', authenticateApiKey, apiRateLimit(), async (req, res) => {
   try {
     const { getCryptoPrices } = require('./database');
     const prices = await getCryptoPrices();
@@ -4381,8 +4497,8 @@ const server = app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('🛑 Shutting down server...');
-  if (cronJob) {
-    cronJob.stop();
+  if (cronJobManager) {
+    cronJobManager.stopAllJobs();
     console.log('⏹️ Cron jobs stopped');
   }
   server.close(() => {
@@ -4393,8 +4509,8 @@ process.on('SIGINT', () => {
 
 process.on('SIGTERM', () => {
   console.log('🛑 Shutting down server...');
-  if (cronJob) {
-    cronJob.stop();
+  if (cronJobManager) {
+    cronJobManager.stopAllJobs();
     console.log('⏹️ Cron jobs stopped');
   }
   server.close(() => {
