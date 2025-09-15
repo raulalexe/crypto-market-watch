@@ -43,36 +43,113 @@ class DataCollector {
     this.alphaVantageCallCount = 0;
     this.alphaVantageLastReset = Date.now();
     this.alphaVantageDailyLimit = 500; // Free tier limit
+    
+    // Start cache cleanup interval to prevent memory leaks
+    this.startCacheCleanup();
+  }
+  
+  // Start periodic cache cleanup to prevent memory leaks
+  startCacheCleanup() {
+    // Clean up CoinGecko cache every 10 minutes
+    setInterval(() => {
+      this.cleanupCache(this.coingeckoCache, this.cacheExpiry);
+    }, 10 * 60 * 1000);
+    
+    // Clean up Alpha Vantage cache every 30 minutes
+    setInterval(() => {
+      this.cleanupCache(this.alphaVantageCache, this.alphaVantageCacheExpiry);
+    }, 30 * 60 * 1000);
+  }
+  
+  // Clean up expired cache entries
+  cleanupCache(cache, expiryTime) {
+    const now = Date.now();
+    const keysToDelete = [];
+    
+    for (const [key, value] of cache.entries()) {
+      if (now - value.timestamp > expiryTime) {
+        keysToDelete.push(key);
+      }
+    }
+    
+    keysToDelete.forEach(key => cache.delete(key));
+    
+    if (keysToDelete.length > 0) {
+      console.log(`Cleaned up ${keysToDelete.length} expired cache entries`);
+    }
+    
+    // Also limit cache size to prevent memory issues
+    const maxCacheSize = 1000;
+    if (cache.size > maxCacheSize) {
+      const entries = Array.from(cache.entries());
+      // Sort by timestamp and keep only the most recent entries
+      entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+      
+      // Remove oldest entries
+      const toRemove = entries.slice(maxCacheSize);
+      toRemove.forEach(([key]) => cache.delete(key));
+      
+      console.log(`Cache size limit reached, removed ${toRemove.length} oldest entries`);
+    }
+  }
+  
+  // Method to manually clear all caches (useful for testing or memory management)
+  clearAllCaches() {
+    this.coingeckoCache.clear();
+    this.alphaVantageCache.clear();
+    console.log('All caches cleared');
+  }
+  
+  // Get cache statistics for monitoring
+  getCacheStats() {
+    return {
+      coingeckoCache: {
+        size: this.coingeckoCache.size,
+        expiry: this.cacheExpiry
+      },
+      alphaVantageCache: {
+        size: this.alphaVantageCache.size,
+        expiry: this.alphaVantageCacheExpiry
+      }
+    };
   }
 
-  // Rate-limited CoinGecko API call
+  // Rate-limited CoinGecko API call with proper synchronization
   async makeCoinGeckoRequest(endpoint, params = {}) {
-    const now = Date.now();
-    const timeSinceLastCall = now - this.coingeckoLastCall;
-    
-    if (timeSinceLastCall < this.coingeckoMinInterval) {
-      const waitTime = this.coingeckoMinInterval - timeSinceLastCall;
-      console.log(`Rate limiting: waiting ${waitTime}ms before next CoinGecko call`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
+    // Use a mutex-like approach to prevent race conditions
+    if (!this.coingeckoRequestMutex) {
+      this.coingeckoRequestMutex = Promise.resolve();
     }
     
-    const url = `https://api.coingecko.com/api/v3/${endpoint}`;
-    
-    try {
-      const response = await axios.get(url, { params });
-      this.coingeckoLastCall = Date.now();
-      return response;
-    } catch (error) {
-      if (error.response && error.response.status === 429) {
-        console.log('CoinGecko rate limit hit, waiting 60 seconds...');
-        await new Promise(resolve => setTimeout(resolve, 60000));
-        // Retry once after waiting
-        const retryResponse = await axios.get(url, { params });
-        this.coingeckoLastCall = Date.now();
-        return retryResponse;
+    return this.coingeckoRequestMutex = this.coingeckoRequestMutex.then(async () => {
+      const now = Date.now();
+      const timeSinceLastCall = now - this.coingeckoLastCall;
+      
+      if (timeSinceLastCall < this.coingeckoMinInterval) {
+        const waitTime = this.coingeckoMinInterval - timeSinceLastCall;
+        console.log(`Rate limiting: waiting ${waitTime}ms before next CoinGecko call`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
-      throw error;
-    }
+      
+      // Update timestamp before making the request to prevent race conditions
+      this.coingeckoLastCall = Date.now();
+      
+      const url = `https://api.coingecko.com/api/v3/${endpoint}`;
+      
+      try {
+        const response = await axios.get(url, { params });
+        return response;
+      } catch (error) {
+        if (error.response && error.response.status === 429) {
+          console.log('CoinGecko rate limit hit, waiting 60 seconds...');
+          await new Promise(resolve => setTimeout(resolve, 60000));
+          // Retry once after waiting
+          const retryResponse = await axios.get(url, { params });
+          return retryResponse;
+        }
+        throw error;
+      }
+    });
   }
 
   // Get cached CoinGecko data or fetch new data

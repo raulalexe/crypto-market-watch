@@ -89,7 +89,7 @@ const requireSubscription = (minPlan = SUBSCRIPTION_TYPES.FREE) => {
         });
       }
 
-      req.subscription = subscription;
+      req.subscription = { plan_type: userPlan, isAdmin: false };
       next();
     } catch (error) {
       console.error('Subscription check error:', error);

@@ -53,12 +53,39 @@ const BrevoEmailService = require('./services/brevoEmailService');
 const PushService = require('./services/pushService');
 const TelegramService = require('./services/telegramService');
 const { authenticateToken, optionalAuth, requireSubscription, requireAdmin, rateLimit } = require('./middleware/auth');
+const { validateRequestBody, VALIDATION_RULES } = require('./middleware/validation');
+const { globalErrorHandler, asyncHandler, createError } = require('./utils/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      'http://localhost:3000',
+      'https://localhost:3000'
+    ];
+    
+    // Add production domains if they exist
+    if (process.env.PRODUCTION_FRONTEND_URL) {
+      allowedOrigins.push(process.env.PRODUCTION_FRONTEND_URL);
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -3061,13 +3088,12 @@ app.get('/api/inflation/sentiment', async (req, res) => {
 // ===== PASSWORD RESET ROUTES =====
 
 // Request password reset
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', validateRequestBody({
+  email: { type: 'email', required: true },
+  allowExtra: false
+}), async (req, res) => {
   try {
     const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
     
     const user = await getUserByEmail(email);
     if (!user) {
@@ -3098,13 +3124,13 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 });
 
 // Reset password with token
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', validateRequestBody({
+  token: { type: 'string', required: true, maxLength: 500 },
+  newPassword: { type: 'password', required: true },
+  allowExtra: false
+}), async (req, res) => {
   try {
     const { token, newPassword } = req.body;
-    
-    if (!token || !newPassword) {
-      return res.status(400).json({ error: 'Token and new password are required' });
-    }
     
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -3790,69 +3816,52 @@ app.get('/api/usage', authenticateToken, async (req, res) => {
 });
 
 // Authentication endpoints
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-    
-    const user = await getUserByEmail(email);
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+app.post('/api/auth/login', validateRequestBody(VALIDATION_RULES.userLogin), asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  
+  const user = await getUserByEmail(email);
+  
+  if (!user) {
+    throw createError.authentication('Invalid credentials');
+  }
     
     // Check if email is verified
-    if (!user.email_verified) {
-      return res.status(401).json({ 
-        error: 'Please check your email and click the confirmation link to activate your account before signing in.',
-        requiresConfirmation: true 
-      });
-    }
-    
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      jwtSecret,
-      { expiresIn: '24h' }
-    );
-    
-    res.json({ 
-      token, 
-      user: { 
-        id: user.id, 
-        email: user.email,
-        isAdmin: user.is_admin === 1
-      } 
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+  if (!user.email_verified) {
+    throw createError.authentication('Please check your email and click the confirmation link to activate your account before signing in.');
   }
-});
+  
+  const isValidPassword = await bcrypt.compare(password, user.password_hash);
+  
+  if (!isValidPassword) {
+    throw createError.authentication('Invalid credentials');
+  }
+  
+  const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+  
+  const token = jwt.sign(
+    { userId: user.id, email: user.email },
+    jwtSecret,
+    { expiresIn: '24h' }
+  );
+  
+  res.json({ 
+    token, 
+    user: { 
+      id: user.id, 
+      email: user.email,
+      isAdmin: user.is_admin === 1
+    } 
+  });
+}));
 
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-    
-    // Check if user already exists
-    const existingUser = await getUserByEmail(email);
-    if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
-    }
+app.post('/api/auth/register', validateRequestBody(VALIDATION_RULES.userRegistration), asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  
+  // Check if user already exists
+  const existingUser = await getUserByEmail(email);
+  if (existingUser) {
+    throw createError.conflict('User already exists');
+  }
     
     // Hash password
     const saltRounds = 10;
@@ -3880,15 +3889,11 @@ app.post('/api/auth/register', async (req, res) => {
         console.log(`⚠️ Failed to send confirmation email to ${email}`);
       }
     
-    res.json({
-      requiresConfirmation: true,
-      message: 'Please check your email to confirm your account'
-    });
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
+  res.json({
+    requiresConfirmation: true,
+    message: 'Please check your email to confirm your account'
+  });
+}));
 
 // Resend confirmation email endpoint
 app.post('/api/auth/resend-confirmation', async (req, res) => {
@@ -4310,20 +4315,15 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 });
 
 // Contact form endpoint
-app.post('/api/contact', upload.single('screenshot'), async (req, res) => {
+app.post('/api/contact', upload.single('screenshot'), validateRequestBody(VALIDATION_RULES.contactForm), async (req, res) => {
   try {
-    const { name, email, subject, message, captchaAnswer } = req.body;
+    const { name, email, subject, message } = req.body;
+    const { captchaAnswer } = req.body; // captchaAnswer not in validation rules
     const screenshot = req.file;
 
-    // Validate required fields
-    if (!name || !email || !subject || !message || !captchaAnswer) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Invalid email format' });
+    // Validate captchaAnswer separately since it's not in the main validation rules
+    if (!captchaAnswer || typeof captchaAnswer !== 'string') {
+      return res.status(400).json({ error: 'Captcha answer is required' });
     }
 
     // Validate message length
@@ -4781,11 +4781,8 @@ app.get('*', (req, res) => {
   }
 });
 
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Unhandled error:', error);
-  res.status(500).json({ error: 'Internal server error' });
-});
+// Global error handling middleware (must be last)
+app.use(globalErrorHandler);
 
 // Start server
 const server = app.listen(PORT, () => {

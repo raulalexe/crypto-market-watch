@@ -522,6 +522,14 @@ const initDatabase = async () => {
     
     client.release();
     console.log('✅ PostgreSQL database initialized successfully');
+    
+    // Run data integrity constraints migration
+    try {
+      const { addDataConstraints } = require('./scripts/migrations/003-add-data-constraints');
+      await addDataConstraints();
+    } catch (migrationError) {
+      console.warn('⚠️ Data constraints migration failed (non-critical):', migrationError.message);
+    }
   } catch (error) {
     console.error('❌ PostgreSQL initialization failed:', error);
     throw error;
@@ -625,18 +633,30 @@ const getLatestAIAnalysis = () => {
 
 const insertCryptoPrice = (symbol, price, volume24h, marketCap, change24h) => {
   return new Promise((resolve, reject) => {
+    // Input validation
+    if (!symbol || !price || price <= 0) {
+      return reject(new Error('Symbol and positive price are required'));
+    }
+    
+    // Normalize symbol
+    const normalizedSymbol = symbol.trim().toUpperCase();
+    
     dbAdapter.run(
       `INSERT INTO crypto_prices (symbol, price, volume_24h, market_cap, change_24h) 
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (symbol) DO UPDATE SET
+       ON CONFLICT (symbol, timestamp) DO UPDATE SET
          price = EXCLUDED.price,
          volume_24h = EXCLUDED.volume_24h,
          market_cap = EXCLUDED.market_cap,
-         change_24h = EXCLUDED.change_24h,
-         timestamp = CURRENT_TIMESTAMP`,
-      [symbol, price, volume24h, marketCap, change24h]
-    ).then(result => resolve(result.lastID))
-     .catch(reject);
+         change_24h = EXCLUDED.change_24h`,
+      [normalizedSymbol, price, volume24h, marketCap, change24h]
+    ).then(result => {
+      console.log(`✅ Crypto price updated: ${normalizedSymbol} = $${price}`);
+      resolve(result.lastID);
+    }).catch(error => {
+      console.error(`❌ Error inserting crypto price for ${normalizedSymbol}:`, error);
+      reject(error);
+    });
   });
 };
 
@@ -975,7 +995,12 @@ const deleteUser = (userId) => {
       .then(() => resolve())
       .catch(error => {
         // Rollback on error
-        dbAdapter.run('ROLLBACK').then(() => reject(error));
+        dbAdapter.run('ROLLBACK')
+          .then(() => reject(error))
+          .catch(rollbackError => {
+            console.error('Rollback failed:', rollbackError);
+            reject(error); // Still reject with original error
+          });
       });
   });
 };
@@ -1008,8 +1033,8 @@ const trackApiUsage = (userId, endpoint, ipAddress, userAgent) => {
 const getApiUsage = (userId, days = 30) => {
   return new Promise((resolve, reject) => {
     dbAdapter.all(
-      'SELECT * FROM api_usage WHERE user_id = $1 AND timestamp >= CURRENT_TIMESTAMP - INTERVAL \'${days} days\' ORDER BY timestamp DESC',
-      [userId]
+      'SELECT * FROM api_usage WHERE user_id = $1 AND timestamp >= CURRENT_TIMESTAMP - INTERVAL $2 ORDER BY timestamp DESC',
+      [userId, `${days} days`]
     ).then(resolve).catch(reject);
   });
 };
@@ -1036,7 +1061,8 @@ const getLatestBitcoinDominance = () => {
 const getBitcoinDominanceHistory = (days = 30) => {
   return new Promise((resolve, reject) => {
     dbAdapter.all(
-      'SELECT * FROM bitcoin_dominance WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL \'${days} days\' ORDER BY timestamp DESC'
+      'SELECT * FROM bitcoin_dominance WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL $1 ORDER BY timestamp DESC',
+      [`${days} days`]
     ).then(resolve).catch(reject);
   });
 };
@@ -1524,55 +1550,113 @@ const cleanupDuplicateAlerts = () => {
   });
 };
 
-// Upcoming Events functions
+// Upcoming Events functions with improved deduplication
 const insertUpcomingEvent = (title, description, category, impact, date, source) => {
   return new Promise((resolve, reject) => {
-    // Enhanced deduplication logic for CPI and other economic events
-    let deduplicationQuery;
-    let queryParams;
-    
-    // For CPI events, check for similar events within a 7-day window
-    if (title.toLowerCase().includes('cpi') || title.toLowerCase().includes('consumer price index')) {
-      const eventDate = new Date(date);
-      const startDate = new Date(eventDate.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days before
-      const endDate = new Date(eventDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days after
-      
-      deduplicationQuery = `
-        SELECT id FROM upcoming_events 
-        WHERE (title ILIKE $1 OR title ILIKE $2) 
-        AND date BETWEEN $3 AND $4 
-        AND category = $5
-      `;
-      queryParams = [
-        '%cpi%', 
-        '%consumer price index%', 
-        startDate.toISOString(), 
-        endDate.toISOString(), 
-        category
-      ];
-    } else {
-      // For other events, use exact matching
-      deduplicationQuery = 'SELECT id FROM upcoming_events WHERE title = $1 AND date = $2 AND source = $3';
-      queryParams = [title, date, source];
+    // Input validation
+    if (!title || !date || !category) {
+      return reject(new Error('Title, date, and category are required'));
     }
     
-    dbAdapter.get(deduplicationQuery, queryParams).then(existingEvent => {
-      if (existingEvent) {
-        // Event already exists, return existing ID
-        console.log(`Event already exists: ${title} on ${date}`);
-        resolve(existingEvent.id);
-      } else {
-        // Event doesn't exist, insert it
-        return dbAdapter.run(
-          'INSERT INTO upcoming_events (title, description, category, impact, date, source) VALUES ($1, $2, $3, $4, $5, $6)',
-          [title, description, category, impact, date, source]
+    // Normalize inputs
+    const normalizedTitle = title.trim();
+    const normalizedDate = new Date(date);
+    const normalizedCategory = category.trim().toLowerCase();
+    
+    // Enhanced deduplication logic with multiple strategies
+    const checkForDuplicates = async () => {
+      try {
+        // Strategy 1: Exact match (title, date, source)
+        let exactMatch = await dbAdapter.get(
+          'SELECT id FROM upcoming_events WHERE title = $1 AND date = $2 AND source = $3',
+          [normalizedTitle, normalizedDate.toISOString(), source]
         );
+        
+        if (exactMatch) {
+          console.log(`Exact duplicate found: ${normalizedTitle} on ${normalizedDate.toISOString()}`);
+          return exactMatch.id;
+        }
+        
+        // Strategy 2: Similar events within date range (for economic events)
+        const economicKeywords = ['cpi', 'consumer price index', 'ppi', 'producer price index', 'fomc', 'fed meeting', 'nfp', 'non-farm payroll'];
+        const isEconomicEvent = economicKeywords.some(keyword => 
+          normalizedTitle.toLowerCase().includes(keyword)
+        );
+        
+        if (isEconomicEvent) {
+          const eventDate = normalizedDate;
+          const startDate = new Date(eventDate.getTime() - 3 * 24 * 60 * 60 * 1000); // 3 days before
+          const endDate = new Date(eventDate.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days after
+          
+          const similarMatch = await dbAdapter.get(`
+            SELECT id FROM upcoming_events 
+            WHERE title ILIKE $1 
+            AND date BETWEEN $2 AND $3 
+            AND category = $4
+            AND source = $5
+          `, [
+            `%${normalizedTitle.toLowerCase()}%`,
+            startDate.toISOString(),
+            endDate.toISOString(),
+            normalizedCategory,
+            source
+          ]);
+          
+          if (similarMatch) {
+            console.log(`Similar economic event found: ${normalizedTitle} on ${normalizedDate.toISOString()}`);
+            return similarMatch.id;
+          }
+        }
+        
+        // Strategy 3: Check for events with same title and category within 7 days
+        const weekStart = new Date(normalizedDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const weekEnd = new Date(normalizedDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+        
+        const weeklyMatch = await dbAdapter.get(`
+          SELECT id FROM upcoming_events 
+          WHERE title ILIKE $1 
+          AND date BETWEEN $2 AND $3 
+          AND category = $4
+        `, [
+          `%${normalizedTitle.toLowerCase()}%`,
+          weekStart.toISOString(),
+          weekEnd.toISOString(),
+          normalizedCategory
+        ]);
+        
+        if (weeklyMatch) {
+          console.log(`Weekly duplicate found: ${normalizedTitle} on ${normalizedDate.toISOString()}`);
+          return weeklyMatch.id;
+        }
+        
+        return null; // No duplicates found
+      } catch (error) {
+        console.error('Error checking for duplicates:', error);
+        throw error;
       }
-    }).then(result => {
-      if (result && result.lastID) {
-        resolve(result.lastID);
-      }
-    }).catch(reject);
+    };
+    
+    // Check for duplicates and insert if none found
+    checkForDuplicates()
+      .then(existingId => {
+        if (existingId) {
+          return existingId;
+        } else {
+          // Insert new event
+          return dbAdapter.run(
+            'INSERT INTO upcoming_events (title, description, category, impact, date, source) VALUES ($1, $2, $3, $4, $5, $6)',
+            [normalizedTitle, description, category, impact, normalizedDate.toISOString(), source]
+          ).then(result => result.lastID);
+        }
+      })
+      .then(eventId => {
+        console.log(`✅ Event processed: ${normalizedTitle} (ID: ${eventId})`);
+        resolve(eventId);
+      })
+      .catch(error => {
+        console.error('Error in insertUpcomingEvent:', error);
+        reject(error);
+      });
   });
 };
 
@@ -1917,9 +2001,9 @@ const getInflationDataHistory = (type, months = 12) => {
     dbAdapter.all(`
       SELECT * FROM inflation_data 
       WHERE type = $1 
-      AND date >= CURRENT_DATE - INTERVAL '${months} months'
+      AND date >= CURRENT_DATE - INTERVAL $2
       ORDER BY date DESC
-    `, [type])
+    `, [type, `${months} months`])
     .then(resolve)
     .catch(reject);
   });
@@ -2087,9 +2171,9 @@ const getEconomicDataHistory = (seriesId, months = 12) => {
     db.query(`
       SELECT * FROM economic_data 
       WHERE series_id = $1 
-      AND date >= CURRENT_DATE - INTERVAL '${months} months'
+      AND date >= CURRENT_DATE - INTERVAL $2
       ORDER BY date DESC
-    `, [seriesId])
+    `, [seriesId, `${months} months`])
     .then(result => resolve(result.rows))
     .catch(reject);
   });
