@@ -706,6 +706,16 @@ const migrations = [
         END IF;
       END $fix_symbol$;
     `
+  },
+  {
+    name: 'add_subscription_plan_column',
+    description: 'Add subscription_plan column to users table',
+    sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(20) DEFAULT 'free';`
+  },
+  {
+    name: 'add_subscription_expires_at_column',
+    description: 'Add subscription_expires_at column to users table',
+    sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP;`
   }
 ];
 

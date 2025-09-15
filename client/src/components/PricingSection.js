@@ -40,84 +40,108 @@ const PricingSection = ({
 
   const pollForSubscriptionUpdate = useCallback(async () => {
     let attempts = 0;
-    const maxAttempts = 30; // Poll for up to 30 seconds (30 * 1 second intervals)
+    const maxAttempts = 12; // Poll for up to 60 seconds (12 * 5 second intervals)
     
     const poll = async () => {
       attempts++;
       setPaymentProcessingMessage(`Processing your payment... (${attempts}/${maxAttempts})`);
       
-      const status = await fetchSubscriptionStatus();
-      
-      // Handle authentication errors
-      if (status && status.error === 'authentication_failed') {
-        setProcessingPayment(false);
-        setPaymentProcessingMessage('');
-        // Authentication error handling is already done in fetchSubscriptionStatus
-        return;
-      }
-      
-      // Handle other errors
-      if (status && status.error) {
-        console.error('Payment processing error:', status.error);
-        // Continue polling for network errors, but stop for auth errors
-        if (status.error === 'network_error' && attempts < maxAttempts) {
-          setTimeout(poll, 1000);
+      try {
+        const status = await fetchSubscriptionStatus();
+        
+        // Handle authentication errors
+        if (status && status.error === 'authentication_failed') {
+          setProcessingPayment(false);
+          setPaymentProcessingMessage('');
+          return; // Auth error handling is done in fetchSubscriptionStatus
+        }
+        
+        // Handle other errors - stop polling on non-network errors
+        if (status && status.error) {
+          console.error('Payment processing error:', status.error);
+          if (status.error === 'network_error' && attempts < maxAttempts) {
+            setTimeout(poll, 5000); // Wait 5 seconds before retry
+            return;
+          } else {
+            // Stop polling on non-network errors
+            setProcessingPayment(false);
+            setPaymentProcessingMessage('');
+            showAlert('❌ Payment processing failed. Please try again or contact support.', 'error');
+            
+            // Clean up URL parameters
+            const url = new URL(window.location);
+            url.searchParams.delete('success');
+            url.searchParams.delete('canceled');
+            window.history.replaceState({}, '', url);
+            return;
+          }
+        }
+
+        // Check for Pro plan activation
+        if (status && status.plan === 'pro') {
+          setProcessingPayment(false);
+          setPaymentProcessingMessage('');
+          showAlert('🎉 Welcome to Pro! Your subscription has been activated successfully.', 'success');
+          
+          // Clean up URL parameters
+          const url = new URL(window.location);
+          url.searchParams.delete('success');
+          url.searchParams.delete('canceled');
+          window.history.replaceState({}, '', url);
           return;
         }
-      }
-      
-      if (status && status.plan === 'pro') {
-        // Payment processed successfully
-        setProcessingPayment(false);
-        setPaymentProcessingMessage('');
-        showAlert('🎉 Welcome to Pro! Your subscription has been activated successfully.', 'success');
         
-        // Clean up URL parameters
-        const url = new URL(window.location);
-        url.searchParams.delete('success');
-        url.searchParams.delete('canceled');
-        window.history.replaceState({}, '', url);
-        
-        return;
-      }
-      
-      if (attempts >= maxAttempts) {
-        // Timeout - payment might still be processing
-        setProcessingPayment(false);
-        setPaymentProcessingMessage('');
-        
-        // Send automatic email notification about payment processing issue
-        try {
-          await fetch('/api/payment-alert', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: 'Payment Processing System',
-              email: 'system@crypto-market-watch.xyz',
-              subject: 'Payment Processing Timeout - User Upgrade Issue',
-              message: `A user's payment processing has timed out after 30 seconds. This may indicate a webhook processing issue. Please investigate and manually process the upgrade if needed. User may have completed payment but webhook failed to process.`,
-              priority: 'high'
-            })
-          });
-        } catch (emailError) {
-          console.error('Failed to send payment processing alert email:', emailError);
+        // Check if we've reached max attempts
+        if (attempts >= maxAttempts) {
+          setProcessingPayment(false);
+          setPaymentProcessingMessage('');
+          
+          // Send automatic email notification about payment processing issue
+          try {
+            await fetch('/api/payment-alert', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: 'Payment Processing System',
+                email: 'system@crypto-market-watch.xyz',
+                subject: 'Payment Processing Timeout - User Upgrade Issue',
+                message: `A user's payment processing has timed out after 60 seconds. This may indicate a webhook processing issue. Please investigate and manually process the upgrade if needed. User may have completed payment but webhook failed to process.`,
+                priority: 'high'
+              })
+            });
+          } catch (emailError) {
+            console.error('Failed to send payment processing alert email:', emailError);
+          }
+
+          showAlert('⏳ Your payment is being processed. Pro access will be enabled within 24 hours. We\'ve been notified and will resolve this quickly. Please check back later or contact support if needed.', 'warning');
+          
+          // Clean up URL parameters even on timeout
+          const url = new URL(window.location);
+          url.searchParams.delete('success');
+          url.searchParams.delete('canceled');
+          window.history.replaceState({}, '', url);
+          return;
         }
         
-        showAlert('⏳ Your payment is being processed. Pro access will be enabled within 24 hours. We\'ve been notified and will resolve this quickly. Please check back later or contact support if needed.', 'warning');
+        // Continue polling every 5 seconds
+        setTimeout(poll, 5000);
         
-        // Clean up URL parameters even on timeout
-        const url = new URL(window.location);
-        url.searchParams.delete('success');
-        url.searchParams.delete('canceled');
-        window.history.replaceState({}, '', url);
-        
-        return;
+      } catch (error) {
+        console.error('Error during payment polling:', error);
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 5000); // Wait 5 seconds before retry
+        } else {
+          setProcessingPayment(false);
+          setPaymentProcessingMessage('');
+          showAlert('❌ Payment processing failed. Please try again or contact support.', 'error');
+          
+          // Clean up URL parameters
+          const url = new URL(window.location);
+          url.searchParams.delete('success');
+          url.searchParams.delete('canceled');
+          window.history.replaceState({}, '', url);
+        }
       }
-      
-      // Continue polling
-      setTimeout(poll, 1000);
     };
     
     // Start polling after a short delay to give the webhook time to process

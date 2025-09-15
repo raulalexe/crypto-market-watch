@@ -186,6 +186,80 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
     }
   };
 
+  const activateUser = async (userId, userEmail) => {
+    if (!window.confirm(`Are you sure you want to activate user ${userEmail}? They will be able to log in without email verification.`)) {
+      return;
+    }
+
+    try {
+      setDeletingUser(userId); // Reuse the loading state
+      const response = await fetch(`/api/admin/users/${userId}/activate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to activate user');
+      }
+
+      const result = await response.json();
+      
+      // Update user in local state
+      setUsers(users.map(user => 
+        user.id === userId 
+          ? { ...user, emailVerified: true }
+          : user
+      ));
+
+      showAlert(`User ${userEmail} activated successfully`, 'success');
+    } catch (error) {
+      console.error('Error activating user:', error);
+      showAlert(`Failed to activate user: ${error.message}`, 'error');
+    } finally {
+      setDeletingUser(null);
+    }
+  };
+
+  const deactivateUser = async (userId, userEmail) => {
+    if (!window.confirm(`Are you sure you want to deactivate user ${userEmail}? They will not be able to log in until they verify their email again.`)) {
+      return;
+    }
+
+    try {
+      setDeletingUser(userId); // Reuse the loading state
+      const response = await fetch(`/api/admin/users/${userId}/deactivate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to deactivate user');
+      }
+
+      const result = await response.json();
+      
+      // Update user in local state
+      setUsers(users.map(user => 
+        user.id === userId 
+          ? { ...user, emailVerified: false }
+          : user
+      ));
+
+      showAlert(`User ${userEmail} deactivated successfully`, 'success');
+    } catch (error) {
+      console.error('Error deactivating user:', error);
+      showAlert(`Failed to deactivate user: ${error.message}`, 'error');
+    } finally {
+      setDeletingUser(null);
+    }
+  };
+
 
 
   const exportData = async (collectionName) => {
@@ -909,23 +983,52 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => deleteUser(user.id, user.email)}
-                        disabled={deletingUser === user.id || user.isAdmin}
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
-                          user.isAdmin 
-                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
-                            : 'bg-red-600 hover:bg-red-700 text-white'
-                        }`}
-                        title={user.isAdmin ? 'Cannot delete admin users' : 'Delete user'}
-                      >
-                        {deletingUser === user.id ? (
-                          <RefreshCw className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-3 h-3" />
+                      <div className="flex items-center gap-2">
+                        {/* Activation/Deactivation Button */}
+                        {!user.isAdmin && (
+                          <button
+                            onClick={() => user.emailVerified ? deactivateUser(user.id, user.email) : activateUser(user.id, user.email)}
+                            disabled={deletingUser === user.id}
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              user.emailVerified 
+                                ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                                : 'bg-green-600 hover:bg-green-700 text-white'
+                            }`}
+                            title={user.emailVerified ? 'Deactivate user' : 'Activate user'}
+                          >
+                            {user.emailVerified ? (
+                              <>
+                                <UserX className="w-3 h-3" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <UserCheck className="w-3 h-3" />
+                                Activate
+                              </>
+                            )}
+                          </button>
                         )}
-                        {deletingUser === user.id ? 'Deleting...' : 'Delete'}
-                      </button>
+                        
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => deleteUser(user.id, user.email)}
+                          disabled={deletingUser === user.id || user.isAdmin}
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                            user.isAdmin 
+                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                              : 'bg-red-600 hover:bg-red-700 text-white'
+                          }`}
+                          title={user.isAdmin ? 'Cannot delete admin users' : 'Delete user'}
+                        >
+                          {deletingUser === user.id ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3 h-3" />
+                          )}
+                          {deletingUser === user.id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

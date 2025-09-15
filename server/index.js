@@ -3410,10 +3410,6 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
     ? process.env.STRIPE_WEBHOOK_SECRET 
     : process.env.STRIPE_TEST_WEBHOOK_SECRET;
 
-  console.log('🔔 Stripe webhook received');
-  console.log('📝 Signature header:', sig ? 'Present' : 'Missing');
-  console.log('📦 Body length:', req.body ? req.body.length : 'No body');
-  console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
   console.log('🔧 Using environment variable:', envVarName);
   console.log('🔧 Environment variable exists:', !!webhookSecret);
 
@@ -3729,6 +3725,15 @@ app.post('/api/auth/register', async (req, res) => {
     // Create user with email_verified = false
     const userId = await insertUserWithConfirmation(email, passwordHash, confirmationToken);
     
+    // Create a free subscription for the new user
+    try {
+      await insertSubscription(userId, 'free', 'active', null, null);
+      console.log(`✅ Created free subscription for user ${userId}`);
+    } catch (subscriptionError) {
+      console.error('❌ Failed to create free subscription:', subscriptionError);
+      // Don't fail user creation if subscription creation fails
+    }
+    
           // Send confirmation email using Brevo
       const emailSent = await emailService.sendEmailConfirmation(email, confirmationToken);
       if (emailSent) {
@@ -3910,6 +3915,15 @@ app.post('/api/setup/first-admin', async (req, res) => {
       'UPDATE users SET email_verified = true WHERE id = $1',
       [userId]
     );
+    
+    // Create a free subscription for the admin user
+    try {
+      await insertSubscription(userId, 'free', 'active', null, null);
+      console.log(`✅ Created free subscription for admin user ${userId}`);
+    } catch (subscriptionError) {
+      console.error('❌ Failed to create free subscription for admin:', subscriptionError);
+      // Don't fail admin creation if subscription creation fails
+    }
     
     console.log(`👑 First admin user created: ${email} (ID: ${userId})`);
     
@@ -4265,6 +4279,104 @@ app.post('/api/payment-alert', async (req, res) => {
   } catch (error) {
     console.error('Payment alert error:', error);
     res.status(500).json({ error: 'Failed to send payment alert' });
+  }
+});
+
+// Activate user (admin only)
+app.post('/api/admin/users/:userId/activate', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { updateUser, getUserById } = require('./database');
+    
+    // Get user details
+    const user = await getUserById(parseInt(userId));
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if user is already activated
+    if (user.email_verified) {
+      return res.status(400).json({ 
+        error: 'User is already activated',
+        user: {
+          id: user.id,
+          email: user.email,
+          email_verified: user.email_verified
+        }
+      });
+    }
+    
+    // Activate the user
+    await updateUser(parseInt(userId), {
+      email_verified: true,
+      confirmation_token: null // Clear any pending confirmation token
+    });
+    
+    console.log(`✅ Admin ${req.user.email} activated user ${user.email} (ID: ${userId})`);
+    
+    res.json({ 
+      success: true, 
+      message: 'User activated successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        email_verified: true
+      }
+    });
+  } catch (error) {
+    console.error('Error activating user:', error);
+    res.status(500).json({ error: 'Failed to activate user' });
+  }
+});
+
+// Deactivate user (admin only)
+app.post('/api/admin/users/:userId/deactivate', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { updateUser, getUserById } = require('./database');
+    
+    // Prevent admin from deactivating themselves
+    if (parseInt(userId) === req.user.userId) {
+      return res.status(400).json({ error: 'Cannot deactivate your own account' });
+    }
+    
+    // Get user details
+    const user = await getUserById(parseInt(userId));
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if user is already deactivated
+    if (!user.email_verified) {
+      return res.status(400).json({ 
+        error: 'User is already deactivated',
+        user: {
+          id: user.id,
+          email: user.email,
+          email_verified: user.email_verified
+        }
+      });
+    }
+    
+    // Deactivate the user
+    await updateUser(parseInt(userId), {
+      email_verified: false
+    });
+    
+    console.log(`⚠️ Admin ${req.user.email} deactivated user ${user.email} (ID: ${userId})`);
+    
+    res.json({ 
+      success: true, 
+      message: 'User deactivated successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        email_verified: false
+      }
+    });
+  } catch (error) {
+    console.error('Error deactivating user:', error);
+    res.status(500).json({ error: 'Failed to deactivate user' });
   }
 });
 

@@ -99,11 +99,14 @@ class SubscriptionManager {
   // Get subscription status with expiration check
   async getSubscriptionStatus(userId) {
     try {
+      console.log(`🔍 Getting subscription status for user ${userId}`);
+      
       // Check if user is admin first
-      const { isUserAdmin } = require('../database');
+      const { isUserAdmin, getUserById } = require('../database');
       const isAdmin = await isUserAdmin(userId);
       
       if (isAdmin) {
+        console.log(`👑 User ${userId} is admin - granting full access`);
         return {
           plan: 'admin',
           status: 'active',
@@ -115,57 +118,55 @@ class SubscriptionManager {
         };
       }
 
-      const expirationStatus = await this.checkAndHandleExpiration(userId);
+      // Get user data to check subscription (simplified approach)
+      const user = await getUserById(userId);
+      if (!user) {
+        console.log(`❌ User ${userId} not found`);
+        return this.getFreePlanStatus();
+      }
       
-      if (expirationStatus.status === 'expired' || expirationStatus.status === 'free') {
-        // Check if user has a subscription plan set directly on the user record (for Pro upgrades)
-        const { getUserById } = require('../database');
-        const user = await getUserById(userId);
+      // Check if user has an active subscription
+      if (user.subscription_plan && user.subscription_plan !== 'free') {
+        // Check if subscription has expired
+        const now = new Date();
+        const expiresAt = user.subscription_expires_at ? new Date(user.subscription_expires_at) : null;
         
-        if (user && user.subscription_plan && user.subscription_plan !== 'free') {
-          // User has a direct subscription plan (Pro upgrade)
-          const plan = this.subscriptionPlans[user.subscription_plan];
-          if (plan) {
-            return {
-              plan: user.subscription_plan,
-              status: user.subscription_status || 'active',
-              planName: plan.name,
-              features: plan.features,
-              needsRenewal: false,
-              expiredAt: null,
-              expiredPlan: null
-            };
-          }
+        if (expiresAt && expiresAt < now) {
+          console.log(`⏰ Subscription expired for user ${userId} (expired: ${expiresAt})`);
+          // Subscription expired - reset to free
+          const { updateUser } = require('../database');
+          await updateUser(userId, {
+            subscription_plan: 'free',
+            subscription_expires_at: null
+          });
+          return this.getFreePlanStatus();
         }
         
-        // Default to free plan
-        const freePlan = this.subscriptionPlans.free;
-        return {
-          plan: 'free',
-          status: 'inactive',
-          planName: freePlan.name,
-          features: freePlan.features,
-          needsRenewal: expirationStatus.needsRenewal,
-          expiredAt: expirationStatus.status === 'expired' ? expirationStatus.expiredAt : null,
-          expiredPlan: expirationStatus.status === 'expired' ? expirationStatus.planType : null
-        };
+        // Active subscription
+        const plan = this.subscriptionPlans[user.subscription_plan];
+        if (plan) {
+          console.log(`✅ Found active subscription for user ${userId}:`, {
+            plan: user.subscription_plan,
+            expires: expiresAt
+          });
+          
+          return {
+            plan: user.subscription_plan,
+            status: 'active',
+            planName: plan.name,
+            features: plan.features,
+            currentPeriodEnd: expiresAt,
+            needsRenewal: false
+          };
+        }
       }
-
-      const subscription = await getActiveSubscription(userId);
-      const plan = this.subscriptionPlans[subscription.plan_type];
       
-      return {
-        plan: subscription.plan_type,
-        status: subscription.status,
-        planName: plan.name,
-        features: plan.features,
-        currentPeriodEnd: subscription.current_period_end,
-        needsRenewal: expirationStatus.needsRenewal,
-        daysUntilExpiry: expirationStatus.daysUntilExpiry
-      };
+      // No active subscription - return free plan
+      console.log(`📋 User ${userId} has no active subscription - using free plan`);
+      return this.getFreePlanStatus();
     } catch (error) {
-      console.error('Error getting subscription status:', error);
-      throw error;
+      console.error(`❌ Error getting subscription status for user ${userId}:`, error);
+      return this.getFreePlanStatus();
     }
   }
 

@@ -386,7 +386,8 @@ describe('Payment and Webhook Flow Integration Tests', () => {
       expect(updateUser).toHaveBeenCalledWith(
         1,
         expect.objectContaining({
-          plan: 'pro',
+          subscription_plan: 'pro',
+          subscription_expires_at: expect.any(Date),
           stripe_customer_id: 'in_test123'
         })
       );
@@ -434,7 +435,8 @@ describe('Payment and Webhook Flow Integration Tests', () => {
       expect(updateUser).toHaveBeenCalledWith(
         1,
         expect.objectContaining({
-          plan: 'pro',
+          subscription_plan: 'pro',
+          subscription_expires_at: expect.any(Date),
           stripe_customer_id: 'in_test123'
         })
       );
@@ -442,7 +444,7 @@ describe('Payment and Webhook Flow Integration Tests', () => {
 
     test('should not upgrade user if already on Pro plan', async () => {
       // Mock user already on Pro plan
-      const proUser = { ...mockUser, plan: 'pro' };
+      const proUser = { ...mockUser, subscription_plan: 'pro' };
       getUserByStripeCustomerId.mockResolvedValue(proUser);
 
       const invoice = {
@@ -483,7 +485,7 @@ describe('Payment and Webhook Flow Integration Tests', () => {
         subscription: undefined,
         subscription_id: undefined,
         customer: 'cus_test123',
-        amount_paid: 999, // $9.99 - too low for Pro
+        amount_paid: 299, // $2.99 - too low for Pro (below $5.00 threshold)
         lines: 1
       };
 

@@ -99,15 +99,18 @@ class PaymentService {
       
       const { updateUser } = require('../database');
       
-      // Update user to Pro plan
+      // Calculate subscription expiry (30 days from now)
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      
+      // Update user to Pro plan with simplified approach
       await updateUser(userId, {
         subscription_plan: planId,
-        subscription_status: 'active',
-        stripe_customer_id: invoiceId, // Store invoice ID for reference
-        updated_at: new Date().toISOString()
+        subscription_expires_at: expiresAt,
+        stripe_customer_id: invoiceId // Store invoice ID for reference
+        // updated_at is automatically set by the database function
       });
       
-      console.log(`✅ Successfully upgraded user ${userId} to ${planId} plan`);
+      console.log(`✅ Successfully upgraded user ${userId} to ${planId} plan (expires: ${expiresAt})`);
       
       // Send upgrade email
       try {
@@ -479,8 +482,11 @@ class PaymentService {
       id: invoice.id,
       subscription: invoice.subscription,
       customer: invoice.customer,
+      amount_paid: invoice.amount_paid,
+      currency: invoice.currency,
       lines: invoice.lines ? invoice.lines.data?.length : 'no lines',
-      subscription_id: invoice.subscription_id
+      subscription_id: invoice.subscription_id,
+      status: invoice.status
     });
     
     // Check if this invoice is associated with a subscription
@@ -514,11 +520,18 @@ class PaymentService {
           const recentProSession = sessions.data.find(session => 
             session.metadata?.planId === 'pro' && 
             session.payment_status === 'paid' &&
-            (Date.now() - session.created * 1000) < 5 * 60 * 1000 // Within last 5 minutes
+            session.status === 'complete' &&
+            (Date.now() - session.created * 1000) < 10 * 60 * 1000 // Within last 10 minutes (increased from 5)
           );
           
           if (recentProSession) {
             console.log(`✅ Found recent Pro checkout session ${recentProSession.id} - processing upgrade`);
+            
+            // Check if user is already on Pro plan to prevent duplicate upgrades
+            if (user.subscription_plan === 'pro') {
+              console.log(`⚠️ User ${user.id} is already on Pro plan - skipping upgrade`);
+              return;
+            }
             
             // Process the Pro upgrade
             await this.processProUpgrade(user.id, 'pro', invoice.id);
@@ -526,8 +539,8 @@ class PaymentService {
           }
           
           // Fallback: Check if this is a Pro upgrade by looking at the invoice amount
-          // Pro plan is $29.99, but allow for discounts and testing (minimum $5.00)
-          if (invoice.amount_paid && invoice.amount_paid >= 500 && (!user.subscription_plan || user.subscription_plan === 'free')) { // $5.00 minimum for Pro upgrade
+          // Pro plan is $29.99, but allow for discounts and testing (minimum $15.00 to be more conservative)
+          if (invoice.amount_paid && invoice.amount_paid >= 1500 && (!user.subscription_plan || user.subscription_plan === 'free')) { // $15.00 minimum for Pro upgrade
             console.log(`✅ Invoice amount ${invoice.amount_paid} suggests Pro upgrade for free user - processing upgrade`);
             
             // Process the Pro upgrade
@@ -657,13 +670,15 @@ class PaymentService {
       current_period_end_type: typeof subscription.current_period_end
     });
     
-    // Handle incomplete subscriptions (no billing periods yet)
-    if (subscription.status === 'incomplete' || subscription.status === 'trialing') {
+    // Handle incomplete subscriptions or subscriptions with undefined billing periods
+    if (subscription.status === 'incomplete' || 
+        subscription.status === 'trialing' ||
+        (subscription.current_period_start === undefined && subscription.current_period_end === undefined)) {
       console.log(`⚠️ Subscription ${subscription.id} is ${subscription.status} - no billing periods set yet`);
       console.log(`📝 This is normal for incomplete subscriptions. Billing periods will be set when payment is completed.`);
       
-    await updateSubscription(subscription.id, {
-      status: subscription.status,
+      await updateSubscription(subscription.id, {
+        status: subscription.status,
         current_period_start: null,
         current_period_end: null
       });
