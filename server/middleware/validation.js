@@ -218,7 +218,8 @@ const VALIDATION_RULES = {
     email: { type: 'email', required: true },
     subject: { type: 'string', required: true, maxLength: 255 },
     message: { type: 'string', required: true, maxLength: 2000 },
-    allowExtra: false
+    captchaAnswer: { type: 'string', required: true },
+    allowExtra: true
   },
   
   alertThreshold: {

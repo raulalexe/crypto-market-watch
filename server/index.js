@@ -4317,19 +4317,8 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 // Contact form endpoint
 app.post('/api/contact', upload.single('screenshot'), validateRequestBody(VALIDATION_RULES.contactForm), async (req, res) => {
   try {
-    const { name, email, subject, message } = req.body;
-    const { captchaAnswer } = req.body; // captchaAnswer not in validation rules
+    const { name, email, subject, message, captchaAnswer } = req.body;
     const screenshot = req.file;
-
-    // Validate captchaAnswer separately since it's not in the main validation rules
-    if (!captchaAnswer || typeof captchaAnswer !== 'string') {
-      return res.status(400).json({ error: 'Captcha answer is required' });
-    }
-
-    // Validate message length
-    if (message.length < 10) {
-      return res.status(400).json({ error: 'Message must be at least 10 characters long' });
-    }
 
     // Store contact message in database
     await dbAdapter.run(
