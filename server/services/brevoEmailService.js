@@ -1700,7 +1700,7 @@ This is an automated message. Please do not reply to this email.
           body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
             line-height: 1.6; 
-            color: #f8fafc; 
+            color: #ffffff; 
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             margin: 0;
             padding: 20px;
@@ -1712,6 +1712,7 @@ This is an automated message. Please do not reply to this email.
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            padding: 0 20px;
           }
           .header { 
             background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
@@ -1759,6 +1760,7 @@ This is an automated message. Please do not reply to this email.
           }
           .content { 
             padding: 40px 30px; 
+            color: #ffffff;
           }
           .success-badge {
             background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
@@ -2504,10 +2506,10 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
       line-height: 1.6;
-      color: #f8fafc;
+      color: #ffffff;
       background-color: #0f172a;
       margin: 0;
-      padding: 0;
+      padding: 20px;
     }
     table { border-collapse: collapse; }
     .container {
@@ -2517,6 +2519,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 0 20px;
     }
     .brand-header {
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -2551,7 +2554,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
     .content {
       background-color: #1e293b;
       padding: 30px 20px;
-      color: #f8fafc;
+      color: #ffffff;
     }
     .event-item {
       background-color: #334155;
@@ -2672,10 +2675,10 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
       line-height: 1.6;
-      color: #f8fafc;
+      color: #ffffff;
       background-color: #0f172a;
       margin: 0;
-      padding: 0;
+      padding: 20px;
     }
     table { border-collapse: collapse; }
     .container {
@@ -2685,6 +2688,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 0 20px;
     }
     .brand-header {
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -2719,7 +2723,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
     .content {
       background-color: #1e293b;
       padding: 30px 20px;
-      color: #f8fafc;
+      color: #ffffff;
     }
     .data-item {
       background-color: #334155;

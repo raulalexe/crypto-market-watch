@@ -224,10 +224,10 @@ class EmailService {
           body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
             line-height: 1.6; 
-            color: #f8fafc; 
+            color: #ffffff; 
             background-color: #0f172a;
             margin: 0;
-            padding: 0;
+            padding: 20px;
           }
           .container { 
             max-width: 600px; 
@@ -236,6 +236,7 @@ class EmailService {
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 0 20px;
           }
           .brand-header {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -270,7 +271,7 @@ class EmailService {
           .content { 
             background: #1e293b; 
             padding: 30px 20px; 
-            color: #f8fafc;
+            color: #ffffff;
           }
           .alert-message { 
             font-size: 18px; 

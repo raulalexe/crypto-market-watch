@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { getUserById } = require('../database');
+const { SUBSCRIPTION_TYPES } = require('../constants/subscriptionTypes');
 
 // Authentication middleware
 const authenticateToken = async (req, res, next) => {
@@ -52,7 +53,7 @@ const optionalAuth = async (req, res, next) => {
 };
 
 // Check subscription status
-const requireSubscription = (minPlan = 'free') => {
+const requireSubscription = (minPlan = SUBSCRIPTION_TYPES.FREE) => {
   return async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -65,20 +66,25 @@ const requireSubscription = (minPlan = 'free') => {
       
       if (isAdmin) {
         // Admin users bypass subscription requirements
-        req.subscription = { plan_type: 'admin', isAdmin: true };
+        req.subscription = { plan_type: SUBSCRIPTION_TYPES.ADMIN, isAdmin: true };
         return next();
       }
 
       const { getActiveSubscription, getUserById } = require('../database');
       const subscription = await getActiveSubscription(req.user.id);
       
-      const planHierarchy = { free: 0, pro: 1, premium: 2, api: 3 };
-      let userPlan = subscription ? subscription.plan_type : 'free';
+      const planHierarchy = { 
+        [SUBSCRIPTION_TYPES.FREE]: 0, 
+        [SUBSCRIPTION_TYPES.PRO]: 1, 
+        [SUBSCRIPTION_TYPES.PREMIUM]: 2, 
+        'api': 3 
+      };
+      let userPlan = subscription ? subscription.plan_type : SUBSCRIPTION_TYPES.FREE;
       
       // If no active subscription, check user's direct subscription plan (for Pro upgrades)
       if (!subscription) {
         const user = await getUserById(req.user.id);
-        if (user && user.subscription_plan && user.subscription_plan !== 'free') {
+        if (user && user.subscription_plan && user.subscription_plan !== SUBSCRIPTION_TYPES.FREE) {
           userPlan = user.subscription_plan;
         }
       }

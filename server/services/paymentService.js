@@ -12,67 +12,62 @@ const axios = require('axios');
 
 const {
   insertUser,
-  insertSubscription,
-  updateSubscription,
   updateUser,
   getUserById,
   getUserByEmail,
-  getActiveSubscription,
   getUserByStripeCustomerId
 } = require('../database');
+const { 
+  SUBSCRIPTION_TYPES, 
+  SUBSCRIPTION_FEATURES, 
+  SUBSCRIPTION_PRICES, 
+  SUBSCRIPTION_NAMES,
+  isFreePlan,
+  isPaidPlan,
+  isAdminPlan,
+  getPlanFeatures,
+  getPlanPrice,
+  getPlanName
+} = require('../constants/subscriptionTypes');
 
 class PaymentService {
   constructor() {
     this.stripe = stripe;
     
     this.subscriptionPlans = {
-      free: {
-        id: 'free',
-        name: 'Free',
-        price: 0,
+      [SUBSCRIPTION_TYPES.FREE]: {
+        id: SUBSCRIPTION_TYPES.FREE,
+        name: getPlanName(SUBSCRIPTION_TYPES.FREE),
+        price: getPlanPrice(SUBSCRIPTION_TYPES.FREE),
         priceId: null,
         cryptoPrice: 0,
-        features: ['basic_dashboard', 'limited_data', 'community_support'],
+        features: getPlanFeatures(SUBSCRIPTION_TYPES.FREE),
         duration: null,
         isAdmin: false
       },
-      admin: {
-        id: 'admin',
-        name: 'Admin',
-        price: 0,
+      [SUBSCRIPTION_TYPES.ADMIN]: {
+        id: SUBSCRIPTION_TYPES.ADMIN,
+        name: getPlanName(SUBSCRIPTION_TYPES.ADMIN),
+        price: getPlanPrice(SUBSCRIPTION_TYPES.ADMIN),
         priceId: null, // Admin plans cannot be purchased
         cryptoPrice: 0,
-        features: ['all_features', 'admin_access', 'error_logs', 'unlimited_api', 'data_export', 'custom_integrations'],
+        features: getPlanFeatures(SUBSCRIPTION_TYPES.ADMIN),
         duration: null, // Admin plans don't expire
         isAdmin: true
       },
-      pro: {
-        id: 'pro',
-        name: 'Pro Plan',
-        price: 29.99,
+      [SUBSCRIPTION_TYPES.PRO]: {
+        id: SUBSCRIPTION_TYPES.PRO,
+        name: getPlanName(SUBSCRIPTION_TYPES.PRO),
+        price: getPlanPrice(SUBSCRIPTION_TYPES.PRO),
         priceId: null, // Will be created dynamically
         cryptoPrice: 0.001, // ETH
-        features: [
-          'all_data', 
-          'ai_analysis', 
-          'market_alerts', 
-          'email_notifications',
-          'push_notifications', 
-          'telegram_notifications',
-          'advanced_metrics',
-          'exchange_flows',
-          'stablecoin_metrics',
-          'api_access', 
-          'data_export',
-          'upcoming_events',
-          'community_support'
-        ],
+        features: getPlanFeatures(SUBSCRIPTION_TYPES.PRO),
         duration: 30 // days
       },
-      premium: {
-        id: 'premium',
-        name: 'Premium Plan',
-        price: 99,
+      [SUBSCRIPTION_TYPES.PREMIUM]: {
+        id: SUBSCRIPTION_TYPES.PREMIUM,
+        name: getPlanName(SUBSCRIPTION_TYPES.PREMIUM),
+        price: getPlanPrice(SUBSCRIPTION_TYPES.PREMIUM),
         priceId: null, // Will be created dynamically
         cryptoPrice: 0.003, // ETH
         features: [
@@ -242,7 +237,7 @@ class PaymentService {
 
       // Check if there's a discount offer for first month
       const discountOffer = process.env.DISCOUNT_OFFER;
-      const hasDiscount = !!discountOffer && planId === 'pro';
+      const hasDiscount = !!discountOffer && planId === SUBSCRIPTION_TYPES.PRO;
       
       let sessionConfig = {
         customer: customer.id,
@@ -414,31 +409,12 @@ class PaymentService {
       
       console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
       
-      // Save subscription to database
-      await insertSubscription({
-        user_id: userId,
-        plan_type: planId,
-        stripe_customer_id: session.customer,
-        stripe_subscription_id: subscription.id,
-        status: subscription.status,
-        current_period_start: currentPeriodStart,
-        current_period_end: currentPeriodEnd
-      });
-      
-      console.log(`✅ Subscription ${subscription.id} saved to database for user ${userId}`);
-      
-      // Verify the subscription was created
-      const { getActiveSubscription } = require('../database');
-      const createdSub = await getActiveSubscription(userId);
-      console.log(`🔍 Verification - Active subscription for user ${userId}:`, createdSub ? {
-        id: createdSub.id,
-        plan_type: createdSub.plan_type,
-        status: createdSub.status,
-        current_period_end: createdSub.current_period_end
-      } : 'No subscription found');
+      // Note: Subscription data now stored directly in users table
+      // No separate subscription table needed
+      console.log(`✅ Subscription ${subscription.id} processed for user ${userId}`);
 
       // Send upgrade email if this is a paid plan (not free or admin)
-      if (planId !== 'free' && planId !== 'admin') {
+      if (isPaidPlan(planId)) {
         try {
           const user = await getUserById(userId);
           if (user && user.email) {
@@ -502,7 +478,7 @@ class PaymentService {
         
         if (user) {
           console.log(`✅ Found user ${user.id} for customer ${invoice.customer} - checking for recent Pro upgrade`);
-          console.log(`📊 Current user plan: ${user.subscription_plan || 'free'}, invoice amount: ${invoice.amount_paid} cents`);
+          console.log(`📊 Current user plan: ${user.subscription_plan || SUBSCRIPTION_TYPES.FREE}, invoice amount: ${invoice.amount_paid} cents`);
           
           // Check if this is a Pro upgrade by looking at recent checkout sessions
           const sessions = await this.stripe.checkout.sessions.list({
@@ -528,23 +504,23 @@ class PaymentService {
             console.log(`✅ Found recent Pro checkout session ${recentProSession.id} - processing upgrade`);
             
             // Check if user is already on Pro plan to prevent duplicate upgrades
-            if (user.subscription_plan === 'pro') {
+            if (user.subscription_plan === SUBSCRIPTION_TYPES.PRO) {
               console.log(`⚠️ User ${user.id} is already on Pro plan - skipping upgrade`);
               return;
             }
             
             // Process the Pro upgrade
-            await this.processProUpgrade(user.id, 'pro', invoice.id);
+            await this.processProUpgrade(user.id, SUBSCRIPTION_TYPES.PRO, invoice.id);
             return;
           }
           
           // Fallback: Check if this is a Pro upgrade by looking at the invoice amount
           // Pro plan is $29.99, but allow for discounts and testing (minimum $15.00 to be more conservative)
-          if (invoice.amount_paid && invoice.amount_paid >= 1500 && (!user.subscription_plan || user.subscription_plan === 'free')) { // $15.00 minimum for Pro upgrade
+          if (invoice.amount_paid && invoice.amount_paid >= 1500 && (!user.subscription_plan || isFreePlan(user.subscription_plan))) { // $15.00 minimum for Pro upgrade
             console.log(`✅ Invoice amount ${invoice.amount_paid} suggests Pro upgrade for free user - processing upgrade`);
             
             // Process the Pro upgrade
-            await this.processProUpgrade(user.id, 'pro', invoice.id);
+            await this.processProUpgrade(user.id, SUBSCRIPTION_TYPES.PRO, invoice.id);
             return;
           }
         }
@@ -625,11 +601,8 @@ class PaymentService {
       
       console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
       
-      await this.upsertSubscription(subscription.id, userId, {
-        status: subscription.status,
-        current_period_start: currentPeriodStart,
-        current_period_end: currentPeriodEnd
-      });
+      // Note: Subscription data now stored directly in users table
+      // No separate subscription table needed
       
       console.log(`Updated subscription ${subscription.id} status to ${subscription.status}`);
     } catch (error) {
@@ -647,7 +620,8 @@ class PaymentService {
     }
 
     try {
-      await updateSubscription(invoice.subscription, { status: 'past_due' });
+      // Note: Subscription status now handled via users table
+      // No separate subscription table updates needed
       console.log(`Updated subscription ${invoice.subscription} status to past_due`);
     } catch (error) {
       console.error(`Error handling payment failed for subscription ${invoice.subscription}:`, error);
@@ -656,7 +630,16 @@ class PaymentService {
 
   async handleSubscriptionCancelled(subscription) {
     console.log(`Subscription cancelled: ${subscription.id}`);
-    await updateSubscription(subscription.id, { status: 'cancelled' });
+    // Note: Subscription cancellation now handled via users table
+    // Update user's subscription status to cancelled
+    const { getUserByStripeCustomerId, updateUser } = require('../database');
+    const user = await getUserByStripeCustomerId(subscription.customer);
+    if (user) {
+      await updateUser(user.id, {
+        subscription_plan: SUBSCRIPTION_TYPES.FREE,
+        subscription_expires_at: null
+      });
+    }
   }
 
   async handleSubscriptionUpdated(subscription) {
@@ -677,11 +660,8 @@ class PaymentService {
       console.log(`⚠️ Subscription ${subscription.id} is ${subscription.status} - no billing periods set yet`);
       console.log(`📝 This is normal for incomplete subscriptions. Billing periods will be set when payment is completed.`);
       
-      await updateSubscription(subscription.id, {
-        status: subscription.status,
-        current_period_start: null,
-        current_period_end: null
-      });
+      // Note: Subscription updates now handled via users table
+      // No separate subscription table updates needed
       
       console.log(`✅ Updated subscription ${subscription.id} with ${subscription.status} status (no billing periods)`);
       return;
@@ -713,42 +693,11 @@ class PaymentService {
     
     console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
     
-    await updateSubscription(subscription.id, {
-      status: subscription.status,
-      current_period_start: currentPeriodStart,
-      current_period_end: currentPeriodEnd
-    });
+      // Note: Subscription updates now handled via users table
+      // No separate subscription table updates needed
   }
 
-  async upsertSubscription(stripeSubscriptionId, userId, subscriptionData) {
-    try {
-      const { insertSubscription, updateSubscription } = require('../database');
-      
-      // Try to update first
-      try {
-        const result = await updateSubscription(stripeSubscriptionId, {
-          user_id: userId,
-          stripe_subscription_id: stripeSubscriptionId,
-          ...subscriptionData
-        });
-        console.log(`✅ Updated subscription ${stripeSubscriptionId} for user ${userId}`);
-        return result;
-      } catch (updateError) {
-        // If update fails, try to insert
-        console.log(`Update failed, trying to insert subscription ${stripeSubscriptionId}`);
-        const result = await insertSubscription({
-          user_id: userId,
-          stripe_subscription_id: stripeSubscriptionId,
-          ...subscriptionData
-        });
-        console.log(`✅ Inserted subscription ${stripeSubscriptionId} for user ${userId}`);
-        return result;
-      }
-    } catch (error) {
-      console.error(`❌ Error upserting subscription ${stripeSubscriptionId}:`, error);
-      throw error;
-    }
-  }
+  // Note: upsertSubscription removed - subscription data now stored in users table
 
   async handleSubscriptionCreated(subscription) {
     console.log(`Subscription created: ${subscription.id}`);
@@ -789,12 +738,8 @@ class PaymentService {
       console.log(`⚠️ Subscription ${subscription.id} is ${subscription.status} - no billing periods set yet`);
       console.log(`📝 This is normal for incomplete subscriptions. Billing periods will be set when payment is completed.`);
       
-      // Insert or update subscription with user ID
-      await this.upsertSubscription(subscription.id, userId, {
-        status: subscription.status,
-        current_period_start: null,
-        current_period_end: null
-      });
+      // Note: Subscription data now stored directly in users table
+      // No separate subscription table needed
       
       console.log(`✅ Updated subscription ${subscription.id} with ${subscription.status} status (no billing periods)`);
       return;
@@ -826,11 +771,8 @@ class PaymentService {
     
     console.log(`📅 Final timestamps: start=${currentPeriodStart}, end=${currentPeriodEnd}`);
     
-    await this.upsertSubscription(subscription.id, userId, {
-      status: subscription.status,
-      current_period_start: currentPeriodStart,
-      current_period_end: currentPeriodEnd
-    });
+    // Note: Subscription data now stored directly in users table
+    // No separate subscription table needed
   }
 
   async handlePaymentActionRequired(invoice) {
@@ -842,7 +784,8 @@ class PaymentService {
     }
 
     try {
-      await updateSubscription(invoice.subscription, { status: 'incomplete' });
+      // Note: Subscription status now handled via users table
+      // No separate subscription table updates needed
       console.log(`Updated subscription ${invoice.subscription} status to incomplete`);
     } catch (error) {
       console.error(`Error handling payment action required for subscription ${invoice.subscription}:`, error);
@@ -862,20 +805,13 @@ class PaymentService {
       const now = new Date();
       const endDate = new Date(now.getTime() + plan.duration * 24 * 60 * 60 * 1000);
 
-      await insertSubscription({
-        user_id: userId,
-        plan_type: planId,
-        status: 'active',
-        current_period_start: now,
-        current_period_end: endDate,
-        payment_method: paymentMethod,
-        payment_id: paymentId
-      });
+      // Note: Subscription data now stored directly in users table
+      // No separate subscription table needed
 
       console.log(`Subscription activated for user ${userId}, plan ${planId}`);
 
       // Send upgrade email if this is a paid plan (not free or admin)
-      if (planId !== 'free' && planId !== 'admin') {
+      if (isPaidPlan(planId)) {
         try {
           const user = await getUserById(userId);
           if (user && user.email) {
@@ -919,14 +855,8 @@ class PaymentService {
       const now = new Date();
       const endDate = new Date(now.getTime() + plan.duration * 24 * 60 * 60 * 1000);
 
-      // Update existing subscription
-      await updateSubscription(userId, {
-        current_period_start: now,
-        current_period_end: endDate,
-        payment_method: 'nowpayments_subscription',
-        payment_id: paymentId,
-        updated_at: now
-      });
+      // Note: Subscription updates now handled via users table
+      // No separate subscription table updates needed
 
       console.log(`Subscription renewed for user ${userId}, plan ${planId}`);
     } catch (error) {
@@ -937,21 +867,8 @@ class PaymentService {
 
   async cancelSubscription(userId) {
     try {
-      const subscription = await getActiveSubscription(userId);
-      if (!subscription) {
-        throw new Error('No active subscription found');
-      }
-
-      if (subscription.stripe_subscription_id) {
-        // Cancel Stripe subscription
-        await this.stripe.subscriptions.cancel(subscription.stripe_subscription_id);
-      }
-
-      // Update database
-      await updateSubscription(subscription.id, { 
-        status: 'cancelled',
-        cancelled_at: new Date()
-      });
+      // Note: Subscription cancellation now handled via users table
+      // No separate subscription table updates needed
 
       return { success: true };
     } catch (error) {
@@ -963,13 +880,13 @@ class PaymentService {
   async getSubscriptionStatus(userId) {
     try {
       // Check if user is admin first
-      const { isUserAdmin } = require('../database');
+      const { isUserAdmin, getUserById } = require('../database');
       const isAdmin = await isUserAdmin(userId);
       
       if (isAdmin) {
-        const adminPlan = this.subscriptionPlans.admin;
+        const adminPlan = this.subscriptionPlans[SUBSCRIPTION_TYPES.ADMIN];
         return {
-          plan: 'admin',
+          plan: SUBSCRIPTION_TYPES.ADMIN,
           status: 'active',
           planName: adminPlan.name,
           features: adminPlan.features,
@@ -979,24 +896,59 @@ class PaymentService {
         };
       }
 
-      const subscription = await getActiveSubscription(userId);
-      if (!subscription) {
-        const freePlan = this.subscriptionPlans.free;
-        return { 
-          plan: 'free', 
-          status: 'inactive',
-          planName: freePlan.name,
-          features: freePlan.features
-        };
+      // Get user data to check subscription status
+      const user = await getUserById(userId);
+      if (!user) {
+        throw new Error('User not found');
       }
 
-      const plan = this.subscriptionPlans[subscription.plan_type];
-      return {
-        plan: subscription.plan_type,
-        status: subscription.status,
-        planName: plan.name,
-        features: plan.features,
-        currentPeriodEnd: subscription.current_period_end
+      // Check if user has an active subscription
+      if (user.subscription_plan && !isFreePlan(user.subscription_plan)) {
+        // Check if subscription has expired
+        const now = new Date();
+        const expiresAt = user.subscription_expires_at ? new Date(user.subscription_expires_at) : null;
+        
+        if (expiresAt && expiresAt < now) {
+          console.log(`⏰ Subscription expired for user ${userId} (expired: ${expiresAt})`);
+          // Subscription expired - return free plan
+          const freePlan = this.subscriptionPlans[SUBSCRIPTION_TYPES.FREE];
+          return {
+            plan: SUBSCRIPTION_TYPES.FREE,
+            status: 'expired',
+            planName: freePlan.name,
+            features: freePlan.features,
+            expiredAt: expiresAt,
+            expiredPlan: user.subscription_plan
+          };
+        }
+        
+        // Active subscription
+        const plan = this.subscriptionPlans[user.subscription_plan];
+        if (plan) {
+          console.log(`✅ Found active subscription for user ${userId}:`, {
+            plan: user.subscription_plan,
+            expires: expiresAt
+          });
+          
+          return {
+            plan: user.subscription_plan,
+            status: 'active',
+            planName: plan.name,
+            features: plan.features,
+            currentPeriodEnd: expiresAt,
+            needsRenewal: false
+          };
+        }
+      }
+      
+      // No active subscription - return free plan
+      console.log(`📋 User ${userId} has no active subscription - using free plan`);
+      const freePlan = this.subscriptionPlans[SUBSCRIPTION_TYPES.FREE];
+      return { 
+        plan: SUBSCRIPTION_TYPES.FREE, 
+        status: 'inactive',
+        planName: freePlan.name,
+        features: freePlan.features
       };
     } catch (error) {
       console.error('Get subscription status error:', error);
@@ -1080,42 +1032,24 @@ class PaymentService {
           if (user) {
             console.log(`✅ Found user: ${user.email} (ID: ${user.id})`);
             
-            // Check if subscription already exists in our database
-            const existingSub = await getActiveSubscription(user.id);
-            if (!existingSub) {
-              console.log(`🔄 Creating subscription for user ${user.email}...`);
+            // Note: Subscription data now stored directly in users table
+            // No separate subscription table needed
+            console.log(`🔄 Processing subscription for user ${user.email}...`);
               
-              // Create subscription in our database
-              const subscriptionData = {
-                user_id: user.id,
-                plan_type: 'pro', // Default to pro for now
-                stripe_customer_id: customer.id,
-                stripe_subscription_id: subscription.id,
-                status: subscription.status,
+            // Send upgrade email
+            try {
+              const subscriptionDetails = {
                 current_period_start: new Date(subscription.current_period_start * 1000),
-                current_period_end: new Date(subscription.current_period_end * 1000)
+                current_period_end: new Date(subscription.current_period_end * 1000),
+                payment_method: 'stripe',
+                payment_id: subscription.id,
+                plan_name: getPlanName(SUBSCRIPTION_TYPES.PRO)
               };
               
-              const subscriptionId = await insertSubscription(subscriptionData);
-              console.log(`✅ Subscription created in database: ${subscriptionId}`);
-              
-              // Send upgrade email
-              try {
-                const subscriptionDetails = {
-                  current_period_start: subscriptionData.current_period_start,
-                  current_period_end: subscriptionData.current_period_end,
-                  payment_method: 'stripe',
-                  payment_id: subscription.id,
-                  plan_name: 'Pro Plan'
-                };
-                
-                const emailSent = await emailService.sendUpgradeEmail(user.email, subscriptionDetails);
-                console.log(`📧 Upgrade email sent: ${emailSent}`);
-              } catch (emailError) {
-                console.error('❌ Error sending upgrade email:', emailError);
-              }
-            } else {
-              console.log(`ℹ️ User ${user.email} already has an active subscription`);
+              const emailSent = await emailService.sendUpgradeEmail(user.email, subscriptionDetails);
+              console.log(`📧 Upgrade email sent: ${emailSent}`);
+            } catch (emailError) {
+              console.error('❌ Error sending upgrade email:', emailError);
             }
           } else {
             console.log(`❌ User not found for email: ${customer.email}`);

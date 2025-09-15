@@ -1,28 +1,40 @@
 const { getActiveSubscription, updateSubscription, insertSubscription, getUserById } = require('../database');
 const walletPaymentService = require('./walletPaymentService');
+const { 
+  SUBSCRIPTION_TYPES, 
+  SUBSCRIPTION_FEATURES, 
+  SUBSCRIPTION_PRICES, 
+  SUBSCRIPTION_NAMES,
+  isFreePlan,
+  isPaidPlan,
+  isAdminPlan,
+  getPlanFeatures,
+  getPlanPrice,
+  getPlanName
+} = require('../constants/subscriptionTypes');
 
 class SubscriptionManager {
   constructor() {
     this.discountOffer = parseFloat(process.env.DISCOUNT_OFFER) || 0;
     
     this.subscriptionPlans = {
-      free: {
-        id: 'free',
-        name: 'Free Plan',
-        price: 0,
-        features: ['basic_alerts', 'limited_api']
+      [SUBSCRIPTION_TYPES.FREE]: {
+        id: SUBSCRIPTION_TYPES.FREE,
+        name: getPlanName(SUBSCRIPTION_TYPES.FREE),
+        price: getPlanPrice(SUBSCRIPTION_TYPES.FREE),
+        features: getPlanFeatures(SUBSCRIPTION_TYPES.FREE)
       },
-      pro: {
-        id: 'pro',
-        name: 'Pro Plan',
-        price: 29.99,
-        features: ['advanced_alerts', 'unlimited_api', 'data_export', 'ai_analysis']
+      [SUBSCRIPTION_TYPES.PRO]: {
+        id: SUBSCRIPTION_TYPES.PRO,
+        name: getPlanName(SUBSCRIPTION_TYPES.PRO),
+        price: getPlanPrice(SUBSCRIPTION_TYPES.PRO),
+        features: getPlanFeatures(SUBSCRIPTION_TYPES.PRO)
       },
-      premium: {
-        id: 'premium',
-        name: 'Premium Plan',
-        price: 99.99,
-        features: ['all_features', 'priority_support', 'custom_integrations']
+      [SUBSCRIPTION_TYPES.PREMIUM]: {
+        id: SUBSCRIPTION_TYPES.PREMIUM,
+        name: getPlanName(SUBSCRIPTION_TYPES.PREMIUM),
+        price: getPlanPrice(SUBSCRIPTION_TYPES.PREMIUM),
+        features: getPlanFeatures(SUBSCRIPTION_TYPES.PREMIUM)
       }
     };
   }
@@ -34,7 +46,7 @@ class SubscriptionManager {
       
       if (!subscription) {
         console.log(`No active subscription found for user ${userId}`);
-        return { status: 'free', needsRenewal: false };
+        return { status: SUBSCRIPTION_TYPES.FREE, needsRenewal: false };
       }
       
       console.log(`Checking subscription ${subscription.id} for user ${userId}:`, {
@@ -96,6 +108,20 @@ class SubscriptionManager {
     }
   }
 
+  // Get free plan status
+  getFreePlanStatus() {
+    return {
+      plan: SUBSCRIPTION_TYPES.FREE,
+      status: 'inactive',
+      planName: getPlanName(SUBSCRIPTION_TYPES.FREE),
+      features: getPlanFeatures(SUBSCRIPTION_TYPES.FREE),
+      currentPeriodEnd: null,
+      needsRenewal: false,
+      expiredAt: null,
+      expiredPlan: null
+    };
+  }
+
   // Get subscription status with expiration check
   async getSubscriptionStatus(userId) {
     try {
@@ -108,10 +134,10 @@ class SubscriptionManager {
       if (isAdmin) {
         console.log(`👑 User ${userId} is admin - granting full access`);
         return {
-          plan: 'admin',
+          plan: SUBSCRIPTION_TYPES.ADMIN,
           status: 'active',
-          planName: 'Admin',
-          features: ['all_features', 'admin_access'],
+          planName: getPlanName(SUBSCRIPTION_TYPES.ADMIN),
+          features: getPlanFeatures(SUBSCRIPTION_TYPES.ADMIN),
           currentPeriodEnd: null,
           isAdmin: true,
           needsRenewal: false
@@ -126,7 +152,7 @@ class SubscriptionManager {
       }
       
       // Check if user has an active subscription
-      if (user.subscription_plan && user.subscription_plan !== 'free') {
+      if (user.subscription_plan && !isFreePlan(user.subscription_plan)) {
         // Check if subscription has expired
         const now = new Date();
         const expiresAt = user.subscription_expires_at ? new Date(user.subscription_expires_at) : null;
@@ -136,7 +162,7 @@ class SubscriptionManager {
           // Subscription expired - reset to free
           const { updateUser } = require('../database');
           await updateUser(userId, {
-            subscription_plan: 'free',
+            subscription_plan: SUBSCRIPTION_TYPES.FREE,
             subscription_expires_at: null
           });
           return this.getFreePlanStatus();
@@ -153,8 +179,8 @@ class SubscriptionManager {
           return {
             plan: user.subscription_plan,
             status: 'active',
-            planName: plan.name,
-            features: plan.features,
+            planName: getPlanName(user.subscription_plan),
+            features: getPlanFeatures(user.subscription_plan),
             currentPeriodEnd: expiresAt,
             needsRenewal: false
           };

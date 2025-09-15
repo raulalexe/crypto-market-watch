@@ -3218,6 +3218,134 @@ app.post('/api/admin/test-email', authenticateToken, requireAdmin, async (req, r
   }
 });
 
+// Admin email interface endpoint
+app.post('/api/admin/send-email', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { recipientEmail, recipientName, templateType, customSubject, customMessage } = req.body;
+    
+    if (!recipientEmail) {
+      return res.status(400).json({ error: 'Recipient email is required' });
+    }
+
+    let emailSent = false;
+    let message = '';
+
+    // Use Brevo email service if available, otherwise fallback to regular email service
+    const brevoEmailService = require('./services/brevoEmailService');
+    const emailService = new (require('./services/emailService'))();
+
+    switch (templateType) {
+      case 'welcome':
+        emailSent = await brevoEmailService.sendWelcomeEmail(recipientEmail, recipientName);
+        message = 'Welcome email sent successfully';
+        break;
+        
+      case 'confirmation':
+        // Generate a test confirmation token
+        const confirmationToken = 'test_confirmation_token_' + Date.now();
+        emailSent = await brevoEmailService.sendEmailConfirmation(recipientEmail, confirmationToken);
+        message = 'Email confirmation sent successfully';
+        break;
+        
+      case 'password-reset':
+        // Generate a test reset token
+        const resetToken = 'test_reset_token_' + Date.now();
+        emailSent = await brevoEmailService.sendPasswordResetEmail(recipientEmail, resetToken);
+        message = 'Password reset email sent successfully';
+        break;
+        
+      case 'upgrade':
+        const subscriptionDetails = {
+          current_period_start: new Date(),
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          payment_method: 'admin_test',
+          payment_id: 'admin_test_' + Date.now()
+        };
+        emailSent = await brevoEmailService.sendUpgradeEmail(recipientEmail, recipientName, 'Pro Plan', subscriptionDetails);
+        message = 'Upgrade email sent successfully';
+        break;
+        
+      case 'renewal-reminder':
+        emailSent = await brevoEmailService.sendRenewalReminderEmail(recipientEmail, 'Pro Plan', 7);
+        message = 'Renewal reminder email sent successfully';
+        break;
+        
+      case 'subscription-expired':
+        emailSent = await brevoEmailService.sendSubscriptionExpiredEmail(recipientEmail, 'Pro Plan');
+        message = 'Subscription expired email sent successfully';
+        break;
+        
+      case 'account-deleted-admin':
+        emailSent = await brevoEmailService.sendAccountDeletedByAdminEmail(recipientEmail, recipientName);
+        message = 'Account deleted (admin) email sent successfully';
+        break;
+        
+      case 'account-deleted-user':
+        emailSent = await brevoEmailService.sendAccountDeletedByUserEmail(recipientEmail, recipientName);
+        message = 'Account deleted (user) email sent successfully';
+        break;
+        
+      case 'alert':
+        const testAlert = {
+          type: 'price_alert',
+          severity: 'medium',
+          message: customMessage || 'Test market alert from admin interface',
+          timestamp: new Date(),
+          data: {
+            symbol: 'BTC',
+            price: 50000,
+            change: 2.5
+          }
+        };
+        emailSent = await brevoEmailService.sendAlertEmail(recipientEmail, testAlert);
+        message = 'Market alert email sent successfully';
+        break;
+        
+      case 'event-reminder':
+        const testEvent = {
+          title: customSubject || 'Test Event Reminder',
+          description: customMessage || 'This is a test event reminder from the admin interface',
+          date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+          category: 'test'
+        };
+        emailSent = await brevoEmailService.sendEventReminderEmail(recipientEmail, testEvent, 1);
+        message = 'Event reminder email sent successfully';
+        break;
+        
+      case 'inflation-update':
+        const testInflationData = {
+          latestData: {
+            cpi: 3.2,
+            core_cpi: 3.0,
+            pce: 2.8,
+            date: new Date().toISOString().split('T')[0]
+          }
+        };
+        emailSent = await brevoEmailService.sendInflationUpdateEmail(recipientEmail, testInflationData);
+        message = 'Inflation update email sent successfully';
+        break;
+        
+      default:
+        return res.status(400).json({ error: 'Invalid template type' });
+    }
+    
+    if (emailSent) {
+      res.json({ 
+        success: true, 
+        message: `${message} to ${recipientEmail}`,
+        templateType,
+        recipientEmail,
+        recipientName: recipientName || 'N/A'
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to send email. Check email service configuration.' });
+    }
+  } catch (error) {
+    console.error('Admin email send error:', error);
+    res.status(500).json({ error: 'Failed to send email: ' + error.message });
+  }
+});
+
 // ===== PAYMENT & SUBSCRIPTION ROUTES =====
 
 // Get subscription plans

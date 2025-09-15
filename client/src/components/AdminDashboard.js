@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import ToastNotification from './ToastNotification';
 import TelegramManagement from './TelegramManagement';
+import AdminEmailInterface from './AdminEmailInterface';
 
 import { Link } from 'react-router-dom';
 
@@ -48,6 +49,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
     { id: 'overview', name: 'Overview', icon: BarChart3 },
     { id: 'events', name: 'Events Management', icon: Calendar },
     { id: 'users', name: 'User Management', icon: Users },
+    { id: 'email', name: 'Email Interface', icon: Mail },
     { id: 'telegram', name: 'Telegram Bot', icon: MessageCircle }
   ];
 
@@ -1114,6 +1116,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
           {activeTab === 'overview' && renderOverviewTab()}
           {activeTab === 'events' && renderEventsTab()}
           {activeTab === 'users' && renderUsersTab()}
+          {activeTab === 'email' && <AdminEmailInterface />}
           {activeTab === 'telegram' && <TelegramManagement />}
         </div>
       </div>

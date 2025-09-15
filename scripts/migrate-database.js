@@ -716,6 +716,11 @@ const migrations = [
     name: 'add_subscription_expires_at_column',
     description: 'Add subscription_expires_at column to users table',
     sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP;`
+  },
+  {
+    name: 'remove_subscriptions_table',
+    description: 'Remove subscriptions table as we now use users table for subscription data',
+    sql: `DROP TABLE IF EXISTS subscriptions;`
   }
 ];
 

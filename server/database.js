@@ -987,29 +987,8 @@ const deleteUser = (userId) => {
   });
 };
 
-// Subscription management functions
-const insertSubscription = (subscriptionData) => {
-  return new Promise((resolve, reject) => {
-    const fields = Object.keys(subscriptionData).join(', ');
-    const placeholders = Object.keys(subscriptionData).map((_, index) => `$${index + 1}`).join(', ');
-    const values = Object.values(subscriptionData);
-    
-    dbAdapter.run(
-      `INSERT INTO subscriptions (${fields}) VALUES (${placeholders})`,
-      values
-    ).then(result => resolve(result.lastID))
-     .catch(reject);
-  });
-};
-
-const getActiveSubscription = (userId) => {
-  return new Promise((resolve, reject) => {
-    dbAdapter.get(
-      'SELECT * FROM subscriptions WHERE user_id = $1 AND status = $2 ORDER BY created_at DESC LIMIT 1',
-      [userId, 'active']
-    ).then(resolve).catch(reject);
-  });
-};
+// Note: Subscription management now handled directly in users table
+// No separate subscriptions table needed
 
 const getUserByStripeCustomerId = (stripeCustomerId) => {
   return new Promise((resolve, reject) => {
@@ -1020,27 +999,7 @@ const getUserByStripeCustomerId = (stripeCustomerId) => {
   });
 };
 
-const updateSubscription = (subscriptionId, updates) => {
-  return new Promise((resolve, reject) => {
-    // Remove updated_at from updates if it exists to avoid duplicate assignment
-    const cleanUpdates = { ...updates };
-    delete cleanUpdates.updated_at;
-    
-    const fields = Object.keys(cleanUpdates).map((key, index) => `${key} = $${index + 1}`).join(', ');
-    const values = Object.values(cleanUpdates);
-    values.push(subscriptionId);
-    
-    // Check if subscriptionId is a Stripe subscription ID (starts with 'sub_') or database ID (integer)
-    const isStripeId = typeof subscriptionId === 'string' && subscriptionId.startsWith('sub_');
-    const whereClause = isStripeId ? 'stripe_subscription_id' : 'id';
-    
-    dbAdapter.run(
-      `UPDATE subscriptions SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE ${whereClause} = $${values.length}`,
-      values
-    ).then(result => resolve(result.lastID))
-     .catch(reject);
-  });
-};
+// Note: updateSubscription removed - subscription updates now handled via updateUser
 
 // API usage tracking
 const trackApiUsage = (userId, endpoint, ipAddress, userAgent) => {
@@ -2342,9 +2301,6 @@ module.exports = {
   getAllUsers,
   deleteUser,
   // Subscription management
-  insertSubscription,
-  getActiveSubscription,
-  updateSubscription,
   getUserByStripeCustomerId,
   // API usage tracking
   trackApiUsage,
