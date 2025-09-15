@@ -101,7 +101,8 @@ class PaymentService {
       
       // Update user to Pro plan
       await updateUser(userId, {
-        plan: planId,
+        subscription_plan: planId,
+        subscription_status: 'active',
         stripe_customer_id: invoiceId, // Store invoice ID for reference
         updated_at: new Date().toISOString()
       });
@@ -495,7 +496,7 @@ class PaymentService {
         
         if (user) {
           console.log(`✅ Found user ${user.id} for customer ${invoice.customer} - checking for recent Pro upgrade`);
-          console.log(`📊 Current user plan: ${user.plan}, invoice amount: ${invoice.amount_paid} cents`);
+          console.log(`📊 Current user plan: ${user.subscription_plan || 'free'}, invoice amount: ${invoice.amount_paid} cents`);
           
           // Check if this is a Pro upgrade by looking at recent checkout sessions
           const sessions = await this.stripe.checkout.sessions.list({
@@ -525,8 +526,8 @@ class PaymentService {
           }
           
           // Fallback: Check if this is a Pro upgrade by looking at the invoice amount
-          // Pro plan is $29.99, so check if the invoice amount matches
-          if (invoice.amount_paid && invoice.amount_paid >= 2999 && user.plan === 'free') { // $29.99 in cents
+          // Pro plan is $29.99, but allow for discounts and testing (minimum $5.00)
+          if (invoice.amount_paid && invoice.amount_paid >= 500 && (!user.subscription_plan || user.subscription_plan === 'free')) { // $5.00 minimum for Pro upgrade
             console.log(`✅ Invoice amount ${invoice.amount_paid} suggests Pro upgrade for free user - processing upgrade`);
             
             // Process the Pro upgrade

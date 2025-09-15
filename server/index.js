@@ -4208,6 +4208,66 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
+// Payment processing alert endpoint (no captcha required for system alerts)
+app.post('/api/payment-alert', async (req, res) => {
+  try {
+    const { name, email, subject, message, priority = 'normal' } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Store payment alert in database
+    await dbAdapter.run(
+      'INSERT INTO contact_messages (name, email, subject, message, created_at) VALUES ($1, $2, $3, $4, $5)',
+      [name, email, `[${priority.toUpperCase()}] ${subject}`, message, new Date().toISOString()]
+    );
+
+    // Send email notification to admin
+    try {
+      const emailService = require('./services/emailService');
+      const emailServiceInstance = new emailService();
+      
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@crypto-market-watch.xyz';
+      const emailSent = await emailServiceInstance.sendAlertEmail(
+        adminEmail,
+        'Payment Processing Alert',
+        `Payment Processing Issue - ${subject}`,
+        `Priority: ${priority}\n\n${message}\n\nTime: ${new Date().toISOString()}`,
+        'high'
+      );
+      
+      if (emailSent) {
+        console.log('📧 Payment alert email sent to admin');
+      } else {
+        console.log('⚠️ Failed to send payment alert email');
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending payment alert email:', emailError);
+    }
+
+    console.log('🚨 Payment processing alert:', {
+      name,
+      email,
+      subject,
+      priority,
+      message: message.substring(0, 100) + '...'
+    });
+
+    res.json({ success: true, message: 'Payment alert sent successfully' });
+  } catch (error) {
+    console.error('Payment alert error:', error);
+    res.status(500).json({ error: 'Failed to send payment alert' });
+  }
+});
+
 // ===== API KEY MANAGEMENT =====
 
 // Get user's API keys

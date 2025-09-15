@@ -48,6 +48,24 @@ const PricingSection = ({
       
       const status = await fetchSubscriptionStatus();
       
+      // Handle authentication errors
+      if (status && status.error === 'authentication_failed') {
+        setProcessingPayment(false);
+        setPaymentProcessingMessage('');
+        // Authentication error handling is already done in fetchSubscriptionStatus
+        return;
+      }
+      
+      // Handle other errors
+      if (status && status.error) {
+        console.error('Payment processing error:', status.error);
+        // Continue polling for network errors, but stop for auth errors
+        if (status.error === 'network_error' && attempts < maxAttempts) {
+          setTimeout(poll, 1000);
+          return;
+        }
+      }
+      
       if (status && status.plan === 'pro') {
         // Payment processed successfully
         setProcessingPayment(false);
@@ -67,7 +85,27 @@ const PricingSection = ({
         // Timeout - payment might still be processing
         setProcessingPayment(false);
         setPaymentProcessingMessage('');
-        showAlert('⏳ Payment is still being processed. Please refresh the page in a few moments to see your updated subscription status.', 'warning');
+        
+        // Send automatic email notification about payment processing issue
+        try {
+          await fetch('/api/payment-alert', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: 'Payment Processing System',
+              email: 'system@crypto-market-watch.xyz',
+              subject: 'Payment Processing Timeout - User Upgrade Issue',
+              message: `A user's payment processing has timed out after 30 seconds. This may indicate a webhook processing issue. Please investigate and manually process the upgrade if needed. User may have completed payment but webhook failed to process.`,
+              priority: 'high'
+            })
+          });
+        } catch (emailError) {
+          console.error('Failed to send payment processing alert email:', emailError);
+        }
+        
+        showAlert('⏳ Your payment is being processed. Pro access will be enabled within 24 hours. We\'ve been notified and will resolve this quickly. Please check back later or contact support if needed.', 'warning');
         
         // Clean up URL parameters even on timeout
         const url = new URL(window.location);
@@ -136,15 +174,29 @@ const PricingSection = ({
           'Authorization': `Bearer ${token}`
         }
       });
+      
       if (response.ok) {
         const status = await response.json();
         setSubscriptionStatus(status);
         return status;
+      } else if (response.status === 401) {
+        // Authentication failed - clear token and redirect to login
+        console.error('Authentication failed - clearing token');
+        localStorage.removeItem('authToken');
+        showAlert('Your session has expired. Please log in again.', 'error');
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+        return { error: 'authentication_failed' };
+      } else {
+        console.error('Error fetching subscription status:', response.status, response.statusText);
+        return { error: 'fetch_failed', status: response.status };
       }
     } catch (error) {
       console.error('Error fetching subscription status:', error);
+      return { error: 'network_error' };
     }
-    return null;
   };
 
   const fetchPricing = async () => {
@@ -174,10 +226,21 @@ const PricingSection = ({
     const token = localStorage.getItem('authToken');
     if (!token) {
       if (setAuthModalOpen) {
-        // Use URL parameter instead of direct modal opening to avoid conflicts
-        window.location.href = '/app?auth=login';
+        // Try to open auth modal directly first
+        try {
+          setAuthModalOpen(true);
+          showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
+        } catch (error) {
+          // If direct modal opening fails, redirect to app with auth parameter
+          console.log('Direct modal opening failed, redirecting to app:', error);
+          window.location.href = '/app?auth=login';
+        }
       } else {
-        showAlert('Please sign in to subscribe to a plan.', 'warning');
+        showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
+        // Redirect to login page if no auth modal handler is available
+        setTimeout(() => {
+          window.location.href = '/app?auth=login';
+        }, 2000);
       }
       return;
     }
@@ -200,13 +263,25 @@ const PricingSection = ({
     // Check if user is authenticated
     const token = localStorage.getItem('authToken');
     if (!token) {
-      if (setAuthModalOpen) {
-        // Use URL parameter instead of direct modal opening to avoid conflicts
-        window.location.href = '/app?auth=login';
-      } else {
-        showAlert('Please sign in to subscribe to a plan.', 'warning');
-      }
       setShowPaymentModal(false);
+      
+      if (setAuthModalOpen) {
+        // Try to open auth modal directly first
+        try {
+          setAuthModalOpen(true);
+          showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
+        } catch (error) {
+          // If direct modal opening fails, redirect to app with auth parameter
+          console.log('Direct modal opening failed, redirecting to app:', error);
+          window.location.href = '/app?auth=login';
+        }
+      } else {
+        showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
+        // Redirect to login page if no auth modal handler is available
+        setTimeout(() => {
+          window.location.href = '/app?auth=login';
+        }, 2000);
+      }
       return;
     }
     
@@ -231,6 +306,15 @@ const PricingSection = ({
             window.location.href = result.url;
           } else {
             showAlert('Subscription failed: ' + (result.error || 'Unknown error'), 'error');
+          }
+        } else if (response.status === 401) {
+          // Authentication failed - clear token and show auth modal
+          localStorage.removeItem('authToken');
+          showAlert('Your session has expired. Please sign in again to continue.', 'error');
+          if (setAuthModalOpen) {
+            setAuthModalOpen(true);
+          } else {
+            window.location.href = '/app?auth=login';
           }
         } else {
           const errorData = await response.json();
@@ -257,6 +341,15 @@ const PricingSection = ({
           setCryptoPaymentDetails(result);
           setShowWalletPaymentModal(true);
           setShowPaymentModal(false); // Close the payment method modal
+        } else if (response.status === 401) {
+          // Authentication failed - clear token and show auth modal
+          localStorage.removeItem('authToken');
+          showAlert('Your session has expired. Please sign in again to continue.', 'error');
+          if (setAuthModalOpen) {
+            setAuthModalOpen(true);
+          } else {
+            window.location.href = '/app?auth=login';
+          }
         } else {
           showAlert('Wallet payment setup failed. Please try again.', 'error');
         }

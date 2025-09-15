@@ -688,6 +688,24 @@ const migrations = [
         END IF;
       END $fix_blockchain$;
     `
+  },
+  {
+    name: 'fix_market_data_symbol_length',
+    description: 'Fix market_data symbol column length to accommodate longer symbol names',
+    sql: `
+      DO $fix_symbol$ 
+      BEGIN
+        -- Check if the column exists and has the old length
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'market_data' 
+          AND column_name = 'symbol' 
+          AND character_maximum_length = 20
+        ) THEN
+          ALTER TABLE market_data ALTER COLUMN symbol TYPE VARCHAR(50);
+        END IF;
+      END $fix_symbol$;
+    `
   }
 ];
 

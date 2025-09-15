@@ -680,7 +680,7 @@ class DataCollector {
         await insertMarketData('GLOBAL_METRICS', 'TOTAL_MARKET_CAP', metrics.totalMarketCap, 'CoinGecko');
         await insertMarketData('GLOBAL_METRICS', 'TOTAL_VOLUME_24H', metrics.totalVolume24h, 'CoinGecko');
         await insertMarketData('GLOBAL_METRICS', 'BITCOIN_DOMINANCE', metrics.bitcoinDominance, 'CoinGecko');
-        await insertMarketData('GLOBAL_METRICS', 'ACTIVE_CRYPTOCURRENCIES', metrics.activeCryptocurrencies, 'CoinGecko');
+        await insertMarketData('GLOBAL_METRICS', 'ACTIVE_CRYPTOS', metrics.activeCryptocurrencies, 'CoinGecko');
         await insertMarketData('GLOBAL_METRICS', 'MARKETS', metrics.markets, 'CoinGecko');
         
         return metrics;
