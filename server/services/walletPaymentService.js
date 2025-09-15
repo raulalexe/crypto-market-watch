@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { insertSubscription, updateSubscription, getUserById } = require('../database');
+const { getUserById, updateUser } = require('../database');
 
 class WalletPaymentService {
   constructor() {
@@ -156,17 +156,9 @@ class WalletPaymentService {
       console.log(`💵 Amount:`, amount);
 
       // Store pending payment in database
-      const subscription = {
-        user_id: userId,
-        plan_type: planId,
-        status: 'pending_payment',
-        current_period_start: new Date(),
-        current_period_end: new Date(Date.now() + months * 30 * 24 * 60 * 60 * 1000) // Approximate months
-      };
-
-      console.log(`💾 Storing subscription:`, subscription);
-      const subscriptionId = await insertSubscription(subscription);
-      console.log(`✅ Subscription stored with ID: ${subscriptionId}`);
+      // Note: Subscription data now stored directly in users table
+      // No separate subscription table needed
+      console.log(`💾 Wallet payment created for user ${userId}, plan ${planId}`);
 
       return {
         paymentId: paymentDetails.paymentId,
@@ -213,11 +205,10 @@ class WalletPaymentService {
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + payment.months);
 
-      await updateSubscription(payment.id, {
-        status: 'active',
-        start_date: startDate,
-        end_date: endDate,
-        activated_at: new Date()
+      // Update user's subscription directly in users table
+      await updateUser(payment.user_id, {
+        subscription_plan: payment.plan_type,
+        subscription_expires_at: endDate
       });
 
       console.log(`✅ Subscription activated for user ${payment.user_id}, plan ${payment.plan_type}`);
@@ -241,14 +232,17 @@ class WalletPaymentService {
   // Get subscription renewal info
   async getRenewalInfo(userId) {
     try {
-      const subscription = await this.getActiveSubscription(userId);
-      if (!subscription) return null;
+      const user = await getUserById(userId);
+      if (!user || !user.subscription_plan || user.subscription_plan === 'free') return null;
 
-      const daysUntilExpiry = Math.ceil((subscription.end_date - new Date()) / (1000 * 60 * 60 * 24));
+      const expiresAt = user.subscription_expires_at ? new Date(user.subscription_expires_at) : null;
+      if (!expiresAt) return null;
+
+      const daysUntilExpiry = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24));
       
       return {
-        planType: subscription.plan_type,
-        expiresAt: subscription.end_date,
+        planType: user.subscription_plan,
+        expiresAt: expiresAt,
         daysUntilExpiry,
         needsRenewal: daysUntilExpiry <= 7,
         canRenew: daysUntilExpiry <= 30
@@ -257,12 +251,6 @@ class WalletPaymentService {
       console.error('Error getting renewal info:', error);
       return null;
     }
-  }
-
-  // Get active subscription
-  async getActiveSubscription(userId) {
-    // TODO: Implement database query for active subscription
-    return null;
   }
 
   // Get payment status

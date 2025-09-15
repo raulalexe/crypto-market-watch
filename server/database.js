@@ -913,14 +913,12 @@ const isUserAdmin = (userId) => {
         return;
       }
       
-      // Otherwise check for active admin subscription
-      return dbAdapter.get(
-        'SELECT plan_type FROM subscriptions WHERE user_id = $1 AND status = $2 ORDER BY created_at DESC LIMIT 1',
-        [userId, 'active']
-      );
-    }).then(subRow => {
-      // User is admin if they have an active admin subscription
-      resolve(subRow && subRow.plan_type === 'admin');
+      // Note: Admin status now determined by is_admin field in users table
+      // No separate subscription table needed
+      return null;
+    }).then(() => {
+      // User is not admin (already checked is_admin field above)
+      resolve(false);
     }).catch(reject);
   });
 };
@@ -928,21 +926,19 @@ const isUserAdmin = (userId) => {
 const getAllUsers = () => {
   return new Promise((resolve, reject) => {
     dbAdapter.all(
-      `SELECT u.id, u.email, u.is_admin, u.email_verified, u.created_at, u.updated_at,
-              s.plan_type, s.status, s.current_period_start, s.current_period_end
-       FROM users u
-       LEFT JOIN subscriptions s ON u.id = s.user_id
-       ORDER BY u.created_at DESC`
+      `SELECT id, email, is_admin, email_verified, subscription_plan, subscription_expires_at, created_at, updated_at
+       FROM users
+       ORDER BY created_at DESC`
     ).then(rows => {
       const users = rows.map(row => ({
         id: row.id,
         email: row.email,
         isAdmin: Boolean(row.is_admin),
         emailVerified: Boolean(row.email_verified),
-        plan: row.plan_type || 'free',
-        subscriptionStatus: row.status || 'inactive',
-        startDate: row.current_period_start,
-        endDate: row.current_period_end,
+        plan: row.subscription_plan || 'free',
+        subscriptionStatus: row.subscription_plan && row.subscription_plan !== 'free' ? 'active' : 'inactive',
+        startDate: null, // Not stored separately anymore
+        endDate: row.subscription_expires_at,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       }));
@@ -956,10 +952,7 @@ const deleteUser = (userId) => {
     // Start a transaction to delete user and related data
     dbAdapter.run('BEGIN TRANSACTION')
       .then(() => {
-        // Delete user's subscriptions
-        return dbAdapter.run('DELETE FROM subscriptions WHERE user_id = $1', [userId]);
-      })
-      .then(() => {
+        // Note: Subscription data now stored in users table, no separate deletion needed
         // Delete user's alert thresholds
         return dbAdapter.run('DELETE FROM user_alert_thresholds WHERE user_id = $1', [userId]);
       })

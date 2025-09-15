@@ -31,10 +31,10 @@ const authenticateApiKey = async (req, res, next) => {
     }
 
     // Check user subscription status
-    const { getActiveSubscription } = require('../database');
-    const subscription = await getActiveSubscription(user.id);
+    const { getUserById } = require('../database');
+    const userData = await getUserById(user.id);
     
-    if (!subscription || (subscription.plan_type !== 'pro' && subscription.plan_type !== 'premium' && subscription.plan_type !== 'admin')) {
+    if (!userData || (userData.subscription_plan !== 'pro' && userData.subscription_plan !== 'premium' && userData.subscription_plan !== 'admin')) {
       return res.status(403).json({ 
         error: 'Insufficient subscription',
         message: 'API access requires a Pro, Premium, or Admin subscription'

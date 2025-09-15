@@ -1,4 +1,4 @@
-const { getActiveSubscription, updateSubscription, insertSubscription, getUserById } = require('../database');
+const { getUserById, updateUser } = require('../database');
 const walletPaymentService = require('./walletPaymentService');
 const { 
   SUBSCRIPTION_TYPES, 
@@ -42,66 +42,50 @@ class SubscriptionManager {
   // Check if subscription is expired and handle expiration
   async checkAndHandleExpiration(userId) {
     try {
-      const subscription = await getActiveSubscription(userId);
+      const user = await getUserById(userId);
       
-      if (!subscription) {
-        console.log(`No active subscription found for user ${userId}`);
+      if (!user) {
+        console.log(`No user found for user ${userId}`);
         return { status: SUBSCRIPTION_TYPES.FREE, needsRenewal: false };
       }
       
-      console.log(`Checking subscription ${subscription.id} for user ${userId}:`, {
-        plan_type: subscription.plan_type,
-        status: subscription.status,
-        current_period_end: subscription.current_period_end
-      });
-
-      const now = new Date();
-      
-      // Check if current_period_end is valid
-      if (!subscription.current_period_end) {
-        console.log(`Subscription ${subscription.id} has no current_period_end - treating as expired`);
-        await updateSubscription(subscription.id, {
-          status: 'expired'
-        });
+      // Check if user has an active subscription
+      if (user.subscription_plan && !isFreePlan(user.subscription_plan)) {
+        const now = new Date();
+        const expiresAt = user.subscription_expires_at ? new Date(user.subscription_expires_at) : null;
         
-        return {
-          status: 'expired',
-          needsRenewal: true,
-          expiredAt: new Date(), // Use current date as fallback
-          planType: subscription.plan_type
-        };
+        if (expiresAt && expiresAt < now) {
+          console.log(`⏰ Subscription expired for user ${userId} (expired: ${expiresAt})`);
+          // Subscription expired - reset to free
+          await updateUser(userId, {
+            subscription_plan: SUBSCRIPTION_TYPES.FREE,
+            subscription_expires_at: null
+          });
+          
+          return {
+            status: 'expired',
+            needsRenewal: true,
+            expiredAt: expiresAt,
+            planType: user.subscription_plan
+          };
+        }
+        
+        // Check if subscription expires soon (within 7 days)
+        if (expiresAt) {
+          const daysUntilExpiry = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+          const needsRenewal = daysUntilExpiry <= 7;
+
+          return {
+            status: 'active',
+            needsRenewal,
+            daysUntilExpiry,
+            currentPeriodEnd: expiresAt,
+            planType: user.subscription_plan
+          };
+        }
       }
       
-      const endDate = new Date(subscription.current_period_end);
-      
-      // Check if subscription is expired
-      if (now > endDate) {
-        // Mark subscription as expired
-        await updateSubscription(subscription.id, {
-          status: 'expired'
-        });
-
-        console.log(`✅ Subscription expired for user ${userId}`);
-        
-        return {
-          status: 'expired',
-          needsRenewal: true,
-          expiredAt: endDate,
-          planType: subscription.plan_type
-        };
-      }
-
-      // Check if subscription expires soon (within 7 days)
-      const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
-      const needsRenewal = daysUntilExpiry <= 7;
-
-      return {
-        status: 'active',
-        needsRenewal,
-        expiresAt: endDate,
-        daysUntilExpiry,
-        planType: subscription.plan_type
-      };
+      return { status: SUBSCRIPTION_TYPES.FREE, needsRenewal: false };
     } catch (error) {
       console.error('Error checking subscription expiration:', error);
       return { status: 'error', needsRenewal: false };

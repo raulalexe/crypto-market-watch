@@ -70,8 +70,8 @@ const requireSubscription = (minPlan = SUBSCRIPTION_TYPES.FREE) => {
         return next();
       }
 
-      const { getActiveSubscription, getUserById } = require('../database');
-      const subscription = await getActiveSubscription(req.user.id);
+      const { getUserById } = require('../database');
+      const user = await getUserById(req.user.id);
       
       const planHierarchy = { 
         [SUBSCRIPTION_TYPES.FREE]: 0, 
@@ -79,15 +79,7 @@ const requireSubscription = (minPlan = SUBSCRIPTION_TYPES.FREE) => {
         [SUBSCRIPTION_TYPES.PREMIUM]: 2, 
         'api': 3 
       };
-      let userPlan = subscription ? subscription.plan_type : SUBSCRIPTION_TYPES.FREE;
-      
-      // If no active subscription, check user's direct subscription plan (for Pro upgrades)
-      if (!subscription) {
-        const user = await getUserById(req.user.id);
-        if (user && user.subscription_plan && user.subscription_plan !== SUBSCRIPTION_TYPES.FREE) {
-          userPlan = user.subscription_plan;
-        }
-      }
+      let userPlan = user?.subscription_plan || SUBSCRIPTION_TYPES.FREE;
       
       if (planHierarchy[userPlan] < planHierarchy[minPlan]) {
         return res.status(403).json({ 
@@ -114,15 +106,14 @@ const rateLimit = (endpoint) => {
     }
 
     try {
-      const { trackApiUsage, getApiUsage } = require('../database');
-      const { getActiveSubscription } = require('../database');
+      const { trackApiUsage, getApiUsage, getUserById } = require('../database');
       
       // Track this API call
       await trackApiUsage(req.user.id, endpoint, req.ip, req.get('User-Agent'));
       
       // Get user's subscription
-      const subscription = await getActiveSubscription(req.user.id);
-      const plan = subscription ? subscription.plan_type : 'free';
+      const user = await getUserById(req.user.id);
+      const plan = user?.subscription_plan || 'free';
       
       // Define rate limits
       const rateLimits = {

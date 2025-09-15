@@ -4,6 +4,7 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cron = require('node-cron');
+const multer = require('multer');
 // Stripe key selection based on NODE_ENV
 // Production: STRIPE_SECRET_KEY (live keys)
 // Development: STRIPE_TEST_SECRET_KEY (test keys)
@@ -30,9 +31,6 @@ const {
   getUserByEmail, 
   getUserById,
   isUserAdmin,
-  insertSubscription,
-  getActiveSubscription,
-  updateSubscription,
   trackApiUsage,
   getApiUsage,
   insertErrorLog,
@@ -61,6 +59,23 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 // Serve static files from React build (if available)
 const staticPath = path.join(__dirname, '../client/build');
@@ -3853,14 +3868,9 @@ app.post('/api/auth/register', async (req, res) => {
     // Create user with email_verified = false
     const userId = await insertUserWithConfirmation(email, passwordHash, confirmationToken);
     
-    // Create a free subscription for the new user
-    try {
-      await insertSubscription(userId, 'free', 'active', null, null);
-      console.log(`✅ Created free subscription for user ${userId}`);
-    } catch (subscriptionError) {
-      console.error('❌ Failed to create free subscription:', subscriptionError);
-      // Don't fail user creation if subscription creation fails
-    }
+    // Note: Subscription data now stored directly in users table
+    // No separate subscription table needed
+    console.log(`✅ User ${userId} created with free plan`);
     
           // Send confirmation email using Brevo
       const emailSent = await emailService.sendEmailConfirmation(email, confirmationToken);
@@ -3971,11 +3981,8 @@ app.get('/api/auth/confirm-email', async (req, res) => {
       console.log(`📧 Welcome email sent to ${user.email}`);
     }
     
-    // Create subscription record
-    await dbAdapter.run(
-      'INSERT INTO subscriptions (user_id, plan_type, status, created_at) VALUES ($1, $2, $3, $4)',
-      [user.id, 'free', 'active', new Date().toISOString()]
-    );
+    // Note: Subscription data now stored directly in users table
+    // No separate subscription table needed
     
     // Generate login token
     const loginToken = jwt.sign(
@@ -4044,14 +4051,9 @@ app.post('/api/setup/first-admin', async (req, res) => {
       [userId]
     );
     
-    // Create a free subscription for the admin user
-    try {
-      await insertSubscription(userId, 'free', 'active', null, null);
-      console.log(`✅ Created free subscription for admin user ${userId}`);
-    } catch (subscriptionError) {
-      console.error('❌ Failed to create free subscription for admin:', subscriptionError);
-      // Don't fail admin creation if subscription creation fails
-    }
+    // Note: Subscription data now stored directly in users table
+    // No separate subscription table needed
+    console.log(`✅ Admin user ${userId} created with admin plan`);
     
     console.log(`👑 First admin user created: ${email} (ID: ${userId})`);
     
@@ -4292,14 +4294,13 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 
     // Get updated user data
     const user = await dbAdapter.get('SELECT * FROM users WHERE id = $1', [userId]);
-    const subscription = await dbAdapter.get('SELECT * FROM subscriptions WHERE user_id = $1', [userId]);
 
     res.json({
       id: user.id,
       email: user.email,
-      plan: subscription?.plan || 'free',
+      plan: user.subscription_plan || 'free',
       role: user.role || 'user',
-      subscriptionStatus: subscription?.status || 'inactive',
+      subscriptionStatus: user.subscription_plan && user.subscription_plan !== 'free' ? 'active' : 'inactive',
       notifications: user.notification_preferences ? JSON.parse(user.notification_preferences) : {}
     });
   } catch (error) {
@@ -4309,9 +4310,10 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 });
 
 // Contact form endpoint
-app.post('/api/contact', async (req, res) => {
+app.post('/api/contact', upload.single('screenshot'), async (req, res) => {
   try {
     const { name, email, subject, message, captchaAnswer } = req.body;
+    const screenshot = req.file;
 
     // Validate required fields
     if (!name || !email || !subject || !message || !captchaAnswer) {
@@ -4335,18 +4337,34 @@ app.post('/api/contact', async (req, res) => {
       [name, email, subject, message, new Date().toISOString()]
     );
 
+    // Log screenshot info if provided
+    if (screenshot) {
+      console.log('📸 Screenshot attached:', {
+        filename: screenshot.originalname,
+        size: screenshot.size,
+        mimetype: screenshot.mimetype
+      });
+    }
+
     // In production, you would send an email notification here
     console.log('📧 Contact form submission:', {
       name,
       email,
       subject,
-      message: message.substring(0, 100) + '...'
+      message: message.substring(0, 100) + '...',
+      hasScreenshot: !!screenshot
     });
 
     res.json({ success: true, message: 'Message sent successfully' });
   } catch (error) {
     console.error('Contact form error:', error);
-    res.status(500).json({ error: 'Failed to send message' });
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      res.status(400).json({ error: 'File size too large. Maximum 5MB allowed.' });
+    } else if (error.message === 'Only image files are allowed') {
+      res.status(400).json({ error: 'Only image files are allowed' });
+    } else {
+      res.status(500).json({ error: 'Failed to send message' });
+    }
   }
 });
 
