@@ -22,7 +22,8 @@ const mockStripe = {
   },
   checkout: {
     sessions: {
-      create: jest.fn()
+      create: jest.fn(),
+      list: jest.fn()
     }
   },
   webhooks: {
@@ -61,6 +62,7 @@ jest.mock('../../server/database', () => ({
 jest.mock('../../server/services/brevoEmailService');
 jest.mock('../../server/services/pushService');
 jest.mock('../../server/services/telegramService');
+jest.mock('../../server/services/emailService');
 
 const { getUserByEmail, getUserById, insertUser, updateUser, getUserByStripeCustomerId, insertSubscription, updateSubscription, getActiveSubscription } = require('../../server/database');
 const PaymentService = require('../../server/services/paymentService');
@@ -335,6 +337,228 @@ describe('Payment and Webhook Flow Integration Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.subscription).toBeNull();
+    });
+  });
+
+  describe('Pro Upgrade via Invoice Payment', () => {
+    test('should handle invoice payment succeeded without subscription (Pro upgrade)', async () => {
+      // Mock invoice without subscription (the issue you encountered)
+      const invoice = {
+        id: 'in_test123',
+        subscription: undefined,
+        subscription_id: undefined,
+        customer: 'cus_test123',
+        amount_paid: 2999, // $29.99 in cents
+        lines: 1
+      };
+
+      const webhookEvent = {
+        id: 'evt_test123',
+        type: 'invoice.payment_succeeded',
+        data: {
+          object: invoice
+        }
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(webhookEvent);
+      
+      // Mock checkout sessions lookup
+      mockStripe.checkout.sessions.list = jest.fn().mockResolvedValue({
+        data: [{
+          id: 'cs_test123',
+          customer: 'cus_test123',
+          status: 'complete',
+          payment_status: 'paid',
+          metadata: { planId: 'pro' },
+          created: Math.floor(Date.now() / 1000) - 60 // 1 minute ago
+        }]
+      });
+
+      // Process webhook
+      const webhookResponse = await request(app)
+        .post('/api/webhooks/stripe')
+        .set('stripe-signature', 'test_signature')
+        .send(JSON.stringify(webhookEvent));
+
+      expect(webhookResponse.status).toBe(200);
+
+      // Verify user was upgraded to Pro
+      expect(updateUser).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          plan: 'pro',
+          stripe_customer_id: 'in_test123'
+        })
+      );
+    });
+
+    test('should handle Pro upgrade via invoice amount fallback', async () => {
+      // Mock user with 'free' plan
+      const freeUser = { ...mockUser, plan: 'free' };
+      getUserByStripeCustomerId.mockResolvedValue(freeUser);
+
+      // Mock invoice without subscription and no recent checkout sessions
+      const invoice = {
+        id: 'in_test123',
+        subscription: undefined,
+        subscription_id: undefined,
+        customer: 'cus_test123',
+        amount_paid: 2999, // $29.99 in cents
+        lines: 1
+      };
+
+      const webhookEvent = {
+        id: 'evt_test123',
+        type: 'invoice.payment_succeeded',
+        data: {
+          object: invoice
+        }
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(webhookEvent);
+      
+      // Mock empty checkout sessions
+      mockStripe.checkout.sessions.list = jest.fn().mockResolvedValue({
+        data: []
+      });
+
+      // Process webhook
+      const webhookResponse = await request(app)
+        .post('/api/webhooks/stripe')
+        .set('stripe-signature', 'test_signature')
+        .send(JSON.stringify(webhookEvent));
+
+      expect(webhookResponse.status).toBe(200);
+
+      // Verify user was upgraded to Pro via amount fallback
+      expect(updateUser).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          plan: 'pro',
+          stripe_customer_id: 'in_test123'
+        })
+      );
+    });
+
+    test('should not upgrade user if already on Pro plan', async () => {
+      // Mock user already on Pro plan
+      const proUser = { ...mockUser, plan: 'pro' };
+      getUserByStripeCustomerId.mockResolvedValue(proUser);
+
+      const invoice = {
+        id: 'in_test123',
+        subscription: undefined,
+        subscription_id: undefined,
+        customer: 'cus_test123',
+        amount_paid: 2999,
+        lines: 1
+      };
+
+      const webhookEvent = {
+        id: 'evt_test123',
+        type: 'invoice.payment_succeeded',
+        data: {
+          object: invoice
+        }
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(webhookEvent);
+      mockStripe.checkout.sessions.list = jest.fn().mockResolvedValue({ data: [] });
+
+      // Process webhook
+      const webhookResponse = await request(app)
+        .post('/api/webhooks/stripe')
+        .set('stripe-signature', 'test_signature')
+        .send(JSON.stringify(webhookEvent));
+
+      expect(webhookResponse.status).toBe(200);
+
+      // Should not update user if already on Pro
+      expect(updateUser).not.toHaveBeenCalled();
+    });
+
+    test('should not upgrade if invoice amount is too low', async () => {
+      const invoice = {
+        id: 'in_test123',
+        subscription: undefined,
+        subscription_id: undefined,
+        customer: 'cus_test123',
+        amount_paid: 999, // $9.99 - too low for Pro
+        lines: 1
+      };
+
+      const webhookEvent = {
+        id: 'evt_test123',
+        type: 'invoice.payment_succeeded',
+        data: {
+          object: invoice
+        }
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(webhookEvent);
+      mockStripe.checkout.sessions.list = jest.fn().mockResolvedValue({ data: [] });
+
+      // Process webhook
+      const webhookResponse = await request(app)
+        .post('/api/webhooks/stripe')
+        .set('stripe-signature', 'test_signature')
+        .send(JSON.stringify(webhookEvent));
+
+      expect(webhookResponse.status).toBe(200);
+
+      // Should not update user for low amount
+      expect(updateUser).not.toHaveBeenCalled();
+    });
+
+    test('should handle Pro upgrade email sending', async () => {
+      // Mock user with 'free' plan
+      const freeUser = { ...mockUser, plan: 'free' };
+      getUserByStripeCustomerId.mockResolvedValue(freeUser);
+
+      const invoice = {
+        id: 'in_test123',
+        subscription: undefined,
+        subscription_id: undefined,
+        customer: 'cus_test123',
+        amount_paid: 2999,
+        lines: 1
+      };
+
+      const webhookEvent = {
+        id: 'evt_test123',
+        type: 'invoice.payment_succeeded',
+        data: {
+          object: invoice
+        }
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(webhookEvent);
+      mockStripe.checkout.sessions.list = jest.fn().mockResolvedValue({ data: [] });
+
+      // Mock email service
+      const mockEmailService = require('../../server/services/emailService');
+      mockEmailService.prototype.sendUpgradeEmail = jest.fn().mockResolvedValue(true);
+
+      // Process webhook
+      const webhookResponse = await request(app)
+        .post('/api/webhooks/stripe')
+        .set('stripe-signature', 'test_signature')
+        .send(JSON.stringify(webhookEvent));
+
+      expect(webhookResponse.status).toBe(200);
+
+      // Verify upgrade email was sent with correct parameters
+      expect(mockEmailService.prototype.sendUpgradeEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        'test', // username part of email
+        'Pro Plan', // plan name
+        expect.objectContaining({
+          current_period_start: expect.any(Date),
+          current_period_end: expect.any(Date),
+          payment_method: 'stripe',
+          payment_id: 'in_test123'
+        })
+      );
     });
   });
 

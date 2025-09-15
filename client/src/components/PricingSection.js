@@ -48,7 +48,7 @@ const PricingSection = ({
       
       const status = await fetchSubscriptionStatus();
       
-      if (status && status.subscription && status.subscription.plan_type === 'pro') {
+      if (status && status.plan === 'pro') {
         // Payment processed successfully
         setProcessingPayment(false);
         setPaymentProcessingMessage('');
@@ -104,7 +104,7 @@ const PricingSection = ({
     
     if (success === 'true') {
       // Check if user is already on Pro plan (in case of page refresh)
-      if (subscriptionStatus?.subscription?.plan_type === 'pro') {
+      if (subscriptionStatus?.plan === 'pro') {
         showAlert('🎉 Welcome to Pro! Your subscription is already active.', 'success');
         // Clean up URL parameters
         const url = new URL(window.location);

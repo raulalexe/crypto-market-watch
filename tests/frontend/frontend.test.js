@@ -310,4 +310,5 @@ describe('Frontend Integration Tests', () => {
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
     });
   });
+
 });
