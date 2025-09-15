@@ -69,11 +69,19 @@ const requireSubscription = (minPlan = 'free') => {
         return next();
       }
 
-      const { getActiveSubscription } = require('../database');
+      const { getActiveSubscription, getUserById } = require('../database');
       const subscription = await getActiveSubscription(req.user.id);
       
       const planHierarchy = { free: 0, pro: 1, premium: 2, api: 3 };
-      const userPlan = subscription ? subscription.plan_type : 'free';
+      let userPlan = subscription ? subscription.plan_type : 'free';
+      
+      // If no active subscription, check user's direct subscription plan (for Pro upgrades)
+      if (!subscription) {
+        const user = await getUserById(req.user.id);
+        if (user && user.subscription_plan && user.subscription_plan !== 'free') {
+          userPlan = user.subscription_plan;
+        }
+      }
       
       if (planHierarchy[userPlan] < planHierarchy[minPlan]) {
         return res.status(403).json({ 

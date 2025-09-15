@@ -118,6 +118,27 @@ class SubscriptionManager {
       const expirationStatus = await this.checkAndHandleExpiration(userId);
       
       if (expirationStatus.status === 'expired' || expirationStatus.status === 'free') {
+        // Check if user has a subscription plan set directly on the user record (for Pro upgrades)
+        const { getUserById } = require('../database');
+        const user = await getUserById(userId);
+        
+        if (user && user.subscription_plan && user.subscription_plan !== 'free') {
+          // User has a direct subscription plan (Pro upgrade)
+          const plan = this.subscriptionPlans[user.subscription_plan];
+          if (plan) {
+            return {
+              plan: user.subscription_plan,
+              status: user.subscription_status || 'active',
+              planName: plan.name,
+              features: plan.features,
+              needsRenewal: false,
+              expiredAt: null,
+              expiredPlan: null
+            };
+          }
+        }
+        
+        // Default to free plan
         const freePlan = this.subscriptionPlans.free;
         return {
           plan: 'free',

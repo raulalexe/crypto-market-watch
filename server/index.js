@@ -1043,8 +1043,8 @@ app.get('/api/admin/layer1/raw', authenticateToken, requireAdmin, async (req, re
   }
 });
 
-// Get alerts (premium+ only)
-app.get('/api/alerts', authenticateToken, requireSubscription('premium'), async (req, res) => {
+// Get alerts (pro+ only)
+app.get('/api/alerts', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     const { limit = 10 } = req.query;
     const alerts = await getUniqueAlerts(parseInt(limit));
@@ -1056,7 +1056,7 @@ app.get('/api/alerts', authenticateToken, requireSubscription('premium'), async 
 });
 
 // Acknowledge alert
-app.post('/api/alerts/:id/acknowledge', authenticateToken, requireSubscription('premium'), async (req, res) => {
+app.post('/api/alerts/:id/acknowledge', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     const { id } = req.params;
     await acknowledgeAlert(parseInt(id));
@@ -2094,7 +2094,7 @@ app.get('/api/backtest', async (req, res) => {
 });
 
 // Get custom alert thresholds
-app.get('/api/alerts/thresholds', authenticateToken, requireSubscription('premium'), async (req, res) => {
+app.get('/api/alerts/thresholds', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     const { getUserAlertThresholds } = require('./database');
     const thresholds = await getUserAlertThresholds(req.user.id);
@@ -2106,7 +2106,7 @@ app.get('/api/alerts/thresholds', authenticateToken, requireSubscription('premiu
 });
 
 // Save custom alert thresholds
-app.post('/api/alerts/thresholds', authenticateToken, requireSubscription('premium'), async (req, res) => {
+app.post('/api/alerts/thresholds', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     const { thresholds } = req.body;
     const { saveUserAlertThresholds } = require('./database');
