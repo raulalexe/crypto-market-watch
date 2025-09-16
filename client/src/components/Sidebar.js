@@ -137,6 +137,7 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
         w-64 bg-gray-800 text-white flex flex-col
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        overflow-y-auto max-h-screen
       `}>
         {/* Mobile header with close button */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700 md:hidden">
@@ -153,7 +154,7 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4">
+        <nav className="flex-1 p-4 pb-24">
           <ul className="space-y-2">
             {/* Regular Navigation Items */}
             {navItems.map((item) => {

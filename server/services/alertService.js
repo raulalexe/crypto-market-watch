@@ -516,9 +516,8 @@ class AlertService {
           await this.emailService.sendBulkAlertEmails(emailUsers, alert);
         } else {
           // Standard email delivery (with slight delay)
-          setTimeout(async () => {
-            await this.emailService.sendBulkAlertEmails(emailUsers, alert);
-          }, 5000);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          await this.emailService.sendBulkAlertEmails(emailUsers, alert);
         }
       }
 
@@ -530,9 +529,8 @@ class AlertService {
           await this.pushService.sendBulkPushNotifications(pushUsers, alert);
         } else {
           // Standard push delivery (with slight delay)
-          setTimeout(async () => {
-            await this.pushService.sendBulkPushNotifications(pushUsers, alert);
-          }, 5000);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          await this.pushService.sendBulkPushNotifications(pushUsers, alert);
         }
       }
 
@@ -549,9 +547,8 @@ class AlertService {
           await this.sendTelegramNotificationsToUsers(telegramUsers, alert);
         } else {
           // Standard Telegram delivery (with slight delay)
-          setTimeout(async () => {
-            await this.sendTelegramNotificationsToUsers(telegramUsers, alert);
-          }, 5000);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          await this.sendTelegramNotificationsToUsers(telegramUsers, alert);
         }
       }
 

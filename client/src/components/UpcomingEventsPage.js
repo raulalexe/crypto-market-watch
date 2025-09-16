@@ -193,9 +193,11 @@ const UpcomingEventsPage = () => {
     if (!date) return 'Date not available';
     const now = new Date();
     const eventDate = new Date(date);
-    const diffTime = eventDate - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+    // Use calendar-day difference to avoid off-by-one issues from hours/timezones
+    const startNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startEvent = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+    const diffDays = Math.round((startEvent - startNow) / (1000 * 60 * 60 * 24));
+
     if (diffDays < 0) return 'Past';
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Tomorrow';
@@ -208,10 +210,8 @@ const UpcomingEventsPage = () => {
     if (!date) return 'Time not available';
     const now = new Date();
     const eventDate = new Date(date);
-    const diffTime = eventDate - now;
-    const diffMinutes = Math.floor(diffTime / (1000 * 60));
-    
-    if (diffMinutes < 0) return 'Past';
+    const diffMinutes = Math.max(0, Math.floor((eventDate - now) / (1000 * 60)));
+
     if (diffMinutes < 60) return `${diffMinutes} minutes`;
     if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)} hours`;
     return `${Math.floor(diffMinutes / 1440)} days`;
@@ -586,7 +586,7 @@ const UpcomingEventsPage = () => {
               >
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex-1">
-                    <div className="flex items-start space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4 space-y-3 sm:space-y-0">
                       <div className="flex-shrink-0">
                         <div className={`p-2 rounded-lg ${getImpactColor(event?.impact || 'medium')}`}>
                           {getEventIcon(event?.category || 'other')}
@@ -594,7 +594,7 @@ const UpcomingEventsPage = () => {
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3 mb-2">
+                        <div className="flex flex-wrap items-center gap-2 mb-2 sm:justify-start justify-center text-center sm:text-left">
                           <h3 className="text-lg font-semibold text-white">{event?.title || 'Untitled Event'}</h3>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')}`}>
                             {getImpactLabel(event?.impact || 'medium')}
@@ -616,9 +616,9 @@ const UpcomingEventsPage = () => {
                           )}
                         </div>
                         
-                        <p className="text-slate-400 mb-3">{event?.description || 'No description available'}</p>
-                        
-                        <div className="flex items-center space-x-4 text-sm text-slate-500">
+                        <p className="text-slate-400 mb-3 text-center sm:text-left">{event?.description || 'No description available'}</p>
+
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 justify-center sm:justify-start">
                           <div className="flex items-center space-x-1">
                             <Info className="w-4 h-4" />
                             <span>{event?.source || 'Unknown source'}</span>
@@ -629,7 +629,7 @@ const UpcomingEventsPage = () => {
                   </div>
                   
                   <div className="mt-4 lg:mt-0 lg:ml-6">
-                    <div className="text-right">
+                    <div className="text-center lg:text-right">
                       <div className="text-lg font-semibold text-white">
                         {event?.date ? new Date(event.date).toLocaleDateString('en-US', { 
                           month: 'short', 

@@ -32,6 +32,8 @@ describe('Stripe Environment Switching', () => {
     
     // Reset modules to ensure fresh imports
     jest.resetModules();
+    // Ensure tests don't exit due to DATABASE_URL checks
+    process.env.DATABASE_URL = 'postgresql://testuser:testpass@localhost:5432/testdb';
   });
 
   afterEach(() => {

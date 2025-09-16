@@ -6,14 +6,20 @@ console.log('🗄️ Using PostgreSQL database');
 
 // Check if DATABASE_URL is set
 if (!process.env.DATABASE_URL) {
-  console.error('❌ ERROR: DATABASE_URL environment variable is required');
-  console.error('   Please set DATABASE_URL in your environment variables');
-  console.error('   For local development, you can use a local PostgreSQL instance');
-  console.error('   For Railway, add a PostgreSQL plugin to your project');
-  process.exit(1);
+  if (process.env.NODE_ENV === 'test') {
+    // Provide a dummy connection string during tests to avoid process.exit
+    process.env.DATABASE_URL = 'postgresql://testuser:testpass@localhost:5432/testdb';
+    console.warn('⚠️ DATABASE_URL not set. Using dummy connection string for tests.');
+  } else {
+    console.error('❌ ERROR: DATABASE_URL environment variable is required');
+    console.error('   Please set DATABASE_URL in your environment variables');
+    console.error('   For local development, you can use a local PostgreSQL instance');
+    console.error('   For Railway, add a PostgreSQL plugin to your project');
+    process.exit(1);
+  }
 }
 
-if (!process.env.DATABASE_URL.startsWith('postgresql://')) {
+if (process.env.NODE_ENV !== 'test' && !process.env.DATABASE_URL.startsWith('postgresql://')) {
   console.error('❌ ERROR: DATABASE_URL must be a PostgreSQL connection string');
   console.error('   Expected format: postgresql://user:password@host:port/database');
   process.exit(1);
