@@ -12,7 +12,7 @@ const DataExport = () => {
   const [exporting, setExporting] = useState(false);
   const [alert, setAlert] = useState(null);
   const [formData, setFormData] = useState({
-    dataType: 'crypto_prices',
+    dataType: 'market_data',
     dateRange: '7d',
     format: 'json'
   });
@@ -135,7 +135,7 @@ const DataExport = () => {
 
   if (authError) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-6">
+      <div className="min-h-screen bg-gray-900 text-white p-3 sm:p-6">
         <div className="max-w-4xl mx-auto">
           <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 mb-6">
             <div className="flex items-center space-x-3 mb-4">
@@ -190,7 +190,7 @@ const DataExport = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gray-900 text-white p-3 sm:p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Data Export</h1>
@@ -212,7 +212,6 @@ const DataExport = () => {
                   onChange={handleInputChange}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
                 >
-                  <option value="crypto_prices">Crypto Prices</option>
                   <option value="market_data">Market Data</option>
                   <option value="fear_greed">Fear & Greed Index</option>
                   <option value="narratives">Trending Narratives</option>

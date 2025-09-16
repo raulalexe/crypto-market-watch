@@ -336,12 +336,12 @@ const AIAnalysisCard = ({ data }) => {
                     className="p-4 cursor-pointer"
                     onClick={() => toggleTimeframe(key)}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center space-x-3">
                         {getTimeframeIcon(key)}
                         <span className="text-white font-medium">{getTimeframeLabel(key)}</span>
                       </div>
-                      <div className="flex items-center space-x-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <div className="flex items-center space-x-2">
                           {getDirectionIcon(timeframeData.market_direction)}
                           <span className={`font-medium ${getDirectionColor(timeframeData.market_direction)}`}>
@@ -351,7 +351,7 @@ const AIAnalysisCard = ({ data }) => {
                         <span className={`text-sm ${getConfidenceColor(timeframeData.confidence)}`}>
                           {timeframeData.confidence}%
                         </span>
-                        <button className="text-slate-400 hover:text-white transition-colors">
+                        <button className="text-slate-400 hover:text-white transition-colors ml-auto sm:ml-0">
                           {expandedTimeframes[key] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                         </button>
                       </div>
@@ -382,7 +382,7 @@ const AIAnalysisCard = ({ data }) => {
                               <div className="flex items-center space-x-2 mb-2">
                                 <Zap className="w-4 h-4 text-blue-400" />
                                 <span className="text-sm font-medium text-white">Venice AI</span>
-                                <div className="flex items-center space-x-1 ml-auto">
+                                <div className="flex flex-wrap items-center gap-1 sm:ml-auto">
                                   {getDirectionIcon(data.providers.venice[`${key}_term`].market_direction)}
                                   <span className={`text-sm font-medium ${getDirectionColor(data.providers.venice[`${key}_term`].market_direction)}`}>
                                     {data.providers.venice[`${key}_term`].market_direction}
@@ -406,7 +406,7 @@ const AIAnalysisCard = ({ data }) => {
                               <div className="flex items-center space-x-2 mb-2">
                                 <Zap className="w-4 h-4 text-purple-400" />
                                 <span className="text-sm font-medium text-white">Groq</span>
-                                <div className="flex items-center space-x-1 ml-auto">
+                                <div className="flex flex-wrap items-center gap-1 sm:ml-auto">
                                   {getDirectionIcon(data.providers.groq[`${key}_term`].market_direction)}
                                   <span className={`text-sm font-medium ${getDirectionColor(data.providers.groq[`${key}_term`].market_direction)}`}>
                                     {data.providers.groq[`${key}_term`].market_direction}
@@ -430,7 +430,7 @@ const AIAnalysisCard = ({ data }) => {
                               <div className="flex items-center space-x-2 mb-2">
                                 <Brain className="w-4 h-4 text-green-400" />
                                 <span className="text-sm font-medium text-white">Hugging Face</span>
-                                <div className="flex items-center space-x-1 ml-auto">
+                                <div className="flex flex-wrap items-center gap-1 sm:ml-auto">
                                   {getDirectionIcon(data.providers.huggingface[`${key}_term`].market_direction)}
                                   <span className={`text-sm font-medium ${getDirectionColor(data.providers.huggingface[`${key}_term`].market_direction)}`}>
                                     {data.providers.huggingface[`${key}_term`].market_direction}

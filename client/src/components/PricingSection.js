@@ -250,15 +250,11 @@ const PricingSection = ({
     const token = localStorage.getItem('authToken');
     if (!token) {
       if (setAuthModalOpen) {
-        // Try to open auth modal directly first
-        try {
+        // Use setTimeout to ensure the modal opens after the current event loop
+        setTimeout(() => {
           setAuthModalOpen(true);
-          showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
-        } catch (error) {
-          // If direct modal opening fails, redirect to app with auth parameter
-          console.log('Direct modal opening failed, redirecting to app:', error);
-          window.location.href = '/app?auth=login';
-        }
+        }, 0);
+        showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
       } else {
         showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
         // Redirect to login page if no auth modal handler is available
@@ -290,15 +286,11 @@ const PricingSection = ({
       setShowPaymentModal(false);
       
       if (setAuthModalOpen) {
-        // Try to open auth modal directly first
-        try {
+        // Use setTimeout to ensure the modal opens after the current event loop
+        setTimeout(() => {
           setAuthModalOpen(true);
-          showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
-        } catch (error) {
-          // If direct modal opening fails, redirect to app with auth parameter
-          console.log('Direct modal opening failed, redirecting to app:', error);
-          window.location.href = '/app?auth=login';
-        }
+        }, 0);
+        showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
       } else {
         showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
         // Redirect to login page if no auth modal handler is available

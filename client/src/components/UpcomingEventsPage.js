@@ -194,12 +194,12 @@ const UpcomingEventsPage = () => {
     const now = new Date();
     const eventDate = new Date(date);
     const diffTime = eventDate - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
     
     if (diffDays < 0) return 'Past';
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays < 7) return `${diffDays} days`;
+    if (diffDays <= 0) return 'Today';
+    if (diffDays <= 1) return 'Tomorrow';
+    if (diffDays < 7) return `${Math.round(diffDays)} days`;
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks`;
     return `${Math.floor(diffDays / 30)} months`;
   };
@@ -594,22 +594,22 @@ const UpcomingEventsPage = () => {
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">{event?.title || 'Untitled Event'}</h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')}`}>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="text-lg font-semibold text-white break-words">{event?.title || 'Untitled Event'}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getImpactColor(event?.impact || 'medium')}`}>
                             {getImpactLabel(event?.impact || 'medium')}
                           </span>
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300">
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300 whitespace-nowrap">
                             {getCategoryLabel(event?.category || 'other')}
                           </span>
                           {event?.daysUntil === 3 && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-900/20 text-orange-400 border border-orange-500/30 flex items-center space-x-1">
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-900/20 text-orange-400 border border-orange-500/30 inline-flex items-center space-x-1 whitespace-nowrap">
                               <AlertTriangle className="w-3 h-3" />
                               <span>Notification Sent</span>
                             </span>
                           )}
                           {event?.ignored && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900/20 text-gray-400 border border-gray-500/30 flex items-center space-x-1">
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900/20 text-gray-400 border border-gray-500/30 inline-flex items-center space-x-1 whitespace-nowrap">
                               <EyeOff className="w-3 h-3" />
                               <span>Ignored</span>
                             </span>
@@ -629,7 +629,7 @@ const UpcomingEventsPage = () => {
                   </div>
                   
                   <div className="mt-4 lg:mt-0 lg:ml-6">
-                    <div className="text-right">
+                    <div className="text-center sm:text-left lg:text-right">
                       <div className="text-lg font-semibold text-white">
                         {event?.date ? new Date(event.date).toLocaleDateString('en-US', { 
                           month: 'short', 
@@ -652,7 +652,7 @@ const UpcomingEventsPage = () => {
                       </div>
                       <div className="text-sm text-crypto-blue font-medium mt-1">
                         {event?.timeRemaining ? (
-                          <span className="flex items-center space-x-1">
+                          <span className="inline-flex items-center justify-center sm:justify-start lg:justify-end space-x-1">
                             <Clock className="w-4 h-4" />
                             <span>{event.timeRemaining}</span>
                           </span>
@@ -664,7 +664,7 @@ const UpcomingEventsPage = () => {
                       {/* Admin Actions */}
                       {isAdminUser && (
                         <div className="mt-3 pt-3 border-t border-slate-600">
-                          <div className="flex items-center justify-end space-x-2">
+                          <div className="flex flex-wrap items-center justify-center sm:justify-start lg:justify-end gap-2">
                             {event?.ignored ? (
                               <button
                                 onClick={(e) => {

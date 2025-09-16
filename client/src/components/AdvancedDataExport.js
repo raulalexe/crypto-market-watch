@@ -18,20 +18,13 @@ const AdvancedDataExport = () => {
   const [exportHistory, setExportHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [selectedDataTypes, setSelectedDataTypes] = useState(['crypto_prices']);
+  const [selectedDataTypes, setSelectedDataTypes] = useState(['market_data']);
   const [dateRange, setDateRange] = useState('7d');
   const [exportFormat, setExportFormat] = useState('csv');
   const [scheduledExports, setScheduledExports] = useState([]);
   const [alert, setAlert] = useState(null);
 
   const dataTypes = [
-    { 
-      id: 'crypto_prices', 
-      label: 'Crypto Prices', 
-      description: 'Historical cryptocurrency price data',
-      icon: BarChart3,
-      available: true
-    },
     { 
       id: 'market_data', 
       label: 'Market Data', 
@@ -271,7 +264,7 @@ const AdvancedDataExport = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6">
+    <div className="min-h-screen bg-slate-900 text-white p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -396,22 +389,22 @@ const AdvancedDataExport = () => {
                     </div>
                   ))
                 )}
-                <div className="flex space-x-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={() => scheduleExport('daily')}
-                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors w-full sm:w-auto"
                   >
                     Schedule Daily
                   </button>
                   <button
                     onClick={() => scheduleExport('weekly')}
-                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors w-full sm:w-auto"
                   >
                     Schedule Weekly
                   </button>
                   <button
                     onClick={() => scheduleExport('monthly')}
-                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors w-full sm:w-auto"
                   >
                     Schedule Monthly
                   </button>

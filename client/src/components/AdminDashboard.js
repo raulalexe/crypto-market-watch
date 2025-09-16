@@ -1077,7 +1077,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gray-900 text-white p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
@@ -1087,8 +1087,8 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
 
 
         {/* Tabs */}
-        <div className="border-b border-gray-700 mb-6">
-          <nav className="flex space-x-8">
+        <div className="border-b border-gray-700 mb-6 overflow-x-auto">
+          <nav className="flex space-x-8 min-w-max">
             {tabs.map((tab) => {
               const IconComponent = tab.icon;
               return (

@@ -3,7 +3,7 @@ import CoinGeckoWidget from './CoinGeckoWidget';
 
 const PricesPage = () => {
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gray-900 text-white p-3 sm:p-6">
       {/* Header */}
       <div className="max-w-6xl mx-auto mb-8">
         <div className="text-center mb-8">
