@@ -659,52 +659,51 @@ const UpcomingEventsPage = () => {
                         event?.date ? getDaysUntilText(event.date) : 'Time not available'
                       )}
                     </div>
-                      
+                  </div>
+                  
                   {/* Admin Actions */}
                   {isAdminUser && (
                     <div className="mt-3 pt-3 border-t border-slate-600">
                       <div className="flex items-center justify-center sm:justify-end space-x-2">
-                            {event?.ignored ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleUnignoreEvent(event.id);
-                                }}
-                                className="flex items-center space-x-1 px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
-                                title="Unignore event"
-                              >
-                                <Eye className="w-3 h-3" />
-                                <span>Unignore</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleIgnoreEvent(event.id);
-                                }}
-                                className="flex items-center space-x-1 px-2 py-1 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 transition-colors"
-                                title="Ignore event"
-                              >
-                                <EyeOff className="w-3 h-3" />
-                                <span>Ignore</span>
-                              </button>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteEvent(event.id);
-                              }}
-                              className="flex items-center space-x-1 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
-                              title="Delete event"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              <span>Delete</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                        {event?.ignored ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnignoreEvent(event.id);
+                            }}
+                            className="flex items-center space-x-1 px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
+                            title="Unignore event"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>Unignore</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleIgnoreEvent(event.id);
+                            }}
+                            className="flex items-center space-x-1 px-2 py-1 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 transition-colors"
+                            title="Ignore event"
+                          >
+                            <EyeOff className="w-3 h-3" />
+                            <span>Ignore</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteEvent(event.id);
+                          }}
+                          className="flex items-center space-x-1 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
+                          title="Delete event"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             ))
