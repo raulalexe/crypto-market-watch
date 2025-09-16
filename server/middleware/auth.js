@@ -77,15 +77,26 @@ const requireSubscription = (minPlan = SUBSCRIPTION_TYPES.FREE) => {
         [SUBSCRIPTION_TYPES.FREE]: 0, 
         [SUBSCRIPTION_TYPES.PRO]: 1, 
         [SUBSCRIPTION_TYPES.PREMIUM]: 2, 
-        'api': 3 
+        [SUBSCRIPTION_TYPES.ADMIN]: 3 
       };
       let userPlan = user?.subscription_plan || SUBSCRIPTION_TYPES.FREE;
       
+      // Debug logging for subscription checks
+      console.log(`🔍 Subscription check for user ${req.user.id}:`, {
+        userPlan,
+        minPlan,
+        userPlanLevel: planHierarchy[userPlan],
+        minPlanLevel: planHierarchy[minPlan],
+        hasAccess: planHierarchy[userPlan] >= planHierarchy[minPlan]
+      });
+      
       if (planHierarchy[userPlan] < planHierarchy[minPlan]) {
+        console.log(`❌ Access denied for user ${req.user.id}: ${userPlan} < ${minPlan}`);
         return res.status(403).json({ 
           error: 'Subscription required',
           requiredPlan: minPlan,
-          currentPlan: userPlan
+          currentPlan: userPlan,
+          message: `This feature requires a ${minPlan} subscription or higher. Your current plan is ${userPlan}.`
         });
       }
 

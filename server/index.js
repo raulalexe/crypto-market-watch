@@ -328,41 +328,19 @@ app.get('/api/predictions', async (req, res) => {
   }
 });
 
-// Get crypto prices
+// Get crypto prices - now using external API (CoinGecko widget handles this directly)
 app.get('/api/crypto-prices', async (req, res) => {
   try {
-    const { getCryptoPrices } = require('./database');
-    const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-    const prices = [];
-    let totalMarketCap = 0;
-    
-    for (const symbol of cryptoSymbols) {
-      const data = await getCryptoPrices(symbol, 1);
-      if (data && data.length > 0) {
-        // Convert to array format that frontend expects
-        const cryptoData = {
-          symbol: symbol,
-          name: symbol, // You can add proper names if needed
-          price: parseFloat(data[0].price),
-          volume_24h: parseFloat(data[0].volume_24h),
-          market_cap: parseFloat(data[0].market_cap),
-          change_24h: parseFloat(data[0].change_24h),
-          timestamp: data[0].timestamp
-        };
-        prices.push(cryptoData);
-        
-        // Add to total market cap
-        if (data[0].market_cap) {
-          totalMarketCap += parseFloat(data[0].market_cap);
-        }
-      }
-    }
-    
-    // Return array format that frontend expects
-    res.json(prices);
+    // Since we're using the CoinGecko widget for real-time prices,
+    // this endpoint now returns a message directing users to the widget
+    res.json({
+      message: 'Crypto prices are now provided directly by the CoinGecko widget on the Prices page',
+      widget_url: '/prices',
+      note: 'Real-time prices are fetched directly from CoinGecko API via the widget'
+    });
   } catch (error) {
-    console.error('Error fetching crypto prices:', error);
-    res.status(500).json({ error: 'Failed to fetch crypto prices' });
+    console.error('Error with crypto prices endpoint:', error);
+    res.status(500).json({ error: 'Failed to process crypto prices request' });
   }
 });
 
@@ -1556,8 +1534,8 @@ const getDataForType = async (type, limit) => {
   }
 };
 
-// Data export endpoints (premium+ only)
-app.get('/api/exports/history', authenticateToken, requireSubscription('premium'), async (req, res) => {
+// Data export endpoints (pro+ only)
+app.get('/api/exports/history', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     // TODO: Implement export history tracking
     res.json({ exports: [] });
@@ -1567,7 +1545,7 @@ app.get('/api/exports/history', authenticateToken, requireSubscription('premium'
   }
 });
 
-app.post('/api/exports/create', authenticateToken, requireSubscription('premium'), async (req, res) => {
+app.post('/api/exports/create', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     const { dataType: type, dateRange, format } = req.body;
     
@@ -1694,7 +1672,7 @@ app.post('/api/exports/create', authenticateToken, requireSubscription('premium'
 });
 
 // Advanced analytics export endpoint
-app.post('/api/analytics/export', authenticateToken, requireSubscription('premium'), async (req, res) => {
+app.post('/api/analytics/export', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     const { timeframe, asset, chartType, format } = req.body;
     
@@ -2181,52 +2159,93 @@ app.post('/api/alerts/thresholds', authenticateToken, requireSubscription('pro')
 // Get correlation data for advanced analytics
 app.get('/api/correlation', async (req, res) => {
   try {
-    const { getMarketData } = require('./database');
-    const marketSymbols = [
-      { symbol: 'SP500', dataType: 'EQUITY_INDEX' },
-      { symbol: 'NASDAQ', dataType: 'EQUITY_INDEX' },
-      { symbol: 'DXY', dataType: 'DXY' },
-      { symbol: 'VIX', dataType: 'VOLATILITY_INDEX' },
-      { symbol: '10Y', dataType: 'TREASURY_YIELD' },
-      { symbol: '2Y', dataType: 'TREASURY_YIELD' }
-    ];
-    const correlationData = {};
+    console.log('📊 Fetching crypto correlation data from external API...');
+    
+    // Try to get crypto correlations from external API
+    const externalCorrelations = await fetchCryptoCorrelationsFromAPI();
+    if (externalCorrelations && Object.keys(externalCorrelations).length > 0) {
+      console.log('✅ Using external crypto correlation data');
+      return res.json(externalCorrelations);
+    }
+    
+    // If external API fails, return error - no fallback data
+    console.log('❌ External correlation API unavailable - no fallback data provided');
+    return res.status(503).json({ 
+      error: 'Correlation data temporarily unavailable',
+      message: 'External correlation API is currently unavailable. Please try again later.',
+      retry_after: 300 // 5 minutes
+    });
+    
+  } catch (error) {
+    console.error('Error fetching correlation data:', error);
+    // Return error instead of fallback data
+    return res.status(503).json({ 
+      error: 'Failed to fetch correlation data',
+      message: 'Unable to retrieve correlation data from external API. Please try again later.',
+      retry_after: 300 // 5 minutes
+    });
+  }
+});
 
-    // Calculate correlation matrix for market assets
-    for (let i = 0; i < marketSymbols.length; i++) {
-      for (let j = i + 1; j < marketSymbols.length; j++) {
-        const symbol1 = marketSymbols[i];
-        const symbol2 = marketSymbols[j];
-        
-        const data1 = await getMarketData(symbol1.dataType, 30);
-        const data2 = await getMarketData(symbol2.dataType, 30);
-        
-        if (data1 && data2 && data1.length > 0 && data2.length > 0) {
-          // Filter data to match symbols and get values
-          const prices1 = data1
-            .filter(item => item.symbol === symbol1.symbol)
-            .map(item => ({ price: item.value, timestamp: item.timestamp }))
-            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            
-          const prices2 = data2
-            .filter(item => item.symbol === symbol2.symbol)
-            .map(item => ({ price: item.value, timestamp: item.timestamp }))
-            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+// Function to fetch crypto correlations from external API
+async function fetchCryptoCorrelationsFromAPI() {
+  try {
+    // Use CryptoQuote's Correlation Matrix API
+    const symbols = 'BTCUSD,ETHUSD,SOLUSD,SUIUSD,XRPUSD';
+    const endDate = new Date().toISOString().split('T')[0]; // Today
+    const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days ago
+    
+    const apiUrl = `https://www.cryptoquote.io/analytics/v1/?api=correlation_matrix&symbols=${symbols}&start_date=${startDate}&end_date=${endDate}&key=${process.env.CRYPTOQUOTE_API_KEY || 'demo'}`;
+    
+    console.log(`🔗 Fetching correlations from: ${apiUrl.replace(process.env.CRYPTOQUOTE_API_KEY || 'demo', '***')}`);
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'CryptoMarketWatch/1.0'
+      },
+      timeout: 10000 // 10 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data && data.correlation_matrix) {
+      // Convert the correlation matrix to our expected format
+      const correlationData = {};
+      const matrix = data.correlation_matrix;
+      const symbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
+      
+      // Extract correlations from the matrix
+      for (let i = 0; i < symbols.length; i++) {
+        for (let j = i + 1; j < symbols.length; j++) {
+          const symbol1 = symbols[i];
+          const symbol2 = symbols[j];
+          const correlation = matrix[i] && matrix[i][j] ? matrix[i][j] : null;
           
-          if (prices1.length > 0 && prices2.length > 0) {
-            const correlation = calculateCorrelation(prices1, prices2);
-            correlationData[`${symbol1.symbol}_${symbol2.symbol}`] = correlation;
+          if (correlation !== null && !isNaN(correlation)) {
+            correlationData[`${symbol1}_${symbol2}`] = parseFloat(correlation);
           }
         }
       }
+      
+      console.log(`✅ Retrieved ${Object.keys(correlationData).length} correlation pairs from external API`);
+      return correlationData;
     }
-
-    res.json(correlationData);
+    
+    throw new Error('Invalid response format from correlation API');
+    
   } catch (error) {
-    console.error('Error calculating correlation data:', error);
-    res.status(500).json({ error: 'Failed to calculate correlation data' });
+    console.log('⚠️ External correlation API failed:', error.message);
+    throw error;
   }
-});
+}
+
+// Note: Fallback correlation values removed - crypto correlations are highly dynamic
+// and static values would be misleading. System now fails gracefully when API is unavailable.
 
 // Helper function to calculate correlation between two price series
 function calculateCorrelation(prices1, prices2) {
@@ -2265,47 +2284,118 @@ app.get('/api/history/:dataType', async (req, res) => {
   try {
     const { dataType } = req.params;
     const { limit = 100 } = req.query;
-    const { getMarketData, getCryptoPrices } = require('./database');
+    const { getMarketData } = require('./database');
     
-    let data;
-    
-    // Handle crypto prices separately since they're in a different table
-    if (dataType === 'CRYPTO_PRICE') {
-      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP', 'ADA', 'DOT', 'AVAX', 'MATIC', 'LINK'];
-      data = [];
-      
-      for (const symbol of cryptoSymbols) {
-        const prices = await getCryptoPrices(symbol, Math.ceil(limit / cryptoSymbols.length));
-        if (prices && prices.length > 0) {
-          // Convert crypto_prices format to match market_data format
-          const convertedPrices = prices.map(price => ({
-            id: price.id,
-            timestamp: price.timestamp,
-            data_type: 'CRYPTO_PRICE',
-            symbol: price.symbol,
-            value: price.price,
-            metadata: JSON.stringify({
-              volume_24h: price.volume_24h,
-              market_cap: price.market_cap,
-              change_24h: price.change_24h
-            }),
-            source: 'CoinGecko'
-          }));
-          data.push(...convertedPrices);
-        }
-      }
-      
-      // Sort by timestamp and limit
-      data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      data = data.slice(0, limit);
-    } else {
-      data = await getMarketData(dataType, parseInt(limit));
+    // Crypto prices and on-chain data removed from historical data
+    // Use CoinGecko widget for real-time crypto prices instead
+    if (dataType === 'CRYPTO_PRICE' || dataType === 'ONCHAIN') {
+      return res.status(404).json({ 
+        error: 'Data type not available',
+        message: 'Crypto prices are available via the CoinGecko widget on the Prices page. On-chain data has been removed from historical data.'
+      });
     }
     
+    const data = await getMarketData(dataType, parseInt(limit));
     res.json(data);
   } catch (error) {
     console.error('Error fetching historical data:', error);
     res.status(500).json({ error: 'Failed to fetch historical data' });
+  }
+});
+
+// Get historical AI analysis data
+app.get('/api/history/ai-analysis', async (req, res) => {
+  try {
+    const { limit = 50, model, term, startDate, endDate } = req.query;
+    const { dbAdapter } = require('./database');
+    
+    // Build query with filters
+    let query = `
+      SELECT 
+        id,
+        market_direction,
+        confidence,
+        reasoning,
+        factors_analyzed,
+        analysis_data,
+        timestamp
+      FROM ai_analysis 
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramCount = 0;
+    
+    // Add date filters
+    if (startDate) {
+      paramCount++;
+      query += ` AND timestamp >= $${paramCount}`;
+      params.push(startDate);
+    }
+    if (endDate) {
+      paramCount++;
+      query += ` AND timestamp <= $${paramCount}`;
+      params.push(endDate);
+    }
+    
+    query += ` ORDER BY timestamp DESC LIMIT $${paramCount + 1}`;
+    params.push(parseInt(limit));
+    
+    const rawAnalysis = await dbAdapter.all(query, params);
+    
+    // Parse and filter the analysis data
+    const parsedAnalysis = rawAnalysis.map(analysis => {
+      let parsedData = null;
+      if (analysis.analysis_data) {
+        try {
+          parsedData = JSON.parse(analysis.analysis_data);
+          // Handle double encoding
+          if (typeof parsedData === 'string') {
+            parsedData = JSON.parse(parsedData);
+          }
+        } catch (error) {
+          console.error('Error parsing analysis_data:', error);
+        }
+      }
+      
+      return {
+        id: analysis.id,
+        timestamp: analysis.timestamp,
+        // Legacy fields for backward compatibility
+        market_direction: analysis.market_direction,
+        confidence: analysis.confidence,
+        reasoning: analysis.reasoning,
+        factors_analyzed: analysis.factors_analyzed,
+        // Multi-timeframe structure
+        overall_direction: parsedData?.overall_direction,
+        overall_confidence: parsedData?.overall_confidence,
+        short_term: parsedData?.short_term,
+        medium_term: parsedData?.medium_term,
+        long_term: parsedData?.long_term,
+        providers: parsedData?.providers
+      };
+    });
+    
+    // Apply client-side filters for model and term
+    let filteredAnalysis = parsedAnalysis;
+    
+    if (model) {
+      filteredAnalysis = filteredAnalysis.filter(analysis => {
+        if (!analysis.providers) return false;
+        return Object.keys(analysis.providers).includes(model.toLowerCase());
+      });
+    }
+    
+    if (term) {
+      filteredAnalysis = filteredAnalysis.filter(analysis => {
+        const termKey = `${term}_term`;
+        return analysis[termKey] && analysis[termKey].market_direction;
+      });
+    }
+    
+    res.json(filteredAnalysis);
+  } catch (error) {
+    console.error('Error fetching historical AI analysis:', error);
+    res.status(500).json({ error: 'Failed to fetch historical AI analysis' });
   }
 });
 
@@ -4728,7 +4818,7 @@ app.post('/api/test-webhook', async (req, res) => {
 // ===== ADVANCED DATA EXPORT ENDPOINTS =====
 
 // Get scheduled exports
-app.get('/api/exports/scheduled', authenticateToken, requireSubscription('premium'), async (req, res) => {
+app.get('/api/exports/scheduled', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     // For now, return empty array since scheduled exports aren't fully implemented
     res.json([]);
@@ -4739,7 +4829,7 @@ app.get('/api/exports/scheduled', authenticateToken, requireSubscription('premiu
 });
 
 // Schedule export
-app.post('/api/exports/schedule', authenticateToken, requireSubscription('premium'), async (req, res) => {
+app.post('/api/exports/schedule', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     const { dataTypes, dateRange, format, schedule, emailNotification } = req.body;
     const userId = req.user.userId;
@@ -4757,7 +4847,7 @@ app.post('/api/exports/schedule', authenticateToken, requireSubscription('premiu
 });
 
 // Cancel scheduled export
-app.delete('/api/exports/scheduled/:id', authenticateToken, requireSubscription('premium'), async (req, res) => {
+app.delete('/api/exports/scheduled/:id', authenticateToken, requireSubscription('pro'), async (req, res) => {
   try {
     const { id } = req.params;
     

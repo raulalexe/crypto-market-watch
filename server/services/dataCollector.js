@@ -772,32 +772,8 @@ class DataCollector {
     }
   }
 
-  // Fallback method using Alpha Vantage
-  async collectCryptoPricesFallback() {
-    const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-    
-    try {
-      for (const symbol of cryptoSymbols) {
-        const response = await axios.get(
-          `https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol=${symbol}&market=USD&apikey=${this.alphaVantageKey}`
-        );
-        
-        if (response.data['Time Series (Digital Currency Daily)']) {
-          const latestData = Object.values(response.data['Time Series (Digital Currency Daily)'])[0];
-          const price = parseFloat(latestData['4a. close (USD)']);
-          const volume = parseFloat(latestData['5. volume']);
-          const marketCap = parseFloat(latestData['6. market cap (USD)']);
-          const openPrice = parseFloat(latestData['1a. open (USD)']);
-          const closePrice = parseFloat(latestData['4a. close (USD)']);
-          const change24h = ((closePrice - openPrice) / openPrice) * 100;
-          
-          await insertCryptoPrice(symbol, price, volume, marketCap, change24h);
-        }
-      }
-    } catch (error) {
-      console.error('Error collecting crypto prices from Alpha Vantage fallback:', error.message);
-    }
-  }
+  // Note: Crypto price collection removed - now using external CoinGecko widget for real-time prices
+  // and external correlation API for correlation data
 
   // Collect Fear & Greed Index
   async collectFearGreedIndex() {
@@ -1689,7 +1665,10 @@ class DataCollector {
         this.collectBitcoinDominanceFromGlobal(globalMetrics), // Uses global metrics
         this.collectLayer1DataFromGlobal(globalMetrics), // Uses global metrics
         this.collectExchangeFlows(), // Collect exchange flows from Binance
-        this.collectMoneySupplyData() // Collect money supply data
+        this.collectMoneySupplyData(), // Collect money supply data
+        this.collectVIXFallback(), // Collect VIX data using fallback method
+        this.collectAltcoinSeasonIndex(), // Collect Altcoin Season from external API
+        this.collectSeasonIndicator() // Collect Season Indicator from external API
       ]);
       
       // Collect advanced data (market sentiment, derivatives, on-chain)
@@ -2494,7 +2473,7 @@ class DataCollector {
         { name: 'Treasury10Y', url: `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=daily&maturity=10year&apikey=${this.alphaVantageKey}` },
         { name: 'SP500', url: `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=SPY&apikey=${this.alphaVantageKey}` },
         { name: 'NASDAQ', url: `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=QQQ&apikey=${this.alphaVantageKey}` },
-        { name: 'VIX', url: `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=^VIX&apikey=${this.alphaVantageKey}` },
+        { name: 'VIX', url: `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=VXX&apikey=${this.alphaVantageKey}` },
         { name: 'Oil', url: `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=USO&apikey=${this.alphaVantageKey}` }
       ];
 
@@ -2586,6 +2565,44 @@ class DataCollector {
     }
   }
 
+  // Fallback VIX collection using alternative data source
+  async collectVIXFallback() {
+    try {
+      console.log('📊 Collecting VIX data using fallback method...');
+      
+      // Use Yahoo Finance API as fallback (free, no API key required)
+      const response = await axios.get('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      
+      if (response.data && response.data.chart && response.data.chart.result) {
+        const result = response.data.chart.result[0];
+        const meta = result.meta;
+        const currentPrice = meta.regularMarketPrice;
+        
+        if (currentPrice) {
+          await insertMarketData('VOLATILITY_INDEX', 'VIX', currentPrice, {
+            open: meta.regularMarketOpen,
+            high: meta.regularMarketDayHigh,
+            low: meta.regularMarketDayLow,
+            volume: meta.regularMarketVolume
+          }, 'Yahoo Finance');
+          
+          console.log(`✅ VIX fallback data collected: ${currentPrice}`);
+          return currentPrice;
+        }
+      }
+      
+      console.log('⚠️ No VIX data available from fallback source');
+      return null;
+    } catch (error) {
+      console.error('❌ Error collecting VIX fallback data:', error.message);
+      return null;
+    }
+  }
+
   async processOilData(data) {
     if (data['Time Series (Daily)']) {
       const latestData = Object.values(data['Time Series (Daily)'])[0];
@@ -2663,6 +2680,141 @@ class DataCollector {
     } catch (error) {
       console.error('❌ Error collecting inflation data:', error.message);
       return null;
+    }
+  }
+
+  // Collect Altcoin Season Index using BlockchainCenter methodology (FREE)
+  async collectAltcoinSeasonIndex() {
+    try {
+      console.log('📊 Collecting Altcoin Season Index using BlockchainCenter methodology...');
+      
+      // Use BlockchainCenter methodology with CoinGecko free API
+      // This is the original and most widely used altcoin season calculation
+      return await this.collectAltcoinSeasonBlockchainCenter();
+      
+    } catch (error) {
+      console.error('❌ Error collecting Altcoin Season Index:', error.message);
+      return null;
+    }
+  }
+
+  // BlockchainCenter Altcoin Season Index methodology (FREE)
+  async collectAltcoinSeasonBlockchainCenter() {
+    try {
+      console.log('📊 Using BlockchainCenter methodology for Altcoin Season Index...');
+      
+      // Get top 50 coins from CoinGecko (BlockchainCenter uses top 50)
+      const response = await this.getCachedCoinGeckoData('top_50_coins', async () => {
+        return await this.makeCoinGeckoRequest('coins/markets', {
+          vs_currency: 'usd',
+          order: 'market_cap_desc',
+          per_page: 50,
+          page: 1
+        });
+      });
+      
+      if (response && response.data && response.data.length > 0) {
+        const coins = response.data;
+        const btc = coins.find(coin => coin.id === 'bitcoin');
+        const altcoins = coins.filter(coin => coin.id !== 'bitcoin');
+        
+        if (btc && altcoins.length > 0) {
+          // BlockchainCenter methodology: Count altcoins that outperformed Bitcoin in last 90 days
+          const btcPerformance90d = btc.price_change_percentage_90d || 0;
+          const outperformingAltcoins = altcoins.filter(coin => {
+            const altcoinPerformance = coin.price_change_percentage_90d || 0;
+            return altcoinPerformance > btcPerformance90d;
+          }).length;
+          
+          // Calculate the percentage (BlockchainCenter formula)
+          const seasonIndex = (outperformingAltcoins / altcoins.length) * 100;
+          
+          // Determine season based on BlockchainCenter thresholds
+          let season, strength;
+          if (seasonIndex >= 75) {
+            season = 'Altcoin Season';
+            strength = 'Strong';
+          } else if (seasonIndex <= 25) {
+            season = 'Bitcoin Season';
+            strength = 'Strong';
+          } else {
+            season = 'Neutral';
+            strength = 'Moderate';
+          }
+          
+          // Store with BlockchainCenter methodology metadata
+          await insertMarketData('ALTCOIN_SEASON', 'ALTCOIN_INDEX', seasonIndex, {
+            season: season,
+            strength: strength,
+            index: seasonIndex,
+            methodology: 'BlockchainCenter',
+            outperforming_altcoins: outperformingAltcoins,
+            total_altcoins: altcoins.length,
+            btc_performance_90d: btcPerformance90d,
+            threshold_altcoin_season: 75,
+            threshold_bitcoin_season: 25,
+            source: 'CoinGecko + BlockchainCenter Methodology'
+          }, 'BlockchainCenter Method');
+          
+          console.log(`✅ Altcoin Season Index (BlockchainCenter): ${seasonIndex.toFixed(2)}% (${season})`);
+          console.log(`   📊 ${outperformingAltcoins}/${altcoins.length} altcoins outperformed Bitcoin in 90 days`);
+          return seasonIndex;
+        }
+      }
+      
+      console.log('⚠️ Could not calculate Altcoin Season Index using BlockchainCenter method');
+      return null;
+    } catch (error) {
+      console.error('❌ Error in BlockchainCenter Altcoin Season calculation:', error.message);
+      return null;
+    }
+  }
+
+  // Collect Season Indicator using BlockchainCenter methodology (FREE)
+  async collectSeasonIndicator() {
+    try {
+      console.log('📊 Collecting Season Indicator using BlockchainCenter methodology...');
+      
+      // Use the same BlockchainCenter methodology as Altcoin Season
+      const altcoinSeasonData = await this.collectAltcoinSeasonBlockchainCenter();
+      
+      if (altcoinSeasonData !== null) {
+        // Store as Season Indicator with BlockchainCenter metadata
+        await insertMarketData('SEASON_INDICATOR', 'MARKET_SEASON', altcoinSeasonData, {
+          season_type: 'altcoin_season',
+          methodology: 'BlockchainCenter',
+          source: 'CoinGecko + BlockchainCenter Methodology',
+          timestamp: new Date().toISOString()
+        }, 'BlockchainCenter Method');
+        
+        console.log(`✅ Season Indicator collected: ${altcoinSeasonData}%`);
+        return altcoinSeasonData;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('❌ Error collecting Season Indicator:', error.message);
+      return null;
+    }
+  }
+
+  // Store calculated metrics for historical data access
+  async storeCalculatedMetrics(globalMetrics) {
+    try {
+      console.log('📊 Storing calculated metrics for historical data access...');
+      
+      if (globalMetrics) {
+        // Store Total Market Cap in the correct format for historical data
+        await insertMarketData('TOTAL_MARKET_CAP', 'CRYPTO_TOTAL', globalMetrics.totalMarketCap, {
+          total_volume_24h: globalMetrics.totalVolume24h,
+          active_cryptocurrencies: globalMetrics.activeCryptocurrencies,
+          markets: globalMetrics.markets
+        }, 'CoinGecko Global');
+        
+        console.log('✅ Calculated metrics stored successfully');
+      }
+    } catch (error) {
+      console.error('❌ Error storing calculated metrics:', error.message);
     }
   }
 
