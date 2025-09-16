@@ -214,7 +214,7 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
             <div className="flex items-center space-x-2">
               {/* Alert Icon - For non-authenticated users */}
               <button
-                onClick={() => window.location.href = '/app?auth=register'}
+                onClick={() => setAuthModalOpen && setAuthModalOpen(true)}
                 className="relative p-2 rounded-lg hover:bg-slate-700 transition-colors"
                 title="Sign up for Market Alerts"
               >

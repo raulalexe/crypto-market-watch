@@ -186,19 +186,19 @@ const Layer1Card = () => {
           <div key={chain.id} className="bg-slate-700 rounded-lg border border-slate-600">
             {/* Chain Header */}
             <div className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-slate-600 rounded-lg flex items-center justify-center">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 bg-slate-600 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-bold text-white">{chain.symbol}</span>
                   </div>
-                  <div>
-                    <h4 className="text-lg font-semibold text-white">{chain.name}</h4>
-                    <p className="text-sm text-slate-400">{chain.narrative}</p>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-lg font-semibold text-white truncate">{chain.name}</h4>
+                    <p className="text-sm text-slate-400 truncate">{chain.narrative}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
+                <div className="flex items-center justify-between sm:justify-end space-x-4">
+                  <div className="text-left sm:text-right">
                     <div className="text-lg font-bold text-white">
                       {formatCurrency(chain.price)}
                     </div>
@@ -208,7 +208,7 @@ const Layer1Card = () => {
                   </div>
                   <button
                     onClick={() => toggleChain(chain.id)}
-                    className="text-slate-400 hover:text-white transition-colors"
+                    className="text-slate-400 hover:text-white transition-colors flex-shrink-0"
                   >
                     {expandedChains[chain.id] ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
                   </button>
@@ -220,7 +220,7 @@ const Layer1Card = () => {
             {expandedChains[chain.id] && (
               <div className="px-4 pb-4 border-t border-slate-600">
                 {/* Metrics Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div className="bg-slate-800 rounded-lg p-3">
                     <div className="flex items-center space-x-2 mb-1">
                       <DollarSign className="w-4 h-4 text-crypto-green" />

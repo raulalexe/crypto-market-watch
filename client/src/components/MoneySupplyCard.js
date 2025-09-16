@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Minus, DollarSign, Building2, Activity, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, Building2, Activity } from 'lucide-react';
 
 const MoneySupplyCard = () => {
   const [moneySupplyData, setMoneySupplyData] = useState(null);
@@ -87,14 +87,8 @@ const MoneySupplyCard = () => {
   if (error) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <h3 className="text-lg font-semibold text-white">Money Supply & Bank Reserves</h3>
-          <button
-            onClick={fetchMoneySupplyData}
-            className="text-slate-400 hover:text-white transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
         </div>
         <div className="text-center py-8">
           <div className="text-red-400 mb-2">Error loading data</div>
@@ -107,19 +101,11 @@ const MoneySupplyCard = () => {
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <h3 className="text-lg font-semibold text-white">Money Supply & Bank Reserves</h3>
-          <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
-            FRED Data
-          </span>
-        </div>
-        <button
-          onClick={fetchMoneySupplyData}
-          className="text-slate-400 hover:text-white transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
+      <div className="flex items-center space-x-3 mb-6">
+        <h3 className="text-lg font-semibold text-white">Money Supply & Bank Reserves</h3>
+        <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+          FRED Data
+        </span>
       </div>
 
       {/* Money Supply Grid */}

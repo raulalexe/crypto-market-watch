@@ -1921,12 +1921,15 @@ class DataCollector {
       const dominance = globalMetrics.bitcoinDominance;
       const source = 'CoinGecko Global';
       
+      // Convert to percentage if it's a decimal (e.g., 0.45 -> 45)
+      const dominancePercentage = dominance < 1 ? dominance * 100 : dominance;
+      
       // Store the result
       const { insertBitcoinDominance } = require('../database');
-      await insertBitcoinDominance(dominance, source);
+      await insertBitcoinDominance(dominancePercentage, source);
       
-      console.log(`✅ Bitcoin Dominance: ${dominance.toFixed(2)}% (Source: ${source})`);
-      return dominance;
+      console.log(`✅ Bitcoin Dominance: ${dominancePercentage.toFixed(2)}% (Source: ${source})`);
+      return dominancePercentage;
       
     } catch (error) {
       console.error('❌ Error collecting Bitcoin dominance:', error.message);

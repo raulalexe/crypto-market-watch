@@ -259,12 +259,12 @@ const CoinGeckoWidget = () => {
                       : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
                   }`}
                 >
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium">{coin.symbol}</span>
-                    <span className="text-xs text-slate-400">{coin.name}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 min-w-0 flex-1">
+                    <span className="font-medium text-sm sm:text-base truncate">{coin.symbol}</span>
+                    <span className="text-xs text-slate-400 truncate hidden sm:block">{coin.name}</span>
                   </div>
                   {selectedCoins.includes(coin.id) && (
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                    <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
                   )}
                 </button>
               ))}
@@ -274,7 +274,7 @@ const CoinGeckoWidget = () => {
           {/* Add Custom Coin */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-300">Add Custom Coin</label>
-            <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
               <input
                 type="text"
                 placeholder="Enter CoinGecko coin ID (e.g., bitcoin, ethereum)"
@@ -285,7 +285,7 @@ const CoinGeckoWidget = () => {
               />
               <button
                 onClick={addCustomCoin}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm sm:flex-shrink-0"
               >
                 Add
               </button>
@@ -298,7 +298,7 @@ const CoinGeckoWidget = () => {
           {/* Selected Coins Display */}
           <div className="space-y-2">
             <div className="text-sm font-medium text-slate-300">
-              Selected Coins ({selectedCoins.length}): {selectedCoins.join(', ')}
+              Selected Coins ({selectedCoins.length}): <span className="hidden sm:inline">{selectedCoins.join(', ')}</span>
             </div>
             <div className="max-h-32 overflow-y-auto bg-slate-700 rounded-lg p-2">
               <div className="flex flex-wrap gap-1">
@@ -307,10 +307,10 @@ const CoinGeckoWidget = () => {
                     key={coinId}
                     className="inline-flex items-center px-2 py-1 bg-slate-600 text-slate-200 rounded text-xs"
                   >
-                    {coinId}
+                    <span className="truncate max-w-20 sm:max-w-none">{coinId}</span>
                     <button
                       onClick={() => removeCoin(coinId)}
-                      className="ml-1 text-slate-400 hover:text-red-400"
+                      className="ml-1 text-slate-400 hover:text-red-400 flex-shrink-0"
                     >
                       ×
                     </button>
@@ -331,7 +331,7 @@ const CoinGeckoWidget = () => {
           </div>
         ) : (
           <div className="bg-slate-700 rounded-lg overflow-hidden">
-            <div className="max-h-[70vh] md:max-h-96 overflow-y-auto">
+            <div className="max-h-[50vh] sm:max-h-[60vh] md:max-h-96 overflow-y-auto">
               {selectedCoins.length > 0 ? (
                 <gecko-coin-list-widget 
                   key={widgetKey}
@@ -340,7 +340,7 @@ const CoinGeckoWidget = () => {
                   outlined="true" 
                   coin-ids={selectedCoins.join(',')}
                   initial-currency="usd"
-                  height="600"
+                  height="400"
                   width="100%"
                 ></gecko-coin-list-widget>
               ) : (
@@ -357,21 +357,23 @@ const CoinGeckoWidget = () => {
       </div>
 
       {/* Footer */}
-      <div className="mt-4 pt-4 border-t border-slate-600 flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-xs text-slate-400">
-          <span>Data provided by</span>
-          <a
-            href="https://www.coingecko.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center space-x-1 text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            <span>CoinGecko</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-        <div className="text-xs text-slate-500 text-right sm:text-left">
-          Updates every 30 seconds • Widget may take a moment to refresh when coins are changed
+      <div className="mt-4 pt-4 border-t border-slate-600">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+          <div className="flex items-center space-x-2 text-xs text-slate-400">
+            <span>Data provided by</span>
+            <a
+              href="https://www.coingecko.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center space-x-1 text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              <span>CoinGecko</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="text-xs text-slate-500 text-left sm:text-right">
+            Updates every 30 seconds • Widget may take a moment to refresh when coins are changed
+          </div>
         </div>
       </div>
     </div>

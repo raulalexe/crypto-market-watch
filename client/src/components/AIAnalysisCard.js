@@ -336,24 +336,26 @@ const AIAnalysisCard = ({ data }) => {
                     className="p-4 cursor-pointer"
                     onClick={() => toggleTimeframe(key)}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                       <div className="flex items-center space-x-3">
                         {getTimeframeIcon(key)}
                         <span className="text-white font-medium">{getTimeframeLabel(key)}</span>
                       </div>
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center justify-between sm:justify-end space-x-3">
                         <div className="flex items-center space-x-2">
                           {getDirectionIcon(timeframeData.market_direction)}
                           <span className={`font-medium ${getDirectionColor(timeframeData.market_direction)}`}>
                             {timeframeData.market_direction}
                           </span>
                         </div>
-                        <span className={`text-sm ${getConfidenceColor(timeframeData.confidence)}`}>
-                          {timeframeData.confidence}%
-                        </span>
-                        <button className="text-slate-400 hover:text-white transition-colors">
-                          {expandedTimeframes[key] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-sm ${getConfidenceColor(timeframeData.confidence)}`}>
+                            {timeframeData.confidence}%
+                          </span>
+                          <button className="text-slate-400 hover:text-white transition-colors">
+                            {expandedTimeframes[key] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -379,10 +381,12 @@ const AIAnalysisCard = ({ data }) => {
                           {/* Venice AI Prediction */}
                           {data.providers?.venice?.[`${key}_term`] && (
                             <div className="bg-slate-600 rounded-lg p-3">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <Zap className="w-4 h-4 text-blue-400" />
-                                <span className="text-sm font-medium text-white">Venice AI</span>
-                                <div className="flex items-center space-x-1 ml-auto">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0 mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <Zap className="w-4 h-4 text-blue-400" />
+                                  <span className="text-sm font-medium text-white">Venice AI</span>
+                                </div>
+                                <div className="flex items-center space-x-1">
                                   {getDirectionIcon(data.providers.venice[`${key}_term`].market_direction)}
                                   <span className={`text-sm font-medium ${getDirectionColor(data.providers.venice[`${key}_term`].market_direction)}`}>
                                     {data.providers.venice[`${key}_term`].market_direction}
@@ -403,10 +407,12 @@ const AIAnalysisCard = ({ data }) => {
                           {/* Groq Prediction */}
                           {data.providers?.groq?.[`${key}_term`] && (
                             <div className="bg-slate-600 rounded-lg p-3">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <Zap className="w-4 h-4 text-purple-400" />
-                                <span className="text-sm font-medium text-white">Groq</span>
-                                <div className="flex items-center space-x-1 ml-auto">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0 mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <Zap className="w-4 h-4 text-purple-400" />
+                                  <span className="text-sm font-medium text-white">Groq</span>
+                                </div>
+                                <div className="flex items-center space-x-1">
                                   {getDirectionIcon(data.providers.groq[`${key}_term`].market_direction)}
                                   <span className={`text-sm font-medium ${getDirectionColor(data.providers.groq[`${key}_term`].market_direction)}`}>
                                     {data.providers.groq[`${key}_term`].market_direction}
@@ -427,10 +433,12 @@ const AIAnalysisCard = ({ data }) => {
                           {/* Hugging Face Prediction */}
                           {data.providers?.huggingface?.[`${key}_term`] && (
                             <div className="bg-slate-600 rounded-lg p-3">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <Brain className="w-4 h-4 text-green-400" />
-                                <span className="text-sm font-medium text-white">Hugging Face</span>
-                                <div className="flex items-center space-x-1 ml-auto">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0 mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <Brain className="w-4 h-4 text-green-400" />
+                                  <span className="text-sm font-medium text-white">Hugging Face</span>
+                                </div>
+                                <div className="flex items-center space-x-1">
                                   {getDirectionIcon(data.providers.huggingface[`${key}_term`].market_direction)}
                                   <span className={`text-sm font-medium ${getDirectionColor(data.providers.huggingface[`${key}_term`].market_direction)}`}>
                                     {data.providers.huggingface[`${key}_term`].market_direction}

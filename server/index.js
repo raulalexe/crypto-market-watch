@@ -1505,24 +1505,6 @@ const getDataForType = async (type, limit) => {
   const { getMarketData, getCryptoPrices, getLatestFearGreedIndex, getTrendingNarratives, getLatestAIAnalysis } = require('./database');
   
   switch (type) {
-    case 'crypto_prices':
-      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-      const cryptoData = [];
-      for (const symbol of cryptoSymbols) {
-        const prices = await getCryptoPrices(symbol, Math.ceil(limit / cryptoSymbols.length));
-        if (prices && prices.length > 0) {
-          cryptoData.push(...prices.map(price => ({
-            timestamp: price.timestamp,
-            symbol: price.symbol,
-            price: price.price,
-            volume_24h: price.volume_24h,
-            market_cap: price.market_cap,
-            change_24h: price.change_24h
-          })));
-        }
-      }
-      return cryptoData;
-      
     case 'market_data':
       const marketTypes = ['EQUITY_INDEX', 'DXY', 'TREASURY_YIELD', 'VOLATILITY_INDEX', 'ENERGY_PRICE'];
       const marketData = [];
@@ -1609,22 +1591,7 @@ app.post('/api/exports/create', authenticateToken, requireSubscription('premium'
     const limit = getLimit(dateRange);
     
     // Fetch data based on type
-    if (type === 'crypto_prices') {
-      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-      for (const symbol of cryptoSymbols) {
-        const prices = await getCryptoPrices(symbol, Math.ceil(limit / cryptoSymbols.length));
-        if (prices && prices.length > 0) {
-          data.push(...prices.map(price => ({
-            timestamp: price.timestamp,
-            symbol: price.symbol,
-            price: price.price,
-            volume_24h: price.volume_24h,
-            market_cap: price.market_cap,
-            change_24h: price.change_24h
-          })));
-        }
-      }
-    } else if (type === 'market_data') {
+    if (type === 'market_data') {
       const marketTypes = ['EQUITY_INDEX', 'DXY', 'TREASURY_YIELD', 'VOLATILITY_INDEX', 'ENERGY_PRICE'];
       for (const marketType of marketTypes) {
         const marketDataItems = await getMarketData(marketType, Math.ceil(limit / marketTypes.length));
@@ -2214,22 +2181,42 @@ app.post('/api/alerts/thresholds', authenticateToken, requireSubscription('pro')
 // Get correlation data for advanced analytics
 app.get('/api/correlation', async (req, res) => {
   try {
-    const { getCryptoPrices } = require('./database');
-    const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
+    const { getMarketData } = require('./database');
+    const marketSymbols = [
+      { symbol: 'SP500', dataType: 'EQUITY_INDEX' },
+      { symbol: 'NASDAQ', dataType: 'EQUITY_INDEX' },
+      { symbol: 'DXY', dataType: 'DXY' },
+      { symbol: 'VIX', dataType: 'VOLATILITY_INDEX' },
+      { symbol: '10Y', dataType: 'TREASURY_YIELD' },
+      { symbol: '2Y', dataType: 'TREASURY_YIELD' }
+    ];
     const correlationData = {};
 
-    // Calculate correlation matrix for crypto assets
-    for (let i = 0; i < cryptoSymbols.length; i++) {
-      for (let j = i + 1; j < cryptoSymbols.length; j++) {
-        const symbol1 = cryptoSymbols[i];
-        const symbol2 = cryptoSymbols[j];
+    // Calculate correlation matrix for market assets
+    for (let i = 0; i < marketSymbols.length; i++) {
+      for (let j = i + 1; j < marketSymbols.length; j++) {
+        const symbol1 = marketSymbols[i];
+        const symbol2 = marketSymbols[j];
         
-        const prices1 = await getCryptoPrices(symbol1, 30);
-        const prices2 = await getCryptoPrices(symbol2, 30);
+        const data1 = await getMarketData(symbol1.dataType, 30);
+        const data2 = await getMarketData(symbol2.dataType, 30);
         
-        if (prices1 && prices2 && prices1.length > 0 && prices2.length > 0) {
-          const correlation = calculateCorrelation(prices1, prices2);
-          correlationData[`${symbol1}_${symbol2}`] = correlation;
+        if (data1 && data2 && data1.length > 0 && data2.length > 0) {
+          // Filter data to match symbols and get values
+          const prices1 = data1
+            .filter(item => item.symbol === symbol1.symbol)
+            .map(item => ({ price: item.value, timestamp: item.timestamp }))
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            
+          const prices2 = data2
+            .filter(item => item.symbol === symbol2.symbol)
+            .map(item => ({ price: item.value, timestamp: item.timestamp }))
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          
+          if (prices1.length > 0 && prices2.length > 0) {
+            const correlation = calculateCorrelation(prices1, prices2);
+            correlationData[`${symbol1.symbol}_${symbol2.symbol}`] = correlation;
+          }
         }
       }
     }
@@ -2519,7 +2506,6 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
     const [
       marketData,
       analysis,
-      cryptoPrices,
       fearGreed,
       narratives,
       backtestMetrics,
@@ -2527,27 +2513,6 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
     ] = await Promise.all([
       dataCollector.getMarketDataSummary(),
       aiAnalyzer.getAnalysisSummary(),
-      (async () => {
-        const { getCryptoPrices } = require('./database');
-        const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-        const prices = [];
-        for (const symbol of cryptoSymbols) {
-          const data = await getCryptoPrices(symbol, 1);
-          if (data && data.length > 0) {
-            // Convert to array format that frontend expects
-            prices.push({
-              symbol: symbol,
-              name: symbol, // You can add proper names if needed
-              price: parseFloat(data[0].price),
-              volume_24h: parseFloat(data[0].volume_24h),
-              market_cap: parseFloat(data[0].market_cap),
-              change_24h: parseFloat(data[0].change_24h),
-              timestamp: data[0].timestamp
-            });
-          }
-        }
-        return prices;
-      })(),
       (async () => {
         const { getLatestFearGreedIndex } = require('./database');
         return await getLatestFearGreedIndex();
@@ -2580,7 +2545,6 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
     const dashboardData = {
       marketData,
       aiAnalysis: analysis,
-      cryptoPrices,
       fearGreed,
       trendingNarratives: narratives,
       backtestResults: backtestMetrics,

@@ -179,7 +179,7 @@ const UpcomingEventsCard = ({ events }) => {
             // Calendar day diff to avoid off-by-one due to hours/timezone
             const startNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const startEvent = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
-            const daysUntil = Math.max(0, Math.round((startEvent - startNow) / (1000 * 60 * 60 * 24)));
+            const daysUntil = Math.max(0, Math.floor((startEvent - startNow) / (1000 * 60 * 60 * 24)));
             const timeUntil = Math.max(0, Math.ceil((eventDate - now) / (1000 * 60)));
 
             return (
@@ -189,26 +189,26 @@ const UpcomingEventsCard = ({ events }) => {
                     <div className="mt-1">
                       {getEventIcon(event.category)}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h5 className="text-sm font-medium text-white">{event.title}</h5>
-                        <span className={`text-xs px-2 py-1 rounded-full ${getImpactColor(event.impact)}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-1 sm:space-y-0 mb-1">
+                        <h5 className="text-sm font-medium text-white break-words">{event.title}</h5>
+                        <span className={`text-xs px-2 py-1 rounded-full ${getImpactColor(event.impact)} self-start`}>
                           {event.impact.toUpperCase()}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300 mb-2">{event.description}</p>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                      <p className="text-xs text-slate-300 mb-2 break-words">{event.description}</p>
+                      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3 text-xs text-slate-400">
                         <div className="flex items-center space-x-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{eventDate.toLocaleDateString()}</span>
+                          <Calendar className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{eventDate.toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{eventDate.toLocaleTimeString()}</span>
+                          <Clock className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{eventDate.toLocaleTimeString()}</span>
                         </div>
                         <div className="flex items-center space-x-1">
                           <span>•</span>
-                          <span>{getDaysUntilText(daysUntil)}</span>
+                          <span className="truncate">{getDaysUntilText(daysUntil)}</span>
                         </div>
                       </div>
                     </div>

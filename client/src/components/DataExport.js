@@ -12,7 +12,7 @@ const DataExport = () => {
   const [exporting, setExporting] = useState(false);
   const [alert, setAlert] = useState(null);
   const [formData, setFormData] = useState({
-    dataType: 'crypto_prices',
+    dataType: 'market_data',
     dateRange: '7d',
     format: 'json'
   });

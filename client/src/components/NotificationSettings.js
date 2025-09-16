@@ -497,12 +497,12 @@ const NotificationSettings = () => {
                       className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <div className={`flex items-center space-x-2 ${!channel.enabled ? 'opacity-50' : ''}`}>
-                      <div className="text-slate-400">{channel.icon}</div>
-                      <div>
+                      <div className="text-slate-400 flex-shrink-0">{channel.icon}</div>
+                      <div className="min-w-0 flex-1">
                         <div className="text-white font-medium">{channel.label}</div>
-                        <div className="text-slate-400 text-sm">{channel.description}</div>
+                        <div className="text-slate-400 text-sm break-words">{channel.description}</div>
                         {!channel.enabled && (
-                          <div className="text-red-400 text-xs">⚠️ Enable {channel.label.toLowerCase()} notifications above first</div>
+                          <div className="text-red-400 text-xs break-words">⚠️ Enable {channel.label.toLowerCase()} notifications above first</div>
                         )}
                       </div>
                     </div>
@@ -544,9 +544,9 @@ const NotificationSettings = () => {
                       }}
                       className="mt-1 text-blue-600 focus:ring-blue-500"
                     />
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="text-white font-medium">{option.label}</div>
-                      <div className="text-slate-400 text-sm">{option.description}</div>
+                      <div className="text-slate-400 text-sm break-words">{option.description}</div>
                     </div>
                   </label>
                 ))}
@@ -568,20 +568,20 @@ const NotificationSettings = () => {
       <div className="mt-4 p-3 bg-slate-700/30 rounded-lg">
         <h4 className="text-sm font-medium text-white mb-2">How to enable notifications:</h4>
         <ul className="text-xs text-slate-400 space-y-1">
-          <li>• <strong>Email:</strong> Requires valid email address in your account</li>
-          <li>• <strong>Push:</strong> Click the toggle and allow browser notifications when prompted</li>
-          <li>• <strong>Telegram:</strong> Contact admin to add your Telegram chat ID</li>
-          <li>• <strong>Events:</strong> Configure when and which market events to be notified about</li>
-          <li>• <strong>Auto-save:</strong> All changes are automatically saved when you toggle settings</li>
+          <li className="break-words">• <strong>Email:</strong> Requires valid email address in your account</li>
+          <li className="break-words">• <strong>Push:</strong> Click the toggle and allow browser notifications when prompted</li>
+          <li className="break-words">• <strong>Telegram:</strong> Contact admin to add your Telegram chat ID</li>
+          <li className="break-words">• <strong>Events:</strong> Configure when and which market events to be notified about</li>
+          <li className="break-words">• <strong>Auto-save:</strong> All changes are automatically saved when you toggle settings</li>
         </ul>
         <div className="mt-3 pt-3 border-t border-slate-600">
           <h5 className="text-sm font-medium text-white mb-1">Event Notification Settings:</h5>
           <ul className="text-xs text-slate-400 space-y-1">
-            <li>• <strong>Windows:</strong> Select multiple days (1-7) before events to receive notifications</li>
-            <li>• <strong>Channels:</strong> Choose which notification methods to use (email, push, telegram)</li>
-            <li>• <strong>Impact Filter:</strong> Select which event types to be notified about</li>
-            <li>• <strong>High Impact:</strong> FOMC meetings, CPI releases, Bitcoin halving, SEC updates</li>
-            <li>• <strong>Medium Impact:</strong> Fed speeches, Ethereum upgrades, GDP releases</li>
+            <li className="break-words">• <strong>Windows:</strong> Select multiple days (1-7) before events to receive notifications</li>
+            <li className="break-words">• <strong>Channels:</strong> Choose which notification methods to use (email, push, telegram)</li>
+            <li className="break-words">• <strong>Impact Filter:</strong> Select which event types to be notified about</li>
+            <li className="break-words">• <strong>High Impact:</strong> FOMC meetings, CPI releases, Bitcoin halving, SEC updates</li>
+            <li className="break-words">• <strong>Medium Impact:</strong> Fed speeches, Ethereum upgrades, GDP releases</li>
           </ul>
         </div>
       </div>

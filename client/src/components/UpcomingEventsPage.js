@@ -196,7 +196,7 @@ const UpcomingEventsPage = () => {
     // Use calendar-day difference to avoid off-by-one issues from hours/timezones
     const startNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startEvent = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
-    const diffDays = Math.round((startEvent - startNow) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor((startEvent - startNow) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) return 'Past';
     if (diffDays === 0) return 'Today';
@@ -582,89 +582,88 @@ const UpcomingEventsPage = () => {
             filteredEvents.map((event, index) => (
               <div 
                 key={index} 
-                className="bg-slate-800 rounded-lg p-6 border border-slate-700"
+                className="bg-slate-800 rounded-lg p-4 sm:p-6 border border-slate-700"
               >
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4 space-y-3 sm:space-y-0">
-                      <div className="flex-shrink-0">
-                        <div className={`p-2 rounded-lg ${getImpactColor(event?.impact || 'medium')}`}>
-                          {getEventIcon(event?.category || 'other')}
-                        </div>
+                <div className="flex flex-col space-y-4">
+                  {/* Header section with icon and title */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4 space-y-3 sm:space-y-0">
+                    <div className="flex-shrink-0 mx-auto sm:mx-0">
+                      <div className={`p-2 rounded-lg ${getImpactColor(event?.impact || 'medium')}`}>
+                        {getEventIcon(event?.category || 'other')}
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
+                      <h3 className="text-lg font-semibold text-white mb-2">{event?.title || 'Untitled Event'}</h3>
+                      
+                      {/* Badges - stack on mobile, inline on larger screens */}
+                      <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-2 mb-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')}`}>
+                          {getImpactLabel(event?.impact || 'medium')}
+                        </span>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300">
+                          {getCategoryLabel(event?.category || 'other')}
+                        </span>
+                        {event?.daysUntil === 3 && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-900/20 text-orange-400 border border-orange-500/30 flex items-center space-x-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            <span>Notification Sent</span>
+                          </span>
+                        )}
+                        {event?.ignored && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900/20 text-gray-400 border border-gray-500/30 flex items-center space-x-1">
+                            <EyeOff className="w-3 h-3" />
+                            <span>Ignored</span>
+                          </span>
+                        )}
                       </div>
                       
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-2 sm:justify-start justify-center text-center sm:text-left">
-                          <h3 className="text-lg font-semibold text-white">{event?.title || 'Untitled Event'}</h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')}`}>
-                            {getImpactLabel(event?.impact || 'medium')}
-                          </span>
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300">
-                            {getCategoryLabel(event?.category || 'other')}
-                          </span>
-                          {event?.daysUntil === 3 && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-900/20 text-orange-400 border border-orange-500/30 flex items-center space-x-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              <span>Notification Sent</span>
-                            </span>
-                          )}
-                          {event?.ignored && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900/20 text-gray-400 border border-gray-500/30 flex items-center space-x-1">
-                              <EyeOff className="w-3 h-3" />
-                              <span>Ignored</span>
-                            </span>
-                          )}
-                        </div>
-                        
-                        <p className="text-slate-400 mb-3 text-center sm:text-left">{event?.description || 'No description available'}</p>
+                      <p className="text-slate-400 mb-3">{event?.description || 'No description available'}</p>
 
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 justify-center sm:justify-start">
-                          <div className="flex items-center space-x-1">
-                            <Info className="w-4 h-4" />
-                            <span>{event?.source || 'Unknown source'}</span>
-                          </div>
-                        </div>
+                      <div className="flex items-center justify-center sm:justify-start space-x-1 text-sm text-slate-500">
+                        <Info className="w-4 h-4" />
+                        <span>{event?.source || 'Unknown source'}</span>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="mt-4 lg:mt-0 lg:ml-6">
-                    <div className="text-center lg:text-right">
-                      <div className="text-lg font-semibold text-white">
-                        {event?.date ? new Date(event.date).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric'
-                        }) : 'Date not available'}
-                      </div>
-                      <div className="text-sm text-slate-400">
-                        {event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
-                          hour: '2-digit', 
-                          minute: '2-digit',
-                          timeZoneName: 'short'
-                        }) : ''}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-1">
-                        {event?.source === 'BLS' || event?.source === 'Bureau of Labor Statistics' ? 'Eastern Time' : 
-                         event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
-                           timeZoneName: 'long'
-                         }) : ''}
-                      </div>
-                      <div className="text-sm text-crypto-blue font-medium mt-1">
-                        {event?.timeRemaining ? (
-                          <span className="flex items-center space-x-1">
-                            <Clock className="w-4 h-4" />
-                            <span>{event.timeRemaining}</span>
-                          </span>
-                        ) : (
-                          event?.date ? getDaysUntilText(event.date) : 'Time not available'
-                        )}
-                      </div>
+                  {/* Date and time section - centered on mobile */}
+                  <div className="text-center sm:text-left">
+                    <div className="text-lg font-semibold text-white">
+                      {event?.date ? new Date(event.date).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      }) : 'Date not available'}
+                    </div>
+                    <div className="text-sm text-slate-400">
+                      {event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        timeZoneName: 'short'
+                      }) : ''}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      {event?.source === 'BLS' || event?.source === 'Bureau of Labor Statistics' ? 'Eastern Time' : 
+                       event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
+                         timeZoneName: 'long'
+                       }) : ''}
+                    </div>
+                    <div className="text-sm text-crypto-blue font-medium mt-1">
+                      {event?.timeRemaining ? (
+                        <span className="flex items-center justify-center sm:justify-start space-x-1">
+                          <Clock className="w-4 h-4" />
+                          <span>{event.timeRemaining}</span>
+                        </span>
+                      ) : (
+                        event?.date ? getDaysUntilText(event.date) : 'Time not available'
+                      )}
+                    </div>
                       
-                      {/* Admin Actions */}
-                      {isAdminUser && (
-                        <div className="mt-3 pt-3 border-t border-slate-600">
-                          <div className="flex items-center justify-end space-x-2">
+                  {/* Admin Actions */}
+                  {isAdminUser && (
+                    <div className="mt-3 pt-3 border-t border-slate-600">
+                      <div className="flex items-center justify-center sm:justify-end space-x-2">
                             {event?.ignored ? (
                               <button
                                 onClick={(e) => {

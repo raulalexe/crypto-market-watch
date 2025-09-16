@@ -1077,7 +1077,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gray-900 text-white p-2 sm:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
@@ -1088,21 +1088,22 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
 
         {/* Tabs */}
         <div className="border-b border-gray-700 mb-6">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const IconComponent = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
                     activeTab === tab.id
                       ? 'border-crypto-blue text-crypto-blue'
                       : 'border-transparent text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   <IconComponent className="w-4 h-4" />
-                  {tab.name}
+                  <span className="hidden sm:inline">{tab.name}</span>
+                  <span className="sm:hidden">{tab.name.split(' ')[0]}</span>
                 </button>
               );
             })}
