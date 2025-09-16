@@ -35,9 +35,9 @@ async function resetAllPasswords() {
     console.log('🔐 Resetting all user passwords...');
     
     const users = [
-      { email: 'admin@cryptowatch.com', password: 'admin123' },
-      { email: 'pro@cryptowatch.com', password: 'pro123' },
-      { email: 'free@cryptowatch.com', password: 'free123' }
+      { email: 'admin@crypto-market-watch.xyz', password: 'admin123' },
+      { email: 'pro@crypto-market-watch.xyz', password: 'pro123' },
+      { email: 'free@crypto-market-watch.xyz', password: 'free123' }
     ];
     
     for (const user of users) {
@@ -46,9 +46,9 @@ async function resetAllPasswords() {
     
     console.log('\n🎉 All passwords reset successfully!');
     console.log('\n📋 Updated Login Credentials:');
-    console.log('👑 Admin: admin@cryptowatch.com / admin123');
-    console.log('💎 Pro: pro@cryptowatch.com / pro123');
-    console.log('🆓 Free: free@cryptowatch.com / free123');
+    console.log('👑 Admin: admin@crypto-market-watch.xyz / admin123');
+    console.log('💎 Pro: pro@crypto-market-watch.xyz / pro123');
+    console.log('🆓 Free: free@crypto-market-watch.xyz / free123');
     
   } catch (error) {
     console.error('❌ Error resetting passwords:', error);

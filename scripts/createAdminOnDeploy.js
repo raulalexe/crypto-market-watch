@@ -103,7 +103,7 @@ async function createAdminOnDeploy() {
     console.log('⏭️  Skipping user creation - no user credentials provided');
     console.log('   To create users on deploy, set these environment variables:');
     console.log('   For Admin User:');
-    console.log('   - ADMIN_EMAIL=your-admin@email.com');
+    console.log('   - ADMIN_EMAIL=admin@crypto-market-watch.xyz');
     console.log('   - ADMIN_PASSWORD=your-secure-password');
     console.log('   For PRO User:');
     console.log('   - PRO_EMAIL=your-pro@email.com');

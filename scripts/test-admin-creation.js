@@ -50,7 +50,7 @@ async function testAdminCreation() {
   } else {
     console.log('  ⏭️  Admin creation would be skipped (missing env vars)');
     console.log('  💡 To enable automatic admin creation, set:');
-    console.log('     - ADMIN_EMAIL=your-admin@email.com');
+    console.log('     - ADMIN_EMAIL=admin@crypto-market-watch.xyz');
     console.log('     - ADMIN_PASSWORD=your-secure-password');
   }
   

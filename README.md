@@ -89,7 +89,7 @@ A comprehensive web application for monitoring cryptocurrency markets with AI-po
    FRED_API_KEY=your_fred_api_key
    VENICE_AI_API_KEY=your_venice_ai_key
    BREVO_API_KEY=your_brevo_api_key
-   BREVO_SENDER_EMAIL=noreply@yourdomain.com
+   BREVO_SENDER_EMAIL=noreply@crypto-market-watch.xyz
    ```
 
 4. **Initialize Database**

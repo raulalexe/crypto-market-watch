@@ -19,7 +19,7 @@ VENICE_AI_API_KEY=your_venice_ai_key_here
 
 # Brevo Email Service Configuration
 BREVO_API_KEY=your_brevo_api_key_here
-BREVO_SENDER_EMAIL=noreply@yourdomain.com
+BREVO_SENDER_EMAIL=noreply@crypto-market-watch.xyz
 
 # JWT Configuration
 JWT_SECRET=your_jwt_secret_key_here

@@ -75,7 +75,7 @@ class EmailService {
       const emailData = {
         sender: {
           name: 'Crypto Market Watch',
-          email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+          email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
         },
         to: [
           {

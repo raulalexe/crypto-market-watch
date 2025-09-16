@@ -38,7 +38,7 @@ This guide will help you set up the Telegram bot for Crypto Market Watch to send
 2. **Start a conversation** with BotFather
 3. **Send `/newbot`** command
 4. **Choose a name** for your bot (e.g., "Crypto Market Watch")
-5. **Choose a username** for your bot (must end with 'bot', e.g., "cryptomarketmonitor_bot")
+5. **Choose a username** for your bot (must end with 'bot', e.g., "crypto_market_watch_bot")
 6. **Copy the bot token** that BotFather provides
 
 ### 2. Configure Environment Variables

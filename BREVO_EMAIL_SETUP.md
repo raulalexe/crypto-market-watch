@@ -32,7 +32,7 @@ Brevo is a comprehensive email marketing and transactional email service that pr
 
 1. Go to **Settings** → **Senders & IP**
 2. Click **Add a new sender**
-3. Enter your domain email (e.g., `noreply@yourdomain.com`)
+3. Enter your domain email (e.g., `noreply@crypto-market-watch.xyz`)
 4. Verify your domain by following the DNS setup instructions
 5. Wait for verification (usually takes a few minutes)
 
@@ -43,7 +43,7 @@ Add these variables to your `.env` file:
 ```bash
 # Brevo Email Service Configuration
 BREVO_API_KEY=xkeysib-your-api-key-here
-BREVO_SENDER_EMAIL=noreply@yourdomain.com
+BREVO_SENDER_EMAIL=noreply@crypto-market-watch.xyz
 ```
 
 ### 5. Test the Integration

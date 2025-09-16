@@ -35,12 +35,12 @@ railway status
 2. **Run the Admin Creation Script:**
    ```bash
    # Create an admin user (replace with your desired credentials)
-   node scripts/createProductionAdmin.js admin@yourdomain.com YourSecurePassword123
+   node scripts/createProductionAdmin.js admin@crypto-market-watch.xyz YourSecurePassword123
    ```
 
 3. **Example:**
    ```bash
-   node scripts/createProductionAdmin.js admin@cryptomarket.com MySecurePassword2024!
+   node scripts/createProductionAdmin.js admin@crypto-market-watch.xyz MySecurePassword2024!
    ```
 
 ### **Step 3: Verify Admin User Creation**
@@ -51,7 +51,7 @@ The script will show:
 
 📋 User Details:
    User ID: 1
-   Email: admin@yourdomain.com
+   Email: admin@crypto-market-watch.xyz
    Admin privileges: ✅ Enabled
    Created: 2024-09-01T...
 ```
@@ -129,7 +129,7 @@ TELEGRAM_WEBHOOK_URL=https://your-app-name.railway.app
 
 ```bash
 # Create admin user
-node scripts/createProductionAdmin.js admin@yourdomain.com YourPassword123
+node scripts/createProductionAdmin.js admin@crypto-market-watch.xyz YourPassword123
 
 # Check Railway status
 railway status

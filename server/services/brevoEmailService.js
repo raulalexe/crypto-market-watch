@@ -43,7 +43,7 @@ class BrevoEmailService {
       sendSmtpEmail.textContent = this.generateAlertEmailText(alert, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -98,7 +98,7 @@ class BrevoEmailService {
       sendSmtpEmail.textContent = this.generateConfirmationEmailText(confirmationUrl, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -130,7 +130,7 @@ class BrevoEmailService {
       sendSmtpEmail.textContent = this.generatePasswordResetEmailText(resetUrl, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -160,7 +160,7 @@ class BrevoEmailService {
       sendSmtpEmail.textContent = this.generateWelcomeEmailText(userName, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -190,7 +190,7 @@ class BrevoEmailService {
       sendSmtpEmail.textContent = this.generateUpgradeEmailText(userName, userEmail, planType, subscriptionDetails);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -220,7 +220,7 @@ class BrevoEmailService {
       sendSmtpEmail.textContent = this.generateAccountDeletedByAdminEmailText(userName, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -250,7 +250,7 @@ class BrevoEmailService {
       sendSmtpEmail.textContent = this.generateAccountDeletedByUserEmailText(userName, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -2011,10 +2011,10 @@ Support: ${frontendUrl}/app/support
       testEmail.htmlContent = '<h1>Test Email</h1><p>This is a test email from Brevo.</p>';
       testEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       testEmail.to = [{
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com',
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz',
         name: 'Test'
       }];
 
@@ -2038,7 +2038,7 @@ Support: ${frontendUrl}/app/support
       sendSmtpEmail.textContent = this.generateRenewalReminderEmailText(planType, daysUntilExpiry);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -2068,7 +2068,7 @@ Support: ${frontendUrl}/app/support
       sendSmtpEmail.textContent = this.generateSubscriptionExpiredEmailText(planType);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -2468,7 +2468,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
       sendSmtpEmail.textContent = this.generateEventReminderEmailText({ events: [event] }, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -2644,7 +2644,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
       sendSmtpEmail.textContent = this.generateInflationUpdateEmailText(inflationData, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
         email: userEmail,
@@ -2842,11 +2842,11 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
       sendSmtpEmail.textContent = this.generateContactFormEmailText(contactData);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch Contact Form',
-        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       
       // Send to admin email (you can configure this)
-      const adminEmail = process.env.ADMIN_EMAIL || 'admin@cryptomarketmonitor.com';
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@crypto-market-watch.xyz';
       sendSmtpEmail.to = [{
         email: adminEmail,
         name: 'Admin'

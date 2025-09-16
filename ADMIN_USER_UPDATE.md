@@ -3,7 +3,7 @@
 ## ✅ Admin User Successfully Updated
 
 ### Admin User Details
-- **Email**: `admin@cryptowatch.com`
+- **Email**: `admin@crypto-market-watch.xyz`
 - **User ID**: 2
 - **Admin Status**: ✅ Enabled
 - **Password**: `admin123` (hashed with bcrypt)
@@ -37,7 +37,7 @@ All tests passed successfully:
 
 #### Login Credentials
 ```
-Email: admin@cryptowatch.com
+Email: admin@crypto-market-watch.xyz
 Password: admin123
 ```
 
@@ -64,7 +64,7 @@ Password: admin123
 ### Existing Admin Users
 The database now contains two admin users:
 1. `admin@example.com` (ID: 1) - Original admin user
-2. `admin@cryptowatch.com` (ID: 2) - Newly created admin user
+2. `admin@crypto-market-watch.xyz` (ID: 2) - Newly created admin user
 
 Both users have full admin privileges and access to the admin plan.
 
