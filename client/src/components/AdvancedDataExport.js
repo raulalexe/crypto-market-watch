@@ -18,20 +18,13 @@ const AdvancedDataExport = () => {
   const [exportHistory, setExportHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [selectedDataTypes, setSelectedDataTypes] = useState(['crypto_prices']);
+  const [selectedDataTypes, setSelectedDataTypes] = useState(['market_data']);
   const [dateRange, setDateRange] = useState('7d');
   const [exportFormat, setExportFormat] = useState('csv');
   const [scheduledExports, setScheduledExports] = useState([]);
   const [alert, setAlert] = useState(null);
 
   const dataTypes = [
-    { 
-      id: 'crypto_prices', 
-      label: 'Crypto Prices', 
-      description: 'Historical cryptocurrency price data',
-      icon: BarChart3,
-      available: true
-    },
     { 
       id: 'market_data', 
       label: 'Market Data', 
@@ -175,6 +168,12 @@ const AdvancedDataExport = () => {
         responseType: 'blob',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}` }
       });
+
+      // Check if response has data
+      if (response.data.size === 0) {
+        showAlert('⚠️ Export contains no data. Please try a different date range or data type.', 'warning');
+        return;
+      }
 
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -396,7 +395,7 @@ const AdvancedDataExport = () => {
                     </div>
                   ))
                 )}
-                <div className="flex space-x-2">
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                   <button
                     onClick={() => scheduleExport('daily')}
                     className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"

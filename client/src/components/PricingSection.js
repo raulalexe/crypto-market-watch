@@ -612,8 +612,8 @@ const PricingSection = ({
           </button>
         ) : (
           plan.name === 'Free' ? (
-            <Link
-              to="/app?auth=register"
+            <button
+              onClick={() => setAuthModalOpen && setAuthModalOpen(true)}
               className={`w-full text-center py-3 px-6 rounded-lg font-semibold transition-colors ${
                 plan.popular
                   ? 'bg-crypto-blue text-white hover:bg-blue-600'
@@ -621,7 +621,7 @@ const PricingSection = ({
               }`}
             >
               {plan.cta || 'Get Started Free'}
-            </Link>
+            </button>
           ) : (
             <Link
               to="/app/subscription"

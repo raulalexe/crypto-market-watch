@@ -206,25 +206,25 @@ const CoinGeckoWidget = () => {
 
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
+      {/* Header - Mobile optimized */}
+      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3">
           <h3 className="text-lg font-semibold text-white">Live Crypto Prices</h3>
-          <span className="text-xs bg-green-600 text-white px-2 py-1 rounded">
+          <span className="text-xs bg-green-600 text-white px-2 py-1 rounded w-fit mt-1 sm:mt-0">
             Powered by CoinGecko
           </span>
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={resetToDefault}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-white transition-colors p-2"
             title="Reset to default coins"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-white transition-colors p-2"
           >
             {isExpanded ? '−' : '+'}
           </button>
@@ -246,9 +246,9 @@ const CoinGeckoWidget = () => {
             />
           </div>
 
-          {/* Coin Selection */}
+          {/* Coin Selection - Mobile optimized */}
           <div className="max-h-40 overflow-y-auto">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {filteredCoins.map((coin) => (
                 <button
                   key={coin.id}
@@ -259,22 +259,22 @@ const CoinGeckoWidget = () => {
                       : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
                   }`}
                 >
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium">{coin.symbol}</span>
-                    <span className="text-xs text-slate-400">{coin.name}</span>
+                  <div className="flex items-center space-x-2 min-w-0">
+                    <span className="font-medium flex-shrink-0">{coin.symbol}</span>
+                    <span className="text-xs text-slate-400 truncate">{coin.name}</span>
                   </div>
                   {selectedCoins.includes(coin.id) && (
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                    <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
                   )}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Add Custom Coin */}
+          {/* Add Custom Coin - Mobile optimized */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-300">Add Custom Coin</label>
-            <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
               <input
                 type="text"
                 placeholder="Enter CoinGecko coin ID (e.g., bitcoin, ethereum)"
@@ -285,7 +285,7 @@ const CoinGeckoWidget = () => {
               />
               <button
                 onClick={addCustomCoin}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm flex-shrink-0"
               >
                 Add
               </button>
@@ -356,8 +356,8 @@ const CoinGeckoWidget = () => {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="mt-4 pt-4 border-t border-slate-600 flex items-center justify-between">
+      {/* Footer - Mobile optimized */}
+      <div className="mt-4 pt-4 border-t border-slate-600 flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div className="flex items-center space-x-2 text-xs text-slate-400">
           <span>Data provided by</span>
           <a
@@ -370,7 +370,7 @@ const CoinGeckoWidget = () => {
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500 text-center sm:text-right">
           Updates every 30 seconds • Widget may take a moment to refresh when coins are changed
         </div>
       </div>

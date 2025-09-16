@@ -183,7 +183,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gray-900 text-white p-2 sm:p-4 lg:p-6">
       {/* Header with Subscription Button */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
         <div>

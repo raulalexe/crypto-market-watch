@@ -138,44 +138,56 @@ const Layer1Card = () => {
         <h3 className="text-lg font-semibold text-white">Layer 1 Blockchains</h3>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      {/* Summary Stats - Mobile optimized */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-slate-700 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-slate-300">Total Market Cap</h4>
-            <DollarSign className="w-4 h-4 text-crypto-green" />
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {formatCurrency(data.total_market_cap)}
-          </div>
-          <div className="text-xs text-slate-400">
-            {data.chains.length} chains
+          <div className="flex items-center justify-between sm:flex-col sm:items-start sm:space-y-2 mb-2">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="w-4 h-4 text-crypto-green flex-shrink-0" />
+              <h4 className="text-sm font-medium text-slate-300">Total Market Cap</h4>
+            </div>
+            <div className="text-right sm:text-left">
+              <div className="text-xl lg:text-2xl font-bold text-white">
+                {formatCurrency(data.total_market_cap)}
+              </div>
+              <div className="text-xs text-slate-400">
+                {data.chains.length} chains
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="bg-slate-700 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-slate-300">24h Volume</h4>
-            <BarChart3 className="w-4 h-4 text-crypto-blue" />
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {formatCurrency(data.total_volume_24h)}
-          </div>
-          <div className="text-xs text-slate-400">
-            Combined volume
+          <div className="flex items-center justify-between sm:flex-col sm:items-start sm:space-y-2 mb-2">
+            <div className="flex items-center space-x-2">
+              <BarChart3 className="w-4 h-4 text-crypto-blue flex-shrink-0" />
+              <h4 className="text-sm font-medium text-slate-300">24h Volume</h4>
+            </div>
+            <div className="text-right sm:text-left">
+              <div className="text-xl lg:text-2xl font-bold text-white">
+                {formatCurrency(data.total_volume_24h)}
+              </div>
+              <div className="text-xs text-slate-400">
+                Combined volume
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="bg-slate-700 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-slate-300">Avg 24h Change</h4>
-            {getChangeIcon(data.avg_change_24h)}
-          </div>
-          <div className={`text-2xl font-bold ${getChangeColor(data.avg_change_24h)}`}>
-            {formatChange(data.avg_change_24h)}
-          </div>
-          <div className="text-xs text-slate-400">
-            Market average
+        <div className="bg-slate-700 rounded-lg p-4 sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between sm:flex-col sm:items-start sm:space-y-2 mb-2">
+            <div className="flex items-center space-x-2">
+              {getChangeIcon(data.avg_change_24h)}
+              <h4 className="text-sm font-medium text-slate-300">Avg 24h Change</h4>
+            </div>
+            <div className="text-right sm:text-left">
+              <div className={`text-xl lg:text-2xl font-bold ${getChangeColor(data.avg_change_24h)}`}>
+                {formatChange(data.avg_change_24h)}
+              </div>
+              <div className="text-xs text-slate-400">
+                Market average
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -184,21 +196,21 @@ const Layer1Card = () => {
       <div className="space-y-4">
         {data.chains.map((chain) => (
           <div key={chain.id} className="bg-slate-700 rounded-lg border border-slate-600">
-            {/* Chain Header */}
+            {/* Chain Header - Mobile optimized */}
             <div className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-slate-600 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-slate-600 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-bold text-white">{chain.symbol}</span>
                   </div>
-                  <div>
-                    <h4 className="text-lg font-semibold text-white">{chain.name}</h4>
-                    <p className="text-sm text-slate-400">{chain.narrative}</p>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-lg font-semibold text-white break-words">{chain.name}</h4>
+                    <p className="text-sm text-slate-400 break-words">{chain.narrative}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
+                <div className="flex items-center justify-between sm:justify-end sm:space-x-4">
+                  <div className="text-left sm:text-right">
                     <div className="text-lg font-bold text-white">
                       {formatCurrency(chain.price)}
                     </div>
@@ -208,7 +220,7 @@ const Layer1Card = () => {
                   </div>
                   <button
                     onClick={() => toggleChain(chain.id)}
-                    className="text-slate-400 hover:text-white transition-colors"
+                    className="text-slate-400 hover:text-white transition-colors flex-shrink-0 ml-3"
                   >
                     {expandedChains[chain.id] ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
                   </button>
@@ -219,48 +231,64 @@ const Layer1Card = () => {
             {/* Expandable Details */}
             {expandedChains[chain.id] && (
               <div className="px-4 pb-4 border-t border-slate-600">
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                {/* Metrics Grid - Mobile optimized */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                   <div className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <DollarSign className="w-4 h-4 text-crypto-green" />
-                      <span className="text-xs text-slate-400">Market Cap</span>
-                    </div>
-                    <div className="text-sm font-medium text-white">
-                      {formatCurrency(chain.market_cap)}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {chain.dominance}% dominance
+                    <div className="flex items-center justify-between sm:flex-col sm:items-start">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <DollarSign className="w-4 h-4 text-crypto-green flex-shrink-0" />
+                        <span className="text-xs text-slate-400">Market Cap</span>
+                      </div>
+                      <div className="text-right sm:text-left">
+                        <div className="text-sm font-medium text-white">
+                          {formatCurrency(chain.market_cap)}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {chain.dominance}% dominance
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   <div className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <BarChart3 className="w-4 h-4 text-crypto-blue" />
-                      <span className="text-xs text-slate-400">Volume 24h</span>
-                    </div>
-                    <div className="text-sm font-medium text-white">
-                      {formatCurrency(chain.volume_24h)}
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <Activity className="w-4 h-4 text-crypto-yellow" />
-                      <span className="text-xs text-slate-400">TPS</span>
-                    </div>
-                    <div className="text-sm font-medium text-white">
-                      {typeof chain.tps === 'string' ? parseInt(chain.tps).toLocaleString() : chain.tps.toLocaleString()}
+                    <div className="flex items-center justify-between sm:flex-col sm:items-start">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <BarChart3 className="w-4 h-4 text-crypto-blue flex-shrink-0" />
+                        <span className="text-xs text-slate-400">Volume 24h</span>
+                      </div>
+                      <div className="text-right sm:text-left">
+                        <div className="text-sm font-medium text-white">
+                          {formatCurrency(chain.volume_24h)}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   <div className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <Users className="w-4 h-4 text-crypto-purple" />
-                      <span className="text-xs text-slate-400">Active Addresses</span>
+                    <div className="flex items-center justify-between sm:flex-col sm:items-start">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Activity className="w-4 h-4 text-crypto-yellow flex-shrink-0" />
+                        <span className="text-xs text-slate-400">TPS</span>
+                      </div>
+                      <div className="text-right sm:text-left">
+                        <div className="text-sm font-medium text-white">
+                          {typeof chain.tps === 'string' ? parseInt(chain.tps).toLocaleString() : chain.tps.toLocaleString()}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm font-medium text-white">
-                      {typeof chain.active_addresses === 'string' ? parseInt(chain.active_addresses).toLocaleString() : chain.active_addresses.toLocaleString()}
+                  </div>
+
+                  <div className="bg-slate-800 rounded-lg p-3">
+                    <div className="flex items-center justify-between sm:flex-col sm:items-start">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Users className="w-4 h-4 text-crypto-purple flex-shrink-0" />
+                        <span className="text-xs text-slate-400">Active Addresses</span>
+                      </div>
+                      <div className="text-right sm:text-left">
+                        <div className="text-sm font-medium text-white">
+                          {typeof chain.active_addresses === 'string' ? parseInt(chain.active_addresses).toLocaleString() : chain.active_addresses.toLocaleString()}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

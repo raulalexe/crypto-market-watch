@@ -129,7 +129,7 @@ const AIAnalysisCard = ({ data }) => {
               <Users className="w-5 h-5 text-crypto-blue" />
               <span className="text-slate-400 font-medium">AI Market Predictions</span>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {data.providers.venice && (
                 <div className="bg-slate-600 rounded-lg p-4">
                   <div className="flex items-center space-x-2 mb-3">

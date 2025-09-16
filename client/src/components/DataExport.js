@@ -12,7 +12,7 @@ const DataExport = () => {
   const [exporting, setExporting] = useState(false);
   const [alert, setAlert] = useState(null);
   const [formData, setFormData] = useState({
-    dataType: 'crypto_prices',
+    dataType: 'market_data',
     dateRange: '7d',
     format: 'json'
   });
@@ -86,6 +86,12 @@ const DataExport = () => {
       });
       
       console.log('✅ Export created successfully');
+      
+      // Check if response has data
+      if (response.data.size === 0) {
+        showAlert('⚠️ Export contains no data. Please try a different date range or data type.', 'warning');
+        return;
+      }
       
       // Create download link
       const url = window.URL.createObjectURL(response.data);
@@ -212,7 +218,6 @@ const DataExport = () => {
                   onChange={handleInputChange}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
                 >
-                  <option value="crypto_prices">Crypto Prices</option>
                   <option value="market_data">Market Data</option>
                   <option value="fear_greed">Fear & Greed Index</option>
                   <option value="narratives">Trending Narratives</option>

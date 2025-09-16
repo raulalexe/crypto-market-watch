@@ -284,7 +284,7 @@ const AdvancedAnalytics = ({ userData }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6">
+    <div className="min-h-screen bg-slate-900 text-white p-2 sm:p-4 lg:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row items-center justify-between mb-8">
@@ -378,67 +378,14 @@ const AdvancedAnalytics = ({ userData }) => {
           {/* Correlation Matrix */}
           <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
             <h3 className="text-xl font-semibold text-white mb-4">Asset Correlation</h3>
-            {analyticsData?.correlationData ? (
-              <div className="h-64 overflow-auto">
-                <div className="grid grid-cols-6 gap-2 text-xs">
-                  {/* Header row */}
-                  <div className="font-semibold text-slate-300 p-2"></div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">BTC</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">ETH</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">SOL</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">SUI</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">XRP</div>
-                  
-                  {/* BTC row */}
-                  <div className="font-semibold text-slate-300 p-2">BTC</div>
-                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_ETH?.toFixed(2) || '0.85'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SOL?.toFixed(2) || '0.78'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SUI?.toFixed(2) || '0.72'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_XRP?.toFixed(2) || '0.65'}</div>
-                  
-                  {/* ETH row */}
-                  <div className="font-semibold text-slate-300 p-2">ETH</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_ETH?.toFixed(2) || '0.85'}</div>
-                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SOL?.toFixed(2) || '0.82'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SUI?.toFixed(2) || '0.75'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_XRP?.toFixed(2) || '0.68'}</div>
-                  
-                  {/* SOL row */}
-                  <div className="font-semibold text-slate-300 p-2">SOL</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SOL?.toFixed(2) || '0.78'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SOL?.toFixed(2) || '0.82'}</div>
-                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_SUI?.toFixed(2) || '0.88'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_XRP?.toFixed(2) || '0.71'}</div>
-                  
-                  {/* SUI row */}
-                  <div className="font-semibold text-slate-300 p-2">SUI</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SUI?.toFixed(2) || '0.72'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SUI?.toFixed(2) || '0.75'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_SUI?.toFixed(2) || '0.88'}</div>
-                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SUI_XRP?.toFixed(2) || '0.69'}</div>
-                  
-                  {/* XRP row */}
-                  <div className="font-semibold text-slate-300 p-2">XRP</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_XRP?.toFixed(2) || '0.65'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_XRP?.toFixed(2) || '0.68'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_XRP?.toFixed(2) || '0.71'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SUI_XRP?.toFixed(2) || '0.69'}</div>
-                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                </div>
+            <div className="h-64 flex items-center justify-center text-slate-400">
+              <div className="text-center">
+                <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="mb-2">Correlation data temporarily unavailable</p>
+                <p className="text-xs text-slate-500">We're working on integrating a new data source for more accurate correlations</p>
               </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-slate-400">
-                <div className="text-center">
-                  <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Correlation data loading...</p>
-                </div>
-              </div>
-            )}
-            <p className="text-sm text-slate-400 mt-2">Asset correlation matrix (1.00 = perfect correlation)</p>
+            </div>
+            <p className="text-sm text-slate-400 mt-2">Asset correlation matrix will show relationships between different cryptocurrencies</p>
           </div>
         </div>
 
@@ -451,7 +398,7 @@ const AdvancedAnalytics = ({ userData }) => {
                 <TrendingUp className="w-6 h-6 text-crypto-green" />
               </div>
               <div className="text-3xl font-bold text-crypto-green">
-                {advancedMetrics?.bitcoinDominance?.value ? `${parseFloat(advancedMetrics.bitcoinDominance.value).toFixed(2)}%` : 'N/A'}
+                {advancedMetrics?.bitcoinDominance?.value ? `${safeToFixed(advancedMetrics.bitcoinDominance.value, 1)}%` : 'N/A'}
               </div>
               <p className="text-sm text-slate-400 mt-2">BTC market share</p>
             </div>

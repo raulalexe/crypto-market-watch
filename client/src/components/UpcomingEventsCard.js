@@ -111,8 +111,8 @@ const UpcomingEventsCard = ({ events }) => {
         </button>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      {/* Summary - Mobile optimized */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
         <button 
           onClick={() => handleFilterClick('high')}
           className={`rounded-lg p-3 transition-all cursor-pointer text-left w-full ${
@@ -121,12 +121,16 @@ const UpcomingEventsCard = ({ events }) => {
               : 'bg-red-900/20 border border-red-500/30 hover:bg-red-900/30 hover:border-red-400'
           }`}
         >
-          <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-red-400" />
-            <span className="text-sm text-red-400 font-medium">High Impact</span>
+          <div className="flex items-center justify-between sm:flex-col sm:items-start">
+            <div className="flex items-center space-x-2 sm:mb-2">
+              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <span className="text-sm text-red-400 font-medium">High Impact</span>
+            </div>
+            <div className="text-right sm:text-left">
+              <div className="text-xl sm:text-2xl font-bold text-white">{highImpactEvents.length}</div>
+              <div className="text-xs text-red-300">Events</div>
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white mt-1">{highImpactEvents.length}</div>
-          <div className="text-xs text-red-300">Events</div>
         </button>
         
         <button 
@@ -137,28 +141,36 @@ const UpcomingEventsCard = ({ events }) => {
               : 'bg-yellow-900/20 border border-yellow-500/30 hover:bg-yellow-900/30 hover:border-yellow-400'
           }`}
         >
-          <div className="flex items-center space-x-2">
-            <Clock className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm text-yellow-400 font-medium">Medium Impact</span>
+          <div className="flex items-center justify-between sm:flex-col sm:items-start">
+            <div className="flex items-center space-x-2 sm:mb-2">
+              <Clock className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+              <span className="text-sm text-yellow-400 font-medium">Medium Impact</span>
+            </div>
+            <div className="text-right sm:text-left">
+              <div className="text-xl sm:text-2xl font-bold text-white">{mediumImpactEvents.length}</div>
+              <div className="text-xs text-yellow-300">Events</div>
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white mt-1">{mediumImpactEvents.length}</div>
-          <div className="text-xs text-yellow-300">Events</div>
         </button>
         
         <button 
           onClick={() => handleFilterClick('all')}
-          className={`rounded-lg p-3 transition-all cursor-pointer text-left w-full ${
+          className={`rounded-lg p-3 transition-all cursor-pointer text-left w-full sm:col-span-2 lg:col-span-1 ${
             activeFilter === 'all' 
               ? 'bg-slate-700/40 border-slate-400' 
               : 'bg-slate-700/20 border border-slate-500/30 hover:bg-slate-700/30 hover:border-slate-400'
           }`}
         >
-          <div className="flex items-center space-x-2">
-            <Calendar className="w-4 h-4 text-slate-400" />
-            <span className="text-sm text-slate-400 font-medium">Total</span>
+          <div className="flex items-center justify-between sm:flex-col sm:items-start">
+            <div className="flex items-center space-x-2 sm:mb-2">
+              <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <span className="text-sm text-slate-400 font-medium">Total</span>
+            </div>
+            <div className="text-right sm:text-left">
+              <div className="text-xl sm:text-2xl font-bold text-white">{upcomingEvents.length}</div>
+              <div className="text-xs text-slate-300">Upcoming</div>
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white mt-1">{upcomingEvents.length}</div>
-          <div className="text-xs text-slate-300">Upcoming</div>
         </button>
       </div>
 
@@ -176,31 +188,34 @@ const UpcomingEventsCard = ({ events }) => {
           {filteredEvents.slice(0, 10).map((event, index) => {
             const eventDate = new Date(event.date);
             const now = new Date();
-            const daysUntil = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+            const daysUntil = Math.floor((eventDate - now) / (1000 * 60 * 60 * 24));
             const timeUntil = Math.ceil((eventDate - now) / (1000 * 60));
 
             return (
               <div key={index} className={`border rounded-lg p-3 ${getImpactColor(event.impact)}`}>
-                <div className="flex items-start justify-between">
+                {/* Mobile-friendly stacked layout */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-3 sm:space-y-0">
                   <div className="flex items-start space-x-3 flex-1">
-                    <div className="mt-1">
+                    <div className="mt-1 flex-shrink-0">
                       {getEventIcon(event.category)}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h5 className="text-sm font-medium text-white">{event.title}</h5>
-                        <span className={`text-xs px-2 py-1 rounded-full ${getImpactColor(event.impact)}`}>
-                          {event.impact.toUpperCase()}
-                        </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-1">
+                        <h5 className="text-sm font-medium text-white break-words">{event.title}</h5>
+                        <div className="flex items-center space-x-2 mt-1 sm:mt-0">
+                          <span className={`text-xs px-2 py-1 rounded-full ${getImpactColor(event.impact)} flex-shrink-0`}>
+                            {event.impact.toUpperCase()}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-300 mb-2">{event.description}</p>
-                      <div className="flex items-center space-x-4 text-xs text-slate-400">
+                      <p className="text-xs text-slate-300 mb-2 break-words">{event.description}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs text-slate-400">
                         <div className="flex items-center space-x-1">
-                          <Calendar className="w-3 h-3" />
+                          <Calendar className="w-3 h-3 flex-shrink-0" />
                           <span>{eventDate.toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <Clock className="w-3 h-3" />
+                          <Clock className="w-3 h-3 flex-shrink-0" />
                           <span>{eventDate.toLocaleTimeString()}</span>
                         </div>
                         <div className="flex items-center space-x-1">
@@ -210,7 +225,7 @@ const UpcomingEventsCard = ({ events }) => {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right flex-shrink-0">
                     <div className="text-xs text-slate-400">
                       {event.category.toUpperCase()}
                     </div>

@@ -397,7 +397,7 @@ const UpcomingEventsPage = () => {
     <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <div className="bg-slate-800 border-b border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
           <div className="flex items-center space-x-3 mb-4">
             <Calendar className="w-8 h-8 text-crypto-blue" />
             <h1 className="text-3xl font-bold text-white">Upcoming Impactful Events</h1>
@@ -409,57 +409,57 @@ const UpcomingEventsPage = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+        {/* Stats Cards - Mobile optimized */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <button 
             onClick={() => handleStatsCardClick('total')}
-            className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-crypto-blue hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
+            className="bg-slate-800 rounded-lg p-4 lg:p-6 border border-slate-700 hover:border-crypto-blue hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
           >
-            <div className="flex items-center space-x-3">
-              <Calendar className="w-6 h-6 text-crypto-blue" />
-              <div>
+            <div className="flex items-center justify-between sm:justify-start sm:space-x-3">
+              <Calendar className="w-6 h-6 text-crypto-blue flex-shrink-0" />
+              <div className="text-right sm:text-left">
                 <p className="text-slate-400 text-sm">Total Events</p>
-                <p className="text-2xl font-bold text-white">{stats.total}</p>
+                <p className="text-xl lg:text-2xl font-bold text-white">{stats.total}</p>
               </div>
             </div>
           </button>
           
           <button 
             onClick={() => handleStatsCardClick('highImpact')}
-            className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-red-400 hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
+            className="bg-slate-800 rounded-lg p-4 lg:p-6 border border-slate-700 hover:border-red-400 hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
           >
-            <div className="flex items-center space-x-3">
-              <Target className="w-6 h-6 text-red-400" />
-              <div>
+            <div className="flex items-center justify-between sm:justify-start sm:space-x-3">
+              <Target className="w-6 h-6 text-red-400 flex-shrink-0" />
+              <div className="text-right sm:text-left">
                 <p className="text-slate-400 text-sm">High Impact</p>
-                <p className="text-2xl font-bold text-white">{stats.highImpact}</p>
+                <p className="text-xl lg:text-2xl font-bold text-white">{stats.highImpact}</p>
               </div>
             </div>
           </button>
           
           <button 
             onClick={() => handleStatsCardClick('thisWeek')}
-            className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-yellow-400 hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
+            className="bg-slate-800 rounded-lg p-4 lg:p-6 border border-slate-700 hover:border-yellow-400 hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
           >
-            <div className="flex items-center space-x-3">
-              <CalendarDays className="w-6 h-6 text-yellow-400" />
-              <div>
+            <div className="flex items-center justify-between sm:justify-start sm:space-x-3">
+              <CalendarDays className="w-6 h-6 text-yellow-400 flex-shrink-0" />
+              <div className="text-right sm:text-left">
                 <p className="text-slate-400 text-sm">This Week</p>
-                <p className="text-2xl font-bold text-white">{stats.thisWeek}</p>
+                <p className="text-xl lg:text-2xl font-bold text-white">{stats.thisWeek}</p>
               </div>
             </div>
           </button>
           
           <button 
             onClick={() => handleStatsCardClick('nextMonth')}
-            className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-green-400 hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
+            className="bg-slate-800 rounded-lg p-4 lg:p-6 border border-slate-700 hover:border-green-400 hover:bg-slate-700 transition-all cursor-pointer text-left w-full"
           >
-            <div className="flex items-center space-x-3">
-              <Clock className="w-6 h-6 text-green-400" />
-              <div>
+            <div className="flex items-center justify-between sm:justify-start sm:space-x-3">
+              <Clock className="w-6 h-6 text-green-400 flex-shrink-0" />
+              <div className="text-right sm:text-left">
                 <p className="text-slate-400 text-sm">Next Month</p>
-                <p className="text-2xl font-bold text-white">{stats.nextMonth}</p>
+                <p className="text-xl lg:text-2xl font-bold text-white">{stats.nextMonth}</p>
               </div>
             </div>
           </button>
@@ -472,9 +472,9 @@ const UpcomingEventsPage = () => {
             <h2 className="text-lg font-semibold text-white">Filters & Search</h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Search */}
-            <div className="relative">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Search - Full width on mobile */}
+            <div className="relative sm:col-span-2 lg:col-span-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
@@ -582,77 +582,74 @@ const UpcomingEventsPage = () => {
             filteredEvents.map((event, index) => (
               <div 
                 key={index} 
-                className="bg-slate-800 rounded-lg p-6 border border-slate-700"
+                className="bg-slate-800 rounded-lg p-4 lg:p-6 border border-slate-700"
               >
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-start space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className={`p-2 rounded-lg ${getImpactColor(event?.impact || 'medium')}`}>
-                          {getEventIcon(event?.category || 'other')}
-                        </div>
+                <div className="flex flex-col space-y-4">
+                  {/* Top section with icon, title and badges */}
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <div className={`p-2 rounded-lg ${getImpactColor(event?.impact || 'medium')}`}>
+                        {getEventIcon(event?.category || 'other')}
                       </div>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-white mb-2 break-words">{event?.title || 'Untitled Event'}</h3>
                       
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">{event?.title || 'Untitled Event'}</h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')}`}>
-                            {getImpactLabel(event?.impact || 'medium')}
+                      {/* Badges - stacked on mobile */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')} flex-shrink-0`}>
+                          {getImpactLabel(event?.impact || 'medium')}
+                        </span>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300 flex-shrink-0">
+                          {getCategoryLabel(event?.category || 'other')}
+                        </span>
+                        {event?.daysUntil === 3 && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-900/20 text-orange-400 border border-orange-500/30 flex items-center space-x-1 flex-shrink-0">
+                            <AlertTriangle className="w-3 h-3" />
+                            <span>Notification Sent</span>
                           </span>
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300">
-                            {getCategoryLabel(event?.category || 'other')}
+                        )}
+                        {event?.ignored && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900/20 text-gray-400 border border-gray-500/30 flex items-center space-x-1 flex-shrink-0">
+                            <EyeOff className="w-3 h-3" />
+                            <span>Ignored</span>
                           </span>
-                          {event?.daysUntil === 3 && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-900/20 text-orange-400 border border-orange-500/30 flex items-center space-x-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              <span>Notification Sent</span>
-                            </span>
-                          )}
-                          {event?.ignored && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900/20 text-gray-400 border border-gray-500/30 flex items-center space-x-1">
-                              <EyeOff className="w-3 h-3" />
-                              <span>Ignored</span>
-                            </span>
-                          )}
-                        </div>
-                        
-                        <p className="text-slate-400 mb-3">{event?.description || 'No description available'}</p>
-                        
-                        <div className="flex items-center space-x-4 text-sm text-slate-500">
-                          <div className="flex items-center space-x-1">
-                            <Info className="w-4 h-4" />
-                            <span>{event?.source || 'Unknown source'}</span>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
                   
-                  <div className="mt-4 lg:mt-0 lg:ml-6">
-                    <div className="text-right">
-                      <div className="text-lg font-semibold text-white">
+                  {/* Description */}
+                  <p className="text-slate-400 text-sm break-words">{event?.description || 'No description available'}</p>
+                  
+                  {/* Date and time info - centered on mobile */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 pt-3 border-t border-slate-700">
+                    <div className="space-y-2">
+                      <div className="text-lg font-semibold text-white text-center sm:text-left">
                         {event?.date ? new Date(event.date).toLocaleDateString('en-US', { 
                           month: 'short', 
                           day: 'numeric',
                           year: 'numeric'
                         }) : 'Date not available'}
                       </div>
-                      <div className="text-sm text-slate-400">
+                      <div className="text-sm text-slate-400 text-center sm:text-left">
                         {event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
                           hour: '2-digit', 
                           minute: '2-digit',
                           timeZoneName: 'short'
                         }) : ''}
                       </div>
-                      <div className="text-xs text-slate-500 mt-1">
-                        {event?.source === 'BLS' || event?.source === 'Bureau of Labor Statistics' ? 'Eastern Time' : 
-                         event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
-                           timeZoneName: 'long'
-                         }) : ''}
+                      <div className="flex items-center justify-center sm:justify-start space-x-1 text-xs text-slate-500">
+                        <Info className="w-3 h-3 flex-shrink-0" />
+                        <span>{event?.source || 'Unknown source'}</span>
                       </div>
-                      <div className="text-sm text-crypto-blue font-medium mt-1">
+                    </div>
+                    
+                    <div className="text-center sm:text-right">
+                      <div className="text-sm text-crypto-blue font-medium">
                         {event?.timeRemaining ? (
-                          <span className="flex items-center space-x-1">
+                          <span className="flex items-center justify-center sm:justify-end space-x-1">
                             <Clock className="w-4 h-4" />
                             <span>{event.timeRemaining}</span>
                           </span>
@@ -664,7 +661,7 @@ const UpcomingEventsPage = () => {
                       {/* Admin Actions */}
                       {isAdminUser && (
                         <div className="mt-3 pt-3 border-t border-slate-600">
-                          <div className="flex items-center justify-end space-x-2">
+                          <div className="flex items-center justify-center sm:justify-end space-x-2">
                             {event?.ignored ? (
                               <button
                                 onClick={(e) => {

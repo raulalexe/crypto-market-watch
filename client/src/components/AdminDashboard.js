@@ -1086,16 +1086,16 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
 
 
 
-        {/* Tabs */}
+        {/* Tabs - Mobile scrollable */}
         <div className="border-b border-gray-700 mb-6">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 overflow-x-auto pb-2">
             {tabs.map((tab) => {
               const IconComponent = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'border-crypto-blue text-crypto-blue'
                       : 'border-transparent text-gray-400 hover:text-gray-300'
