@@ -248,7 +248,7 @@ const CoinGeckoWidget = () => {
 
           {/* Coin Selection */}
           <div className="max-h-40 overflow-y-auto">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {filteredCoins.map((coin) => (
                 <button
                   key={coin.id}

@@ -116,9 +116,11 @@ const MoneySupplyCard = () => {
         </div>
         <button
           onClick={fetchMoneySupplyData}
-          className="text-slate-400 hover:text-white transition-colors"
+          className="flex items-center space-x-2 px-3 py-1 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors"
+          title="Refresh"
         >
           <RefreshCw className="w-4 h-4" />
+          <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
 

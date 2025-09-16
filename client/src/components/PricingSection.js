@@ -250,21 +250,8 @@ const PricingSection = ({
     const token = localStorage.getItem('authToken');
     if (!token) {
       if (setAuthModalOpen) {
-        // Try to open auth modal directly first
-        try {
-          setAuthModalOpen(true);
-          showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
-        } catch (error) {
-          // If direct modal opening fails, redirect to app with auth parameter
-          console.log('Direct modal opening failed, redirecting to app:', error);
-          window.location.href = '/app?auth=login';
-        }
-      } else {
-        showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
-        // Redirect to login page if no auth modal handler is available
-        setTimeout(() => {
-          window.location.href = '/app?auth=login';
-        }, 2000);
+        setAuthModalOpen(true);
+        showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
       }
       return;
     }
@@ -288,23 +275,9 @@ const PricingSection = ({
     const token = localStorage.getItem('authToken');
     if (!token) {
       setShowPaymentModal(false);
-      
       if (setAuthModalOpen) {
-        // Try to open auth modal directly first
-        try {
-          setAuthModalOpen(true);
-          showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
-        } catch (error) {
-          // If direct modal opening fails, redirect to app with auth parameter
-          console.log('Direct modal opening failed, redirecting to app:', error);
-          window.location.href = '/app?auth=login';
-        }
-      } else {
-        showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
-        // Redirect to login page if no auth modal handler is available
-        setTimeout(() => {
-          window.location.href = '/app?auth=login';
-        }, 2000);
+        setAuthModalOpen(true);
+        showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
       }
       return;
     }

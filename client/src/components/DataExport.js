@@ -212,7 +212,6 @@ const DataExport = () => {
                   onChange={handleInputChange}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
                 >
-                  <option value="crypto_prices">Crypto Prices</option>
                   <option value="market_data">Market Data</option>
                   <option value="fear_greed">Fear & Greed Index</option>
                   <option value="narratives">Trending Narratives</option>

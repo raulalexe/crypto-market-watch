@@ -1608,23 +1608,8 @@ app.post('/api/exports/create', authenticateToken, requireSubscription('premium'
     
     const limit = getLimit(dateRange);
     
-    // Fetch data based on type
-    if (type === 'crypto_prices') {
-      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-      for (const symbol of cryptoSymbols) {
-        const prices = await getCryptoPrices(symbol, Math.ceil(limit / cryptoSymbols.length));
-        if (prices && prices.length > 0) {
-          data.push(...prices.map(price => ({
-            timestamp: price.timestamp,
-            symbol: price.symbol,
-            price: price.price,
-            volume_24h: price.volume_24h,
-            market_cap: price.market_cap,
-            change_24h: price.change_24h
-          })));
-        }
-      }
-    } else if (type === 'market_data') {
+    // Fetch data based on type (crypto_prices removed; we do not export stored prices)
+    if (type === 'market_data') {
       const marketTypes = ['EQUITY_INDEX', 'DXY', 'TREASURY_YIELD', 'VOLATILITY_INDEX', 'ENERGY_PRICE'];
       for (const marketType of marketTypes) {
         const marketDataItems = await getMarketData(marketType, Math.ceil(limit / marketTypes.length));
@@ -1669,8 +1654,8 @@ app.post('/api/exports/create', authenticateToken, requireSubscription('premium'
         });
       }
     } else if (type === 'all_data') {
-      // Combine all data types
-      const allTypes = ['crypto_prices', 'market_data', 'fear_greed', 'narratives', 'ai_analysis'];
+      // Combine selected data types (excluding crypto prices)
+      const allTypes = ['market_data', 'fear_greed', 'narratives', 'ai_analysis'];
       for (const dataType of allTypes) {
         const typeData = await getDataForType(dataType, limit);
         data.push(...typeData);
@@ -2214,22 +2199,41 @@ app.post('/api/alerts/thresholds', authenticateToken, requireSubscription('pro')
 // Get correlation data for advanced analytics
 app.get('/api/correlation', async (req, res) => {
   try {
-    const { getCryptoPrices } = require('./database');
-    const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-    const correlationData = {};
+    const axios = require('axios');
+    const idMap = {
+      BTC: 'bitcoin',
+      ETH: 'ethereum',
+      SOL: 'solana',
+      SUI: 'sui',
+      XRP: 'ripple'
+    };
+    const symbols = Object.keys(idMap);
+    const fetchSeries = async (id) => {
+      const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=30&interval=daily`;
+      const { data } = await axios.get(url, { timeout: 15000 });
+      // data.prices: [[timestamp, price], ...]
+      return (data.prices || []).map(([t, p]) => ({ timestamp: t, price: p }));
+    };
 
-    // Calculate correlation matrix for crypto assets
-    for (let i = 0; i < cryptoSymbols.length; i++) {
-      for (let j = i + 1; j < cryptoSymbols.length; j++) {
-        const symbol1 = cryptoSymbols[i];
-        const symbol2 = cryptoSymbols[j];
-        
-        const prices1 = await getCryptoPrices(symbol1, 30);
-        const prices2 = await getCryptoPrices(symbol2, 30);
-        
-        if (prices1 && prices2 && prices1.length > 0 && prices2.length > 0) {
-          const correlation = calculateCorrelation(prices1, prices2);
-          correlationData[`${symbol1}_${symbol2}`] = correlation;
+    const symbolToSeries = {};
+    for (const sym of symbols) {
+      try {
+        symbolToSeries[sym] = await fetchSeries(idMap[sym]);
+      } catch (e) {
+        symbolToSeries[sym] = [];
+      }
+    }
+
+    const correlationData = {};
+    for (let i = 0; i < symbols.length; i++) {
+      for (let j = i + 1; j < symbols.length; j++) {
+        const s1 = symbols[i];
+        const s2 = symbols[j];
+        const series1 = symbolToSeries[s1];
+        const series2 = symbolToSeries[s2];
+        if (series1.length > 1 && series2.length > 1) {
+          const corr = calculateCorrelation(series1, series2);
+          correlationData[`${s1}_${s2}`] = corr;
         }
       }
     }

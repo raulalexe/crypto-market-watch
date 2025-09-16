@@ -292,7 +292,7 @@ const NotificationSettings = () => {
 
       <div className="space-y-4">
         {/* Email Notifications */}
-        <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-700/50 rounded-lg">
           <div className="flex items-center">
             <Mail className="w-5 h-5 text-blue-400 mr-3" />
             <div>
@@ -315,7 +315,7 @@ const NotificationSettings = () => {
         </div>
 
         {/* Push Notifications */}
-        <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-700/50 rounded-lg">
           <div className="flex items-center">
             <Smartphone className="w-5 h-5 text-green-400 mr-3" />
             <div>
@@ -397,7 +397,7 @@ const NotificationSettings = () => {
           </h3>
           
           {/* Enable/Disable Event Notifications */}
-          <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-700/50 rounded-lg mb-4">
             <div className="flex items-center">
               <Bell className="w-5 h-5 text-purple-400 mr-3" />
               <div>

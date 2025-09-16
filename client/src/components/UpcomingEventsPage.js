@@ -90,6 +90,16 @@ const UpcomingEventsPage = () => {
     }
   }, [filters.showIgnored, isAdminUser]);
 
+  const getCalendarDaysUntil = (date) => {
+    if (!date) return null;
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const event = new Date(date);
+    const eventMidnight = new Date(event.getFullYear(), event.getMonth(), event.getDate());
+    const diffDays = Math.round((eventMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   const filterAndSortEvents = () => {
     // Ensure events is an array before proceeding
     if (!Array.isArray(events)) {
@@ -111,17 +121,14 @@ const UpcomingEventsPage = () => {
 
     // Apply time filter
     if (filters.timeFilter !== 'all') {
-      const now = new Date();
       filtered = filtered.filter(event => {
         if (!event?.date) return false;
-        const eventDate = new Date(event.date);
-        const diffDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
-        
+        const diffDays = getCalendarDaysUntil(event.date);
         switch (filters.timeFilter) {
           case 'thisWeek':
-            return diffDays >= 0 && diffDays <= 7;
+            return diffDays !== null && diffDays >= 0 && diffDays <= 7;
           case 'nextMonth':
-            return diffDays >= 0 && diffDays <= 30;
+            return diffDays !== null && diffDays >= 0 && diffDays <= 30;
           default:
             return true;
         }
@@ -191,11 +198,8 @@ const UpcomingEventsPage = () => {
 
   const getDaysUntilText = (date) => {
     if (!date) return 'Date not available';
-    const now = new Date();
-    const eventDate = new Date(date);
-    const diffTime = eventDate - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+    const diffDays = getCalendarDaysUntil(date);
+    if (diffDays === null) return 'Date not available';
     if (diffDays < 0) return 'Past';
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Tomorrow';
@@ -379,17 +383,13 @@ const UpcomingEventsPage = () => {
     highImpact: Array.isArray(events) ? events.filter(e => e?.impact === 'high').length : 0,
     thisWeek: Array.isArray(events) ? events.filter(e => {
       if (!e?.date) return false;
-      const eventDate = new Date(e.date);
-      const now = new Date();
-      const diffDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
-      return diffDays >= 0 && diffDays <= 7;
+      const diffDays = getCalendarDaysUntil(e.date);
+      return diffDays !== null && diffDays >= 0 && diffDays <= 7;
     }).length : 0,
     nextMonth: Array.isArray(events) ? events.filter(e => {
       if (!e?.date) return false;
-      const eventDate = new Date(e.date);
-      const now = new Date();
-      const diffDays = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
-      return diffDays >= 0 && diffDays <= 30;
+      const diffDays = getCalendarDaysUntil(e.date);
+      return diffDays !== null && diffDays >= 0 && diffDays <= 30;
     }).length : 0
   };
 
@@ -594,7 +594,7 @@ const UpcomingEventsPage = () => {
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3 mb-2">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
                           <h3 className="text-lg font-semibold text-white">{event?.title || 'Untitled Event'}</h3>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')}`}>
                             {getImpactLabel(event?.impact || 'medium')}
@@ -616,9 +616,9 @@ const UpcomingEventsPage = () => {
                           )}
                         </div>
                         
-                        <p className="text-slate-400 mb-3">{event?.description || 'No description available'}</p>
+                        <p className="text-slate-400 mb-3 break-words">{event?.description || 'No description available'}</p>
                         
-                        <div className="flex items-center space-x-4 text-sm text-slate-500">
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
                           <div className="flex items-center space-x-1">
                             <Info className="w-4 h-4" />
                             <span>{event?.source || 'Unknown source'}</span>
@@ -629,7 +629,7 @@ const UpcomingEventsPage = () => {
                   </div>
                   
                   <div className="mt-4 lg:mt-0 lg:ml-6">
-                    <div className="text-right">
+                    <div className="text-center lg:text-right">
                       <div className="text-lg font-semibold text-white">
                         {event?.date ? new Date(event.date).toLocaleDateString('en-US', { 
                           month: 'short', 
@@ -652,7 +652,7 @@ const UpcomingEventsPage = () => {
                       </div>
                       <div className="text-sm text-crypto-blue font-medium mt-1">
                         {event?.timeRemaining ? (
-                          <span className="flex items-center space-x-1">
+                          <span className="flex items-center space-x-1 justify-center lg:justify-end">
                             <Clock className="w-4 h-4" />
                             <span>{event.timeRemaining}</span>
                           </span>

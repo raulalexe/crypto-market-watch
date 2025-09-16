@@ -1088,7 +1088,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
 
         {/* Tabs */}
         <div className="border-b border-gray-700 mb-6">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 overflow-x-auto no-scrollbar">
             {tabs.map((tab) => {
               const IconComponent = tab.icon;
               return (

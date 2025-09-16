@@ -336,7 +336,7 @@ const AIAnalysisCard = ({ data }) => {
                     className="p-4 cursor-pointer"
                     onClick={() => toggleTimeframe(key)}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center space-x-3">
                         {getTimeframeIcon(key)}
                         <span className="text-white font-medium">{getTimeframeLabel(key)}</span>

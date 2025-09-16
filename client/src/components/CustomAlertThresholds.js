@@ -402,7 +402,7 @@ const CustomAlertThresholds = () => {
                   </div>
                 </div>
 
-                <div className={`grid grid-cols-1 gap-4 ${threshold.metric && threshold.metric.startsWith('ai_prediction_') ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
+                <div className={`grid grid-cols-1 gap-4 ${threshold.metric && threshold.metric.startsWith('ai_prediction_') ? 'sm:grid-cols-2 md:grid-cols-3' : 'sm:grid-cols-2 md:grid-cols-4'}`}>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Metric</label>
                     <select

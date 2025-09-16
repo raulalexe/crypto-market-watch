@@ -186,19 +186,19 @@ const Layer1Card = () => {
           <div key={chain.id} className="bg-slate-700 rounded-lg border border-slate-600">
             {/* Chain Header */}
             <div className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-slate-600 rounded-lg flex items-center justify-center">
                     <span className="text-sm font-bold text-white">{chain.symbol}</span>
                   </div>
                   <div>
                     <h4 className="text-lg font-semibold text-white">{chain.name}</h4>
-                    <p className="text-sm text-slate-400">{chain.narrative}</p>
+                    <p className="text-sm text-slate-400 break-words">{chain.narrative}</p>
                   </div>
                 </div>
                 
                 <div className="flex items-center space-x-4">
-                  <div className="text-right">
+                  <div className="text-center sm:text-right">
                     <div className="text-lg font-bold text-white">
                       {formatCurrency(chain.price)}
                     </div>

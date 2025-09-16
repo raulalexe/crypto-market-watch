@@ -121,7 +121,9 @@ const AdvancedMetricsCard = () => {
                 {getTrendIcon(metrics?.bitcoinDominance?.change_24h)}
               </div>
               <div className="text-2xl font-bold text-white mb-1">
-                {formatNumber(metrics?.bitcoinDominance?.value)}%
+                {metrics?.bitcoinDominance?.value !== null && metrics?.bitcoinDominance?.value !== undefined && metrics?.bitcoinDominance?.value >= 0 && metrics?.bitcoinDominance?.value <= 100
+                  ? formatNumber(metrics.bitcoinDominance.value)
+                  : 'N/A'}%
               </div>
               <div className="text-xs text-slate-400">
                 {metrics?.bitcoinDominance?.change_24h > 0 ? '+' : ''}
