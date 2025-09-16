@@ -145,10 +145,10 @@ const AuthRequired = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               {isPremium ? (
                 <Link
-                  to="/app/subscription"
+                  to="/app/contact"
                   className="flex-1 bg-crypto-blue text-white py-3 px-6 rounded-lg hover:bg-blue-600 transition-colors font-medium"
                 >
-                  View Premium+ Plans
+                  Contact Sales
                 </Link>
               ) : isUpgrade ? (
                 <Link

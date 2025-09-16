@@ -251,21 +251,22 @@ class SubscriptionManager {
       const expiredPlan = subscriptionStatus.expiredPlan || 'pro'; // Default to pro if no expired plan
       const plan = this.subscriptionPlans[expiredPlan];
       
-      // Calculate discount percentage from DISCOUNT_OFFER amount
-      const discountPercentage = this.discountOffer / plan.price;
-      const discount = Math.min(discountPercentage, 1); // Cap at 100%
+      // DISCOUNT_OFFER contains the final discounted price for first month (e.g., 9.99)
+      const firstMonthPrice = this.discountOffer > 0 ? this.discountOffer : plan.price;
+      const discountAmount = plan.price - firstMonthPrice;
+      const discountPercentage = discountAmount / plan.price;
       
       return {
         expiredPlan,
         planName: plan.name,
         monthlyPrice: plan.price,
         discountOffer: this.discountOffer,
-        discountPercentage: discount,
+        discountPercentage: discountPercentage,
         renewalOptions: [
           { months: 1, discount: 0, price: plan.price },
-          { months: 3, discount: discount, price: Math.max(plan.price - this.discountOffer, 0) + plan.price * 2 },
-          { months: 6, discount: discount, price: Math.max(plan.price - this.discountOffer, 0) + plan.price * 5 },
-          { months: 12, discount: discount, price: Math.max(plan.price - this.discountOffer, 0) + plan.price * 11 }
+          { months: 3, discount: discountPercentage, price: firstMonthPrice + plan.price * 2 },
+          { months: 6, discount: discountPercentage, price: firstMonthPrice + plan.price * 5 },
+          { months: 12, discount: discountPercentage, price: firstMonthPrice + plan.price * 11 }
         ]
       };
     } catch (error) {

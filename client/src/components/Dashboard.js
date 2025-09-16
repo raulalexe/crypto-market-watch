@@ -93,7 +93,15 @@ const Dashboard = ({ isAuthenticated, userData }) => {
   };
 
   const handleUpgradeClick = () => {
-    navigate('/app/subscription');
+    // Check if this is a premium upgrade
+    const subscriptionStatus = dashboardData?.subscriptionStatus;
+    if (subscriptionStatus?.plan === 'pro') {
+      // Pro to Premium upgrade - redirect to contact
+      window.location.href = '/app/contact';
+    } else {
+      // Other upgrades - go to subscription page
+      navigate('/app/subscription');
+    }
   };
 
   const renderSubscriptionButton = () => {
@@ -145,14 +153,14 @@ const Dashboard = ({ isAuthenticated, userData }) => {
     }
 
     if (subscriptionStatus.plan === 'pro') {
-      // Pro user - show upgrade to Premium+
+      // Pro user - show contact sales for Premium+
       return (
         <button
           onClick={handleUpgradeClick}
           className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center space-x-2"
         >
           <Zap className="w-5 h-5" />
-          <span>Upgrade to Premium+</span>
+          <span>Contact Sales</span>
         </button>
       );
     }

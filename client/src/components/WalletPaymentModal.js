@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Clock, AlertCircle, ExternalLink } from 'lucide-react';
+import { X, Copy, Check, Clock, AlertCircle, Search, Loader2 } from 'lucide-react';
 
 const WalletPaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentComplete }) => {
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [paymentStatus, setPaymentStatus] = useState('pending');
+  const [txHash, setTxHash] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationResult, setVerificationResult] = useState(null);
 
   useEffect(() => {
     if (!isOpen || !paymentDetails) return;
@@ -48,27 +51,69 @@ const WalletPaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentComplete
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const verifyTransaction = async () => {
+    if (!txHash.trim()) {
+      setVerificationResult({ success: false, error: 'Please enter a transaction hash' });
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerificationResult(null);
+
+    try {
+      const response = await fetch('/api/verify-transaction', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          txHash: txHash.trim(),
+          expectedAmount: paymentDetails.amount,
+          expectedToAddress: paymentDetails.address,
+          network: paymentDetails.network,
+          paymentId: paymentDetails.paymentId
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setVerificationResult({ success: true, message: 'Transaction verified successfully!' });
+        setPaymentStatus('verified');
+        // Call the payment complete callback
+        if (onPaymentComplete) {
+          onPaymentComplete(result);
+        }
+      } else {
+        setVerificationResult({ success: false, error: result.error || 'Transaction verification failed' });
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      setVerificationResult({ success: false, error: 'Failed to verify transaction. Please try again.' });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const getNetworkInfo = (network) => {
     switch (network) {
       case 'base':
         return {
           name: 'Base',
           color: 'bg-blue-600',
-          explorer: `https://basescan.org/address/${paymentDetails?.address}`,
           icon: '🔵'
         };
       case 'solana':
         return {
           name: 'Solana',
           color: 'bg-purple-600',
-          explorer: `https://solscan.io/account/${paymentDetails?.address}`,
           icon: '🟣'
         };
       default:
         return {
           name: 'Unknown',
           color: 'bg-gray-600',
-          explorer: '#',
           icon: '⚪'
         };
     }
@@ -79,8 +124,8 @@ const WalletPaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentComplete
   const networkInfo = getNetworkInfo(paymentDetails.network);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg max-w-md w-full p-6 relative">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-gray-900 rounded-lg max-w-md w-full p-6 relative my-4 sm:my-0">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-white"
@@ -152,32 +197,80 @@ const WalletPaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentComplete
                   <li>Copy the payment address above</li>
                   <li>Send exactly {paymentDetails.amount} USDC to this address</li>
                   <li>Wait for blockchain confirmation (usually 1-2 minutes)</li>
-                  <li>Your subscription will be activated automatically</li>
+                  <li>Enter your transaction hash below and click "Verify Transaction"</li>
                 </ol>
               </div>
             </div>
+          </div>
+
+          {/* Transaction Verification */}
+          <div className="bg-gray-800 rounded-lg p-4">
+            <label className="block text-gray-400 text-sm mb-2">Transaction Hash (TxID)</label>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+              <input
+                type="text"
+                value={txHash}
+                onChange={(e) => setTxHash(e.target.value)}
+                placeholder="Enter your transaction hash here..."
+                className="flex-1 bg-gray-700 text-white p-2 rounded text-sm font-mono placeholder-gray-500"
+                disabled={isVerifying || paymentStatus === 'verified'}
+              />
+              <button
+                onClick={verifyTransaction}
+                disabled={isVerifying || paymentStatus === 'verified' || !txHash.trim()}
+                className="p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded transition-colors flex items-center justify-center min-w-[100px] sm:min-w-[100px]"
+              >
+                {isVerifying ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
+                <span className="ml-1 text-xs">
+                  {isVerifying ? 'Checking...' : 'Verify'}
+                </span>
+              </button>
+            </div>
+            
+            {/* Verification Result */}
+            {verificationResult && (
+              <div className={`mt-3 p-3 rounded-lg ${
+                verificationResult.success 
+                  ? 'bg-green-900/20 border border-green-500/30' 
+                  : 'bg-red-900/20 border border-red-500/30'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  {verificationResult.success ? (
+                    <Check className="w-4 h-4 text-green-400" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-red-400" />
+                  )}
+                  <span className={`text-sm ${
+                    verificationResult.success ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {verificationResult.success ? verificationResult.message : verificationResult.error}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          <button
-            onClick={() => copyToClipboard(paymentDetails.address)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
-          >
-            <Copy className="w-4 h-4" />
-            <span>Copy Address</span>
-          </button>
-          
-          <a
-            href={networkInfo.explorer}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span>View on Explorer</span>
-          </a>
+          {paymentStatus === 'verified' ? (
+            <div className="w-full bg-green-600 text-white py-3 px-4 rounded-lg flex items-center justify-center space-x-2">
+              <Check className="w-4 h-4" />
+              <span>Payment Verified Successfully!</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => copyToClipboard(paymentDetails.address)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+            >
+              <Copy className="w-4 h-4" />
+              <span>Copy Address</span>
+            </button>
+          )}
         </div>
 
         {/* Status */}

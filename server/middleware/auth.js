@@ -4,25 +4,33 @@ const { SUBSCRIPTION_TYPES } = require('../constants/subscriptionTypes');
 
 // Authentication middleware
 const authenticateToken = async (req, res, next) => {
+  console.log('🔐 Authentication middleware called for:', req.path);
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
+    console.log('❌ No token provided');
     return res.status(401).json({ error: 'Access token required' });
   }
 
   try {
+    console.log('🔐 Verifying token...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('🔐 Token decoded, userId:', decoded.userId);
+    
     const user = await getUserById(decoded.userId);
     
     if (!user) {
+      console.log('❌ User not found for userId:', decoded.userId);
       return res.status(401).json({ error: 'User not found' });
     }
 
+    console.log('✅ User authenticated:', user.email);
     // Add userId to the user object for consistency
     req.user = { ...user, userId: user.id };
     next();
   } catch (error) {
+    console.log('❌ Token verification failed:', error.message);
     return res.status(403).json({ error: 'Invalid token' });
   }
 };

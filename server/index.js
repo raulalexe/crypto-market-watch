@@ -3545,16 +3545,28 @@ app.post('/api/subscribe/crypto', authenticateToken, async (req, res) => {
 // Wallet payment subscription endpoint
 app.post('/api/subscribe/wallet-payment', authenticateToken, async (req, res) => {
   try {
+    console.log('🔧 Wallet payment request received');
+    console.log('🔧 Request body:', req.body);
+    console.log('🔧 User:', req.user ? { id: req.user.id, email: req.user.email } : 'No user');
+    console.log('🔧 SUPPORT_CRYPTO_PAYMENT:', process.env.SUPPORT_CRYPTO_PAYMENT);
+    
     if (process.env.SUPPORT_CRYPTO_PAYMENT !== 'true') {
+      console.log('❌ Crypto payments not enabled');
       return res.status(404).json({ error: 'Crypto payments are not enabled' });
     }
     
     const { planId, months = 1, network = 'base' } = req.body;
+    console.log('🔧 Extracted params:', { planId, months, network });
+    
     const walletPaymentService = require('./services/walletPaymentService');
+    console.log('🔧 About to call createWalletSubscription');
     const result = await walletPaymentService.createWalletSubscription(req.user.id, planId, months, network);
+    console.log('✅ Wallet subscription created successfully');
     res.json(result);
   } catch (error) {
-    console.error('Wallet payment subscription error:', error);
+    console.error('❌ Wallet payment subscription error:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
@@ -3568,6 +3580,62 @@ app.get('/api/subscribe/payment-status/:paymentId', authenticateToken, async (re
     res.json(status);
   } catch (error) {
     console.error('Payment status check error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify transaction hash
+app.post('/api/verify-transaction', authenticateToken, async (req, res) => {
+  try {
+    console.log('🔍 Transaction verification request received');
+    console.log('🔍 Request body:', req.body);
+    console.log('🔍 User:', req.user ? { id: req.user.id, email: req.user.email } : 'No user');
+    
+    if (process.env.SUPPORT_CRYPTO_PAYMENT !== 'true') {
+      console.log('❌ Crypto payments not enabled');
+      return res.status(404).json({ error: 'Crypto payments are not enabled' });
+    }
+    
+    const { txHash, expectedAmount, expectedToAddress, network, paymentId } = req.body;
+    
+    if (!txHash || !expectedAmount || !expectedToAddress || !network || !paymentId) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    const walletPaymentService = require('./services/walletPaymentService');
+    
+    // Verify the transaction
+    let verificationResult;
+    if (network === 'base') {
+      verificationResult = await walletPaymentService.verifyBaseTransaction(txHash, expectedAmount, expectedToAddress);
+    } else if (network === 'solana') {
+      verificationResult = await walletPaymentService.verifySolanaTransaction(txHash, expectedAmount, expectedToAddress);
+    } else {
+      return res.status(400).json({ error: 'Unsupported network' });
+    }
+    
+    if (verificationResult.success) {
+      // Update payment status in database
+      await walletPaymentService.updatePaymentStatus(paymentId, 'completed', txHash);
+      
+      // Activate user subscription
+      await walletPaymentService.activateSubscription(req.user.id, paymentId);
+      
+      console.log('✅ Transaction verified and subscription activated');
+      res.json({
+        success: true,
+        message: 'Transaction verified successfully!',
+        transaction: verificationResult
+      });
+    } else {
+      console.log('❌ Transaction verification failed:', verificationResult.error);
+      res.json({
+        success: false,
+        error: verificationResult.error
+      });
+    }
+  } catch (error) {
+    console.error('❌ Transaction verification error:', error);
     res.status(500).json({ error: error.message });
   }
 });

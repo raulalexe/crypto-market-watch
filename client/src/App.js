@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import pushNotificationService from './services/pushNotificationService';
+import authService from './services/authService';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
 import Header from './components/Header';
@@ -81,15 +82,13 @@ function App() {
   };
 
   useEffect(() => {
-    // Check for existing auth token
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    // Check for existing auth token using auth service
+    if (authService.isAuthenticated()) {
       setIsAuthenticated(true);
+      fetchUserData();
     }
     
     fetchDashboardData();
-    fetchUserData();
     
     // Initialize push notifications
     initializePushNotifications();
@@ -164,9 +163,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('lastSeenAlertId');
-    delete axios.defaults.headers.common['Authorization'];
+    authService.logout();
     setIsAuthenticated(false);
     // Reload the page to clear any cached data and ensure clean state
     window.location.reload();
@@ -184,10 +181,8 @@ function App() {
         setAuthModalOpen(true);
         // Scroll to top when modal opens due to URL parameter
         window.scrollTo(0, 0);
-      } else {
-        // If no auth param, close modal
-        setAuthModalOpen(false);
       }
+      // Don't automatically close modal when no auth param - let it be controlled by other components
     }, [searchParams]);
 
     // Function to close modal and clear URL parameters

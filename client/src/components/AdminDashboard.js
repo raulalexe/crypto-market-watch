@@ -210,11 +210,14 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
       const result = await response.json();
       
       // Update user in local state
-      setUsers(users.map(user => 
-        user.id === userId 
-          ? { ...user, emailVerified: true }
-          : user
-      ));
+      setUsers(prevUsers => {
+        const updatedUsers = prevUsers.map(user => 
+          user.id === userId 
+            ? { ...user, emailVerified: true }
+            : user
+        );
+        return updatedUsers;
+      });
 
       showAlert(`User ${userEmail} activated successfully`, 'success');
     } catch (error) {
@@ -247,11 +250,14 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
       const result = await response.json();
       
       // Update user in local state
-      setUsers(users.map(user => 
-        user.id === userId 
-          ? { ...user, emailVerified: false }
-          : user
-      ));
+      setUsers(prevUsers => {
+        const updatedUsers = prevUsers.map(user => 
+          user.id === userId 
+            ? { ...user, emailVerified: false }
+            : user
+        );
+        return updatedUsers;
+      });
 
       showAlert(`User ${userEmail} deactivated successfully`, 'success');
     } catch (error) {

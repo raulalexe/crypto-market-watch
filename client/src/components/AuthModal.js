@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Lock, Mail } from 'lucide-react';
 import axios from 'axios';
+import authService from '../services/authService';
 
 const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) => {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');

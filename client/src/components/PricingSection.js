@@ -12,8 +12,10 @@ import {
   Globe,
   Bitcoin
 } from 'lucide-react';
+import axios from 'axios';
 import ToastNotification from './ToastNotification';
 import WalletPaymentModal from './WalletPaymentModal';
+import authService from '../services/authService';
 
 const PricingSection = ({ 
   variant = 'marketing', // 'marketing' or 'app'
@@ -188,35 +190,13 @@ const PricingSection = ({
 
   const fetchSubscriptionStatus = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
+      if (!authService.isAuthenticated()) {
         return;
       }
       
-      const response = await fetch('/api/subscription', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const status = await response.json();
-        setSubscriptionStatus(status);
-        return status;
-      } else if (response.status === 401) {
-        // Authentication failed - clear token and redirect to login
-        console.error('Authentication failed - clearing token');
-        localStorage.removeItem('authToken');
-        showAlert('Your session has expired. Please log in again.', 'error');
-        // Redirect to login after a short delay
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 2000);
-        return { error: 'authentication_failed' };
-      } else {
-        console.error('Error fetching subscription status:', response.status, response.statusText);
-        return { error: 'fetch_failed', status: response.status };
-      }
+      const response = await axios.get('/api/subscription');
+      setSubscriptionStatus(response.data);
+      return response.data;
     } catch (error) {
       console.error('Error fetching subscription status:', error);
       return { error: 'network_error' };
@@ -246,19 +226,18 @@ const PricingSection = ({
       return;
     }
     
+    // For premium plans, redirect to contact page
+    if (planId === 'premium') {
+      window.location.href = '/app/contact';
+      return;
+    }
+    
     // Check if user is authenticated
-    const token = localStorage.getItem('authToken');
-    if (!token) {
+    if (!authService.isAuthenticated()) {
       if (setAuthModalOpen) {
-        // Try to open auth modal directly first
-        try {
-          setAuthModalOpen(true);
-          showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
-        } catch (error) {
-          // If direct modal opening fails, redirect to app with auth parameter
-          console.log('Direct modal opening failed, redirecting to app:', error);
-          window.location.href = '/app?auth=login';
-        }
+        // Open auth modal directly
+        setAuthModalOpen(true);
+        showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
       } else {
         showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
         // Redirect to login page if no auth modal handler is available
@@ -275,7 +254,7 @@ const PricingSection = ({
       return;
     }
     
-    // For Pro and Premium plans, show payment modal
+    // For Pro plans, show payment modal
     const plan = plansData.find(p => p.id === planId);
     setSelectedPlan(plan);
     setShowPaymentModal(true);
@@ -290,15 +269,9 @@ const PricingSection = ({
       setShowPaymentModal(false);
       
       if (setAuthModalOpen) {
-        // Try to open auth modal directly first
-        try {
-          setAuthModalOpen(true);
-          showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
-        } catch (error) {
-          // If direct modal opening fails, redirect to app with auth parameter
-          console.log('Direct modal opening failed, redirecting to app:', error);
-          window.location.href = '/app?auth=login';
-        }
+        // Open auth modal directly
+        setAuthModalOpen(true);
+        showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
       } else {
         showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
         // Redirect to login page if no auth modal handler is available
@@ -607,7 +580,9 @@ const PricingSection = ({
                 ? 'Current Plan' 
                 : plan.price === 0 
                   ? 'Get Started Free' 
-                  : 'Subscribe Now'
+                  : plan.id === 'premium'
+                    ? 'Contact Sales'
+                    : 'Subscribe Now'
             }
           </button>
         ) : (
@@ -706,7 +681,7 @@ const PricingSection = ({
         )}
 
         {/* Plans Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="grid lg:grid-cols-3 gap-8 mb-12">
           {/* Admin Plan Card - Show only for admin users in app variant */}
           {variant === 'app' && subscriptionStatus?.plan === 'admin' && (
             <div className="relative bg-purple-900/20 rounded-lg p-8 border-2 border-purple-500/30">
