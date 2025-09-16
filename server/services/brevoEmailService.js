@@ -2824,6 +2824,144 @@ View detailed analysis: ${process.env.FRONTEND_URL}/dashboard
 Crypto Market Watch - Your trusted crypto market intelligence platform
     `;
   }
+
+  // Send contact form email notification
+  async sendContactFormEmail(contactData) {
+    if (!this.isConfigured) {
+      console.log('⚠️ Brevo email service not configured, skipping contact form email');
+      return false;
+    }
+
+    try {
+      const { name, email, subject, message, screenshot } = contactData;
+      
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      
+      sendSmtpEmail.subject = `Contact Form: ${subject}`;
+      sendSmtpEmail.htmlContent = this.generateContactFormEmailHTML(contactData);
+      sendSmtpEmail.textContent = this.generateContactFormEmailText(contactData);
+      sendSmtpEmail.sender = {
+        name: 'Crypto Market Watch Contact Form',
+        email: process.env.BREVO_SENDER_EMAIL || 'noreply@cryptomarketmonitor.com'
+      };
+      
+      // Send to admin email (you can configure this)
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@cryptomarketmonitor.com';
+      sendSmtpEmail.to = [{
+        email: adminEmail,
+        name: 'Admin'
+      }];
+      
+      // Reply to the original sender
+      sendSmtpEmail.replyTo = {
+        email: email,
+        name: name
+      };
+
+      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log('✅ Contact form email sent successfully:', result.messageId);
+      return true;
+    } catch (error) {
+      console.error('❌ Error sending contact form email:', error);
+      return false;
+    }
+  }
+
+  // Generate contact form email HTML
+  generateContactFormEmailHTML(contactData) {
+    const { name, email, subject, message, screenshot } = contactData;
+    const currentDate = new Date().toLocaleString();
+    
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Form Submission</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+        .content { background: #f8fafc; padding: 20px; border-radius: 0 0 8px 8px; }
+        .field { margin-bottom: 15px; }
+        .label { font-weight: bold; color: #374151; }
+        .value { margin-top: 5px; padding: 10px; background: white; border-radius: 4px; border-left: 4px solid #1e40af; }
+        .message-content { white-space: pre-wrap; }
+        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📧 New Contact Form Submission</h1>
+            <p>Received on ${currentDate}</p>
+        </div>
+        
+        <div class="content">
+            <div class="field">
+                <div class="label">From:</div>
+                <div class="value">${name} &lt;${email}&gt;</div>
+            </div>
+            
+            <div class="field">
+                <div class="label">Subject:</div>
+                <div class="value">${subject}</div>
+            </div>
+            
+            <div class="field">
+                <div class="label">Message:</div>
+                <div class="value message-content">${message}</div>
+            </div>
+            
+            ${screenshot ? `
+            <div class="field">
+                <div class="label">Screenshot:</div>
+                <div class="value">
+                    <strong>File:</strong> ${screenshot.filename}<br>
+                    <strong>Size:</strong> ${(screenshot.size / 1024 / 1024).toFixed(2)} MB<br>
+                    <strong>Type:</strong> ${screenshot.mimetype}
+                </div>
+            </div>
+            ` : ''}
+        </div>
+        
+        <div class="footer">
+            <p>This email was sent from the Crypto Market Watch contact form.</p>
+            <p>Reply directly to this email to respond to ${name}.</p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+  }
+
+  // Generate contact form email text
+  generateContactFormEmailText(contactData) {
+    const { name, email, subject, message, screenshot } = contactData;
+    const currentDate = new Date().toLocaleString();
+    
+    return `
+New Contact Form Submission - ${currentDate}
+
+From: ${name} <${email}>
+Subject: ${subject}
+
+Message:
+${message}
+
+${screenshot ? `
+Screenshot:
+- File: ${screenshot.filename}
+- Size: ${(screenshot.size / 1024 / 1024).toFixed(2)} MB
+- Type: ${screenshot.mimetype}
+` : ''}
+
+---
+This email was sent from the Crypto Market Watch contact form.
+Reply directly to this email to respond to ${name}.
+    `;
+  }
 }
 
 module.exports = BrevoEmailService;

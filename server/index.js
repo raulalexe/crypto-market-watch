@@ -68,7 +68,9 @@ app.use(cors({
     const allowedOrigins = [
       process.env.FRONTEND_URL || 'http://localhost:3000',
       'http://localhost:3000',
-      'https://localhost:3000'
+      'https://localhost:3000',
+      'http://127.0.0.1:3000',
+      'https://127.0.0.1:3000'
     ];
     
     // Add production domains if they exist
@@ -76,9 +78,45 @@ app.use(cors({
       allowedOrigins.push(process.env.PRODUCTION_FRONTEND_URL);
     }
     
+    // Add Railway domain if deployed on Railway
+    if (process.env.RAILWAY_STATIC_URL) {
+      allowedOrigins.push(process.env.RAILWAY_STATIC_URL);
+    }
+    
+    // Add Railway public domain if available
+    if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+      allowedOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+      allowedOrigins.push(`http://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+    }
+    
+    // In development, allow any localhost origin
+    if (process.env.NODE_ENV === 'development' && origin && origin.includes('localhost')) {
+      console.log(`✅ CORS: Allowing localhost origin: ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Allow same-origin requests (when frontend and backend are served from same domain)
+    if (origin && process.env.RAILWAY_PUBLIC_DOMAIN && origin.includes(process.env.RAILWAY_PUBLIC_DOMAIN)) {
+      console.log(`✅ CORS: Allowing Railway domain origin: ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Allow Railway subdomain patterns
+    if (origin && origin.includes('.railway.app')) {
+      console.log(`✅ CORS: Allowing Railway subdomain origin: ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Log the origin for debugging
+    console.log(`🔍 CORS: Checking origin: ${origin}`);
+    console.log(`📋 CORS: Allowed origins:`, allowedOrigins);
+    console.log(`🚂 CORS: Railway domain: ${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+    
     if (allowedOrigins.includes(origin)) {
+      console.log(`✅ CORS: Origin allowed: ${origin}`);
       callback(null, true);
     } else {
+      console.log(`❌ CORS: Origin rejected: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -4335,7 +4373,29 @@ app.post('/api/contact', upload.single('screenshot'), validateRequestBody(VALIDA
       });
     }
 
-    // In production, you would send an email notification here
+    // Send email notification via Brevo
+    try {
+      const emailSent = await emailService.sendContactFormEmail({
+        name,
+        email,
+        subject,
+        message,
+        screenshot: screenshot ? {
+          filename: screenshot.originalname,
+          size: screenshot.size,
+          mimetype: screenshot.mimetype
+        } : null
+      });
+
+      if (emailSent) {
+        console.log('✅ Contact form email sent successfully');
+      } else {
+        console.log('⚠️ Contact form email failed to send');
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending contact form email:', emailError);
+    }
+
     console.log('📧 Contact form submission:', {
       name,
       email,
