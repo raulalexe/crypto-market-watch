@@ -4,8 +4,8 @@ async function testRequest() {
   try {
     // Login
     const loginResponse = await axios.post('http://localhost:3001/api/auth/login', {
-      email: 'admin@crypto-market-watch.xyz',
-      password: 'admin123'
+      email: process.env.ADMIN_EMAIL || 'admin@crypto-market-watch.xyz',
+      password: process.env.ADMIN_PASSWORD || 'admin123'
     });
     
     const token = loginResponse.data.token;

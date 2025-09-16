@@ -10,7 +10,7 @@
  */
 
 const readline = require('readline');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 
 const rl = readline.createInterface({

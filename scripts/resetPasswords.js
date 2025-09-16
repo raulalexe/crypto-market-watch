@@ -1,3 +1,14 @@
+/**
+ * Password Reset Script
+ * Resets password for a specific user by email
+ * 
+ * Usage: node scripts/resetPasswords.js <email> <password>
+ * Example: node scripts/resetPasswords.js admin@example.com newpassword123
+ * 
+ * This script requires both email and password to be provided.
+ * It will update the password for the specified user if they exist.
+ */
+
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const { getUserByEmail, updateUser } = require('../server/database');
@@ -30,37 +41,16 @@ async function resetPassword(email, newPassword) {
   }
 }
 
-async function resetAllPasswords() {
-  try {
-    console.log('🔐 Resetting all user passwords...');
-    
-    const users = [
-      { email: 'admin@crypto-market-watch.xyz', password: 'admin123' },
-      { email: 'pro@crypto-market-watch.xyz', password: 'pro123' },
-      { email: 'free@crypto-market-watch.xyz', password: 'free123' }
-    ];
-    
-    for (const user of users) {
-      await resetPassword(user.email, user.password);
-    }
-    
-    console.log('\n🎉 All passwords reset successfully!');
-    console.log('\n📋 Updated Login Credentials:');
-    console.log('👑 Admin: admin@crypto-market-watch.xyz / admin123');
-    console.log('💎 Pro: pro@crypto-market-watch.xyz / pro123');
-    console.log('🆓 Free: free@crypto-market-watch.xyz / free123');
-    
-  } catch (error) {
-    console.error('❌ Error resetting passwords:', error);
-  }
-}
 
-// Check if specific user email is provided
+// Check if specific user email and password are provided
 const userEmail = process.argv[2];
 const newPassword = process.argv[3];
 
 if (userEmail && newPassword) {
   resetPassword(userEmail, newPassword);
 } else {
-  resetAllPasswords();
+  console.log('❌ Missing required parameters');
+  console.log('Usage: node scripts/resetPasswords.js <email> <password>');
+  console.log('Example: node scripts/resetPasswords.js admin@example.com newpassword123');
+  process.exit(1);
 }

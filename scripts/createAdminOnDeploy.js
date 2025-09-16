@@ -9,7 +9,7 @@
  * This script runs automatically on Railway deployment
  */
 
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 
 // Helper function to create a user

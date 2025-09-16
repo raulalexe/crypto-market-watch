@@ -43,6 +43,16 @@ railway status
    node scripts/createProductionAdmin.js admin@crypto-market-watch.xyz MySecurePassword2024!
    ```
 
+4. **Using Environment Variables (Recommended):**
+   ```bash
+   # Set environment variables first
+   export ADMIN_EMAIL=admin@yourdomain.com
+   export ADMIN_PASSWORD=YourSecurePassword123
+   
+   # Then run the script (it will use the env vars)
+   node scripts/createProductionAdmin.js
+   ```
+
 ### **Step 3: Verify Admin User Creation**
 
 The script will show:
@@ -51,7 +61,7 @@ The script will show:
 
 📋 User Details:
    User ID: 1
-   Email: admin@crypto-market-watch.xyz
+   Email: admin@yourdomain.com (or your configured ADMIN_EMAIL)
    Admin privileges: ✅ Enabled
    Created: 2024-09-01T...
 ```
@@ -128,8 +138,8 @@ TELEGRAM_WEBHOOK_URL=https://your-app-name.railway.app
 ## 📋 Quick Reference
 
 ```bash
-# Create admin user
-node scripts/createProductionAdmin.js admin@crypto-market-watch.xyz YourPassword123
+# Create admin user (or use environment variables)
+node scripts/createProductionAdmin.js admin@yourdomain.com YourPassword123
 
 # Check Railway status
 railway status

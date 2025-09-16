@@ -251,6 +251,19 @@ app.get('/api/stripe/config', async (req, res) => {
   }
 });
 
+// Get app configuration
+app.get('/api/config', async (req, res) => {
+  try {
+    res.json({
+      adminEmail: process.env.ADMIN_EMAIL || 'admin@crypto-market-watch.xyz',
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    console.error('Error getting app config:', error);
+    res.status(500).json({ error: 'Failed to get app configuration' });
+  }
+});
+
 // Get current market data
 app.get('/api/market-data', async (req, res) => {
   try {
@@ -3310,7 +3323,8 @@ app.post('/api/admin/send-email', authenticateToken, requireAdmin, async (req, r
     let message = '';
 
     // Use Brevo email service if available, otherwise fallback to regular email service
-    const brevoEmailService = require('./services/brevoEmailService');
+    const BrevoEmailService = require('./services/brevoEmailService');
+    const brevoEmailService = new BrevoEmailService();
     const emailService = new (require('./services/emailService'))();
 
     switch (templateType) {

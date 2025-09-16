@@ -19,7 +19,7 @@ async function verifyAdmin() {
     const { db } = require('../server/database');
     
     // Get admin user by email
-    const email = process.argv[2] || 'admin@crypto-market-watch.xyz';
+    const email = process.argv[2] || process.env.ADMIN_EMAIL || 'admin@crypto-market-watch.xyz';
     
     console.log(`📧 Looking for admin user: ${email}`);
     

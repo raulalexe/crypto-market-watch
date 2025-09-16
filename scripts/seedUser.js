@@ -13,7 +13,7 @@
  *   node scripts/seedUser.js user@example.com mypassword pro
  */
 
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 require('dotenv').config({ path: '.env.local' });
 

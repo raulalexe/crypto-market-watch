@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Mail, User, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 
 const AdminEmailInterface = () => {
   const [emailData, setEmailData] = useState({
-    recipientEmail: 'admin@crypto-market-watch.xyz',
+    recipientEmail: 'admin@crypto-market-watch.xyz', // Will be updated from API
     recipientName: '',
     templateType: 'welcome',
     customSubject: '',
@@ -11,6 +11,29 @@ const AdminEmailInterface = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
+
+  // Fetch app configuration on component mount
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const config = await response.json();
+          setEmailData(prev => ({
+            ...prev,
+            recipientEmail: config.adminEmail
+          }));
+          setConfigLoaded(true);
+        }
+      } catch (error) {
+        console.error('Failed to fetch app config:', error);
+        setConfigLoaded(true); // Still set to true to avoid infinite loading
+      }
+    };
+
+    fetchConfig();
+  }, []);
 
   const emailTemplates = [
     { value: 'welcome', label: 'Welcome Email', description: 'Welcome new users to the platform' },
@@ -58,13 +81,13 @@ const AdminEmailInterface = () => {
       if (response.ok) {
         setResult({ success: true, message: data.message || 'Email sent successfully!' });
         // Reset form
-        setEmailData({
-          recipientEmail: 'admin@crypto-market-watch.xyz',
+        setEmailData(prev => ({
+          ...prev,
           recipientName: '',
           templateType: 'welcome',
           customSubject: '',
           customMessage: ''
-        });
+        }));
       } else {
         setResult({ success: false, message: data.error || 'Failed to send email' });
       }
@@ -117,7 +140,7 @@ const AdminEmailInterface = () => {
               value={emailData.recipientEmail}
               onChange={(e) => handleInputChange('recipientEmail', e.target.value)}
               className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-crypto-blue"
-              placeholder="admin@crypto-market-watch.xyz"
+              placeholder={emailData.recipientEmail}
             />
           </div>
           <div>
