@@ -1,318 +1,507 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Download, FileText, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Download, 
+  FileText, 
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Settings,
+  Database,
+  BarChart3
+} from 'lucide-react';
 import axios from 'axios';
+import { shouldShowPremiumUpgradePrompt } from '../utils/authUtils';
 import ToastNotification from './ToastNotification';
 
 const DataExport = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
-  const [authError, setAuthError] = useState(null);
   const [exportHistory, setExportHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [selectedDataTypes, setSelectedDataTypes] = useState(['market_data']);
+  
+  // Handle data type selection with "All Data" functionality
+  const handleDataTypeChange = (dataTypeId, checked) => {
+    if (dataTypeId === 'all_data') {
+      if (checked) {
+        // Select all available data types
+        const allAvailableTypes = dataTypes
+          .filter(dt => dt.available && dt.id !== 'all_data')
+          .map(dt => dt.id);
+        setSelectedDataTypes(allAvailableTypes);
+      } else {
+        // Deselect all
+        setSelectedDataTypes([]);
+      }
+    } else {
+      if (checked) {
+        setSelectedDataTypes([...selectedDataTypes, dataTypeId]);
+      } else {
+        setSelectedDataTypes(selectedDataTypes.filter(id => id !== dataTypeId));
+      }
+    }
+  };
+  
+  // Check if all data types are selected (for "All Data" checkbox state)
+  const isAllDataSelected = () => {
+    const availableTypes = dataTypes
+      .filter(dt => dt.available && dt.id !== 'all_data')
+      .map(dt => dt.id);
+    return availableTypes.every(type => selectedDataTypes.includes(type));
+  };
+  const [dateRange, setDateRange] = useState('7d');
+  const [exportFormat, setExportFormat] = useState('csv');
+  const [scheduledExports, setScheduledExports] = useState([]);
   const [alert, setAlert] = useState(null);
-  const [formData, setFormData] = useState({
-    dataType: 'market_data',
-    dateRange: '7d',
-    format: 'json'
-  });
 
-  const showAlert = (message, type = 'success') => {
+  const dataTypes = [
+    { 
+      id: 'market_data', 
+      label: 'Market Data', 
+      description: 'Equity indices, DXY, Treasury yields, VIX',
+      icon: Database,
+      available: true
+    },
+    { 
+      id: 'ai_analysis', 
+      label: 'AI Analysis', 
+      description: 'AI predictions and market direction analysis',
+      icon: Settings,
+      available: true
+    },
+    { 
+      id: 'fear_greed', 
+      label: 'Fear & Greed Index', 
+      description: 'Market sentiment indicators',
+      icon: AlertCircle,
+      available: true
+    },
+    { 
+      id: 'narratives', 
+      label: 'Market Narratives', 
+      description: 'Trending market narratives and sentiment',
+      icon: FileText,
+      available: true
+    },
+    { 
+      id: 'alerts', 
+      label: 'Market Alerts', 
+      description: 'Historical alert data and triggers',
+      icon: AlertCircle,
+      available: true
+    },
+    { 
+      id: 'backtest_results', 
+      label: 'Backtest Results', 
+      description: 'AI prediction accuracy and performance',
+      icon: CheckCircle,
+      available: true
+    },
+    { 
+      id: 'all_data', 
+      label: 'All Data', 
+      description: 'Complete dataset export',
+      icon: Database,
+      available: true
+    }
+  ];
+
+  const dateRanges = [
+    { value: '1d', label: 'Last 24 Hours' },
+    { value: '7d', label: 'Last 7 Days' },
+    { value: '30d', label: 'Last 30 Days' },
+    { value: '90d', label: 'Last 90 Days' },
+    { value: '1y', label: 'Last Year' },
+    { value: 'all', label: 'All Time' },
+    { value: 'custom', label: 'Custom Range' }
+  ];
+
+  const exportFormats = [
+    { value: 'csv', label: 'CSV', description: 'Comma-separated values' },
+    { value: 'json', label: 'JSON', description: 'JavaScript Object Notation' },
+    { value: 'xlsx', label: 'Excel', description: 'Microsoft Excel format' },
+    { value: 'pdf', label: 'PDF Report', description: 'Professional PDF report with charts' },
+    { value: 'xml', label: 'XML', description: 'Extensible Markup Language' }
+  ];
+
+  const showAlert = (message, type = 'info') => {
     setAlert({ message, type });
   };
 
-  const checkAuthAndSubscription = useCallback(async () => {
+  useEffect(() => {
+    checkAuthAndSubscription();
+  }, []);
+
+  const checkAuthAndSubscription = async () => {
     try {
-      // Check subscription status
-      const subscriptionResponse = await axios.get('/api/subscription');
-      setSubscriptionStatus(subscriptionResponse.data);
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      const response = await axios.get('/api/subscription', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
       setIsAuthenticated(true);
-      
-      // Check if user is admin or has premium+ subscription
-      const isAdmin = subscriptionResponse.data.plan === 'admin';
-      const hasValidPlan = subscriptionResponse.data.plan && subscriptionResponse.data.plan !== 'free';
-      
-      if (isAdmin || hasValidPlan) {
+
+      // Check if user has access to advanced exports using shared utility
+      const hasAccess = !shouldShowPremiumUpgradePrompt(response.data);
+      if (hasAccess) {
         await fetchExportHistory();
-      } else {
-        setAuthError('Premium subscription required. Data export is only available for Pro, Premium users, or administrators.');
+        await fetchScheduledExports();
       }
     } catch (error) {
       console.error('Auth check error:', error);
-      if (error.response?.status === 401) {
-        setAuthError('Authentication required. Please log in to access data export features.');
-      } else if (error.response?.status === 403) {
-        setAuthError('Premium subscription required. Data export is only available for Pro, Premium users, or administrators.');
-      } else {
-        setAuthError('Failed to check authentication status. Please try again.');
-      }
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    checkAuthAndSubscription();
-  }, [checkAuthAndSubscription]);
+  };
 
   const fetchExportHistory = async () => {
     try {
-      const response = await axios.get('/api/exports/history');
-      setExportHistory(response.data.exports || []);
+      const response = await axios.get('/api/exports/history', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}` }
+      });
+      // Ensure response.data is always an array
+      setExportHistory(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching export history:', error);
       setExportHistory([]);
     }
   };
 
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    console.log('📝 Form submitted with data:', formData);
-    
-    if (exporting) {
-      console.log('⏳ Export already in progress, ignoring submission');
-      return;
+  const fetchScheduledExports = async () => {
+    try {
+      const response = await axios.get('/api/exports/scheduled', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}` }
+      });
+      // Ensure response.data is always an array
+      setScheduledExports(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching scheduled exports:', error);
+      setScheduledExports([]);
     }
-    
+  };
+
+  const createExport = async () => {
     try {
       setExporting(true);
-      console.log('🚀 Creating export with data:', formData);
       
-      const response = await axios.post('/api/exports/create', formData, {
+      // Handle "all_data" selection - convert to individual data types
+      let exportDataTypes = selectedDataTypes;
+      if (selectedDataTypes.includes('all_data')) {
+        exportDataTypes = dataTypes
+          .filter(dt => dt.available && dt.id !== 'all_data')
+          .map(dt => dt.id);
+      }
+      
+      const response = await axios.post('/api/exports/create', {
+        dataTypes: exportDataTypes,
+        dateRange,
+        format: exportFormat,
+        includeMetadata: true,
+        compression: exportFormat === 'json' || exportFormat === 'csv'
+      }, {
         responseType: 'blob',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}` }
       });
-      
-      console.log('✅ Export created successfully');
-      
+
       // Create download link
-      const url = window.URL.createObjectURL(response.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `crypto-data-${formData.dataType}-${formData.dateRange}.${formData.format}`;
-      a.style.display = 'none';
-      
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 1000);
-      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `crypto_market_data_${dateRange}_${new Date().toISOString().split('T')[0]}.${exportFormat}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
       // Refresh export history
       await fetchExportHistory();
-      
-      // Show success message
-      showAlert(`✅ Export created successfully! Downloading crypto-data-${formData.dataType}-${formData.dateRange}.${formData.format}`, 'success');
-      
     } catch (error) {
-      console.error('❌ Export failed:', error);
-      showAlert(`Export failed: ${error.response?.data?.error || error.message}`, 'error');
+      console.error('Error creating export:', error);
+      showAlert('Failed to create export. Please try again.', 'error');
     } finally {
       setExporting(false);
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const scheduleExport = async (schedule) => {
+    try {
+      await axios.post('/api/exports/schedule', {
+        dataTypes: selectedDataTypes,
+        dateRange,
+        format: exportFormat,
+        schedule: schedule, // daily, weekly, monthly
+        emailNotification: true
+      }, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}` }
+      });
+
+      await fetchScheduledExports();
+      showAlert('Export scheduled successfully!', 'success');
+    } catch (error) {
+      console.error('Error scheduling export:', error);
+      showAlert('Failed to schedule export. Please try again.', 'error');
+    }
+  };
+
+  const cancelScheduledExport = async (exportId) => {
+    try {
+      await axios.delete(`/api/exports/scheduled/${exportId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}` }
+      });
+      await fetchScheduledExports();
+    } catch (error) {
+      console.error('Error canceling scheduled export:', error);
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-crypto-blue"></div>
       </div>
     );
   }
 
-  if (authError) {
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 mb-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <AlertCircle className="w-6 h-6 text-red-500" />
-              <h2 className="text-xl font-semibold text-red-400">Access Restricted</h2>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <Database className="w-16 h-16 text-crypto-blue mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Advanced Data Export</h2>
+          <p className="text-slate-400 mb-6">
+            Export comprehensive market data in multiple formats with advanced filtering and scheduling options.
+          </p>
+          <div className="space-y-3 text-sm text-slate-400 mb-6">
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span>Multiple export formats (CSV, JSON, Excel, PDF, XML)</span>
             </div>
-            <p className="text-red-300 mb-4">{authError}</p>
-            <div className="flex items-center space-x-4">
-              <a
-                href="/history"
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>Go to Historical Data</span>
-              </a>
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <span>Scheduled exports (daily, weekly, monthly)</span>
             </div>
-          </div>
-
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Export Capabilities</h3>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h4 className="font-medium text-white mb-2">Free Plan</h4>
-                <ul className="text-sm text-gray-400 space-y-1">
-                  <li>• Basic dashboard access</li>
-                  <li>• Limited historical data</li>
-                  <li>• CSV export from Historical Data page</li>
-                </ul>
-              </div>
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h4 className="font-medium text-white mb-2">Pro Plan</h4>
-                <ul className="text-sm text-gray-400 space-y-1">
-                  <li>• All Free features</li>
-                  <li>• Advanced data exports</li>
-                  <li>• JSON and Excel formats</li>
-                  <li>• API access</li>
-                </ul>
-              </div>
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h4 className="font-medium text-white mb-2">Premium+ & Admin</h4>
-                <ul className="text-sm text-gray-400 space-y-1">
-                  <li>• All Pro features</li>
-                  <li>• Unlimited exports</li>
-                  <li>• Custom date ranges</li>
-                </ul>
-              </div>
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+              <span>Custom date ranges and data filtering</span>
+            </div>
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+              <span>Bulk data downloads and compression</span>
             </div>
           </div>
+          <button className="w-full px-6 py-3 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors">
+            Upgrade to Premium+
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Data Export</h1>
-          <p className="text-gray-400">Export market data in various formats for analysis and reporting</p>
+    <div className="min-h-screen bg-slate-900 text-white p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Advanced Data Export</h1>
+            <p className="text-slate-400">Export comprehensive market data in multiple formats</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={fetchExportHistory}
+              className="p-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Export Creation */}
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Create Export</h2>
-            <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Data Type
-                </label>
-                <select
-                  name="dataType"
-                  value={formData.dataType}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="crypto_prices">Crypto Prices</option>
-                  <option value="market_data">Market Data</option>
-                  <option value="fear_greed">Fear & Greed Index</option>
-                  <option value="narratives">Trending Narratives</option>
-                  <option value="ai_analysis">AI Analysis</option>
-                  <option value="all_data">All Data</option>
-                </select>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Export Configuration */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Data Type Selection */}
+            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <h3 className="text-xl font-semibold text-white mb-4">Select Data Types</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {dataTypes.map((dataType) => (
+                  <label key={dataType.id} className={`flex items-start space-x-3 cursor-pointer ${dataType.id === 'all_data' ? 'border-t border-slate-600 pt-4 mt-4' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={dataType.id === 'all_data' ? isAllDataSelected() : selectedDataTypes.includes(dataType.id)}
+                      onChange={(e) => handleDataTypeChange(dataType.id, e.target.checked)}
+                      className={`mt-1 w-4 h-4 text-crypto-blue bg-slate-700 border-slate-600 rounded focus:ring-crypto-blue ${dataType.id === 'all_data' ? 'ring-2 ring-crypto-blue' : ''}`}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <dataType.icon className={`w-4 h-4 ${dataType.id === 'all_data' ? 'text-crypto-green' : 'text-crypto-blue'}`} />
+                        <span className={`font-medium ${dataType.id === 'all_data' ? 'text-crypto-green' : 'text-white'}`}>
+                          {dataType.label}
+                        </span>
+                        {dataType.id === 'all_data' && (
+                          <span className="text-xs bg-crypto-green/20 text-crypto-green px-2 py-1 rounded-full">
+                            Select All
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-400 mt-1">{dataType.description}</p>
+                    </div>
+                  </label>
+                ))}
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Date Range
-                </label>
-                <select
-                  name="dateRange"
-                  value={formData.dateRange}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="1d">Last 24 Hours</option>
-                  <option value="7d">Last 7 Days</option>
-                  <option value="30d">Last 30 Days</option>
-                  <option value="90d">Last 90 Days</option>
-                  <option value="1y">Last Year</option>
-                  <option value="all">All Time</option>
-                </select>
+            {/* Export Settings */}
+            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <h3 className="text-xl font-semibold text-white mb-4">Export Settings</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Date Range</label>
+                  <select
+                    value={dateRange}
+                    onChange={(e) => setDateRange(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
+                  >
+                    {dateRanges.map(range => (
+                      <option key={range.value} value={range.value}>{range.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Format</label>
+                  <select
+                    value={exportFormat}
+                    onChange={(e) => setExportFormat(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-crypto-blue"
+                  >
+                    {exportFormats.map(format => (
+                      <option key={format.value} value={format.value}>{format.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={createExport}
+                    disabled={exporting || selectedDataTypes.length === 0}
+                    className="w-full px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  >
+                    {exporting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Exporting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        <span>Create Export</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Format
-                </label>
-                <select
-                  name="format"
-                  value={formData.format}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="csv">CSV</option>
-                  <option value="json">JSON</option>
-                  <option value="xlsx">Excel</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                disabled={exporting}
-                className="w-full bg-crypto-blue hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {exporting ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Exporting...</span>
-                  </>
+            {/* Scheduled Exports */}
+            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <h3 className="text-xl font-semibold text-white mb-4">Scheduled Exports</h3>
+              <div className="space-y-4">
+                {scheduledExports.length === 0 ? (
+                  <p className="text-slate-400">No scheduled exports</p>
                 ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    <span>Create Export</span>
-                  </>
+                  scheduledExports.map((scheduled) => (
+                    <div key={scheduled.id} className="flex items-center justify-between p-4 bg-slate-700 rounded-lg">
+                      <div>
+                        <h4 className="font-medium text-white">{scheduled.name}</h4>
+                        <p className="text-sm text-slate-400">
+                          {scheduled.schedule} • {scheduled.format.toUpperCase()} • {scheduled.dataTypes.join(', ')}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => cancelScheduledExport(scheduled.id)}
+                        className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ))
                 )}
-              </button>
-            </form>
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                  <button
+                    onClick={() => scheduleExport('daily')}
+                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                  >
+                    Schedule Daily
+                  </button>
+                  <button
+                    onClick={() => scheduleExport('weekly')}
+                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                  >
+                    Schedule Weekly
+                  </button>
+                  <button
+                    onClick={() => scheduleExport('monthly')}
+                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                  >
+                    Schedule Monthly
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Export History */}
-          <div className="bg-gray-800 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Export History</h2>
-              <button
-                onClick={fetchExportHistory}
-                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                title="Refresh export history"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-            </div>
-            {!Array.isArray(exportHistory) || exportHistory.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                <p className="text-gray-400">No exports created yet</p>
-              </div>
-            ) : (
+          <div className="space-y-6">
+            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <h3 className="text-xl font-semibold text-white mb-4">Recent Exports</h3>
               <div className="space-y-3">
-                {exportHistory.map((export_, index) => (
-                  <div key={index} className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-medium">{export_.type}</p>
-                        <p className="text-sm text-gray-400">{export_.dateRange} • {export_.format}</p>
+                {exportHistory.length === 0 ? (
+                  <p className="text-slate-400">No recent exports</p>
+                ) : (
+                  exportHistory.slice(0, 5).map((exportItem) => (
+                    <div key={exportItem.id} className="p-3 bg-slate-700 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-white">{exportItem.format.toUpperCase()}</span>
+                        <span className="text-sm text-slate-400">{new Date(exportItem.created_at).toLocaleDateString()}</span>
                       </div>
-                      <button className="text-crypto-blue hover:text-blue-400">
-                        <Download className="w-4 h-4" />
-                      </button>
+                      <p className="text-sm text-slate-400">{exportItem.data_types.join(', ')}</p>
+                      <p className="text-xs text-slate-500">{exportItem.file_size}</p>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Export Statistics */}
+            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <h3 className="text-xl font-semibold text-white mb-4">Export Statistics</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Total Exports</span>
+                  <span className="text-white font-medium">{exportHistory.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">This Month</span>
+                  <span className="text-white font-medium">
+                    {exportHistory.filter(e => new Date(e.created_at).getMonth() === new Date().getMonth()).length}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Total Data Exported</span>
+                  <span className="text-white font-medium">
+                    {exportHistory.reduce((sum, e) => sum + (parseInt(e.file_size) || 0), 0)} MB
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      
+      {/* Toast Notification */}
       {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
     </div>
   );

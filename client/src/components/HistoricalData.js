@@ -14,10 +14,17 @@ const HistoricalData = ({ userData }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
   const [predictions, setPredictions] = useState(null);
   const [predictionsLoading, setPredictionsLoading] = useState(false);
+  
+  // AI Analysis filters
+  const [aiFilters, setAiFilters] = useState({
+    model: '',
+    term: '',
+    startDate: '',
+    endDate: ''
+  });
 
   const dataTypes = [
     { value: 'EQUITY_INDEX', label: 'Equity Indices', description: 'S&P 500, NASDAQ data' },
-    { value: 'CRYPTO_PRICE', label: 'Crypto Prices', description: 'Bitcoin, Ethereum prices' },
     { value: 'DXY', label: 'Dollar Index', description: 'US Dollar strength' },
     { value: 'TREASURY_YIELD', label: 'Treasury Yields', description: '2Y, 10Y bond yields' },
     { value: 'VOLATILITY_INDEX', label: 'Volatility (VIX)', description: 'Market volatility index' },
@@ -25,17 +32,30 @@ const HistoricalData = ({ userData }) => {
     { value: 'TOTAL_MARKET_CAP', label: 'Total Market Cap', description: 'Crypto market capitalization' },
     { value: 'ALTCOIN_SEASON', label: 'Altcoin Season', description: 'Altcoin dominance indicator' },
     { value: 'DERIVATIVES', label: 'Derivatives', description: 'Futures, options data' },
-    { value: 'ONCHAIN', label: 'On-chain Data', description: 'Blockchain metrics' },
-    { value: 'SEASON_INDICATOR', label: 'Season Indicator', description: 'Market season indicators' }
+    { value: 'SEASON_INDICATOR', label: 'Season Indicator', description: 'Market season indicators' },
+    { value: 'AI_ANALYSIS', label: 'AI Analysis', description: 'AI market predictions and analysis' }
   ];
 
   const fetchHistoricalData = async () => {
     try {
       setLoading(true);
       setError(null);
-      // Use public axios instance without Authorization header
-      const response = await publicAxios.get(`/api/history/${selectedDataType}?limit=100`);
-      setData(response.data);
+      
+      if (selectedDataType === 'AI_ANALYSIS') {
+        // Use public axios instance without Authorization header for AI analysis
+        const params = new URLSearchParams({ limit: '50' });
+        if (aiFilters.model) params.append('model', aiFilters.model);
+        if (aiFilters.term) params.append('term', aiFilters.term);
+        if (aiFilters.startDate) params.append('startDate', aiFilters.startDate);
+        if (aiFilters.endDate) params.append('endDate', aiFilters.endDate);
+        
+        const response = await publicAxios.get(`/api/history/ai-analysis?${params.toString()}`);
+        setData(response.data);
+      } else {
+        // Use public axios instance without Authorization header
+        const response = await publicAxios.get(`/api/history/${selectedDataType}?limit=100`);
+        setData(response.data);
+      }
     } catch (err) {
       console.error('Error fetching historical data:', err);
       setError('Failed to load historical data');
@@ -62,7 +82,7 @@ const HistoricalData = ({ userData }) => {
   useEffect(() => {
     fetchHistoricalData();
     fetchPredictions();
-  }, [selectedDataType]);
+  }, [selectedDataType, aiFilters]);
 
   // Sorting function
   const sortData = (data, key, direction) => {
@@ -703,6 +723,76 @@ const HistoricalData = ({ userData }) => {
         </div>
       </div>
 
+      {/* AI Analysis Filters */}
+      {selectedDataType === 'AI_ANALYSIS' && (
+        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+          <h2 className="text-lg font-semibold text-white mb-4">AI Analysis Filters</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* AI Model Filter */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">AI Model</label>
+              <select
+                value={aiFilters.model}
+                onChange={(e) => setAiFilters({ ...aiFilters, model: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-crypto-blue focus:border-transparent hover:bg-slate-600 transition-colors"
+              >
+                <option value="">All Models</option>
+                <option value="venice">Venice AI</option>
+                <option value="groq">Groq</option>
+                <option value="huggingface">Hugging Face</option>
+              </select>
+            </div>
+
+            {/* Term Filter */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Timeframe</label>
+              <select
+                value={aiFilters.term}
+                onChange={(e) => setAiFilters({ ...aiFilters, term: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-crypto-blue focus:border-transparent hover:bg-slate-600 transition-colors"
+              >
+                <option value="">All Timeframes</option>
+                <option value="short">Short Term (1-7 days)</option>
+                <option value="medium">Medium Term (1-4 weeks)</option>
+                <option value="long">Long Term (1-6 months)</option>
+              </select>
+            </div>
+
+            {/* Start Date Filter */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Start Date</label>
+              <input
+                type="date"
+                value={aiFilters.startDate}
+                onChange={(e) => setAiFilters({ ...aiFilters, startDate: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-crypto-blue focus:border-transparent hover:bg-slate-600 transition-colors"
+              />
+            </div>
+
+            {/* End Date Filter */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">End Date</label>
+              <input
+                type="date"
+                value={aiFilters.endDate}
+                onChange={(e) => setAiFilters({ ...aiFilters, endDate: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-crypto-blue focus:border-transparent hover:bg-slate-600 transition-colors"
+              />
+            </div>
+          </div>
+          
+          {/* Clear Filters Button */}
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => setAiFilters({ model: '', term: '', startDate: '', endDate: '' })}
+              className="px-4 py-2 bg-slate-600 text-white text-sm rounded hover:bg-slate-500 transition-colors"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Data Display */}
       <div className="bg-slate-800 rounded-lg border border-slate-700">
         <div className="p-6 border-b border-slate-700">
@@ -787,7 +877,152 @@ const HistoricalData = ({ userData }) => {
         )}
 
         {!loading && !error && data.length > 0 && (
-          <div className="overflow-x-auto">
+          <>
+            {selectedDataType === 'AI_ANALYSIS' ? (
+              // AI Analysis Cards View
+              <div className="p-6 space-y-4">
+                {finalData.map((analysis, index) => (
+                  <div key={analysis.id} className="bg-slate-700 rounded-lg p-6 border border-slate-600">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-crypto-blue rounded-lg flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">AI</span>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">AI Market Analysis</h3>
+                          <p className="text-sm text-slate-400">
+                            {new Date(analysis.timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`px-3 py-1 text-sm font-medium rounded ${
+                          analysis.overall_direction === 'BULLISH' ? 'bg-green-900 text-green-300' :
+                          analysis.overall_direction === 'BEARISH' ? 'bg-red-900 text-red-300' :
+                          'bg-slate-600 text-slate-300'
+                        }`}>
+                          {analysis.overall_direction || analysis.market_direction}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {analysis.overall_confidence || analysis.confidence}% confidence
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Timeframe Predictions */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      {/* Short Term */}
+                      {analysis.short_term && (
+                        <div className="bg-slate-600 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-slate-300">Short Term</h4>
+                            <span className="text-xs text-slate-400">1-7 days</span>
+                          </div>
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className={`px-2 py-1 text-xs font-medium rounded ${
+                              analysis.short_term.market_direction === 'BULLISH' ? 'bg-green-900 text-green-300' :
+                              analysis.short_term.market_direction === 'BEARISH' ? 'bg-red-900 text-red-300' :
+                              'bg-slate-500 text-slate-300'
+                            }`}>
+                              {analysis.short_term.market_direction}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {analysis.short_term.confidence}%
+                            </span>
+                          </div>
+                          {analysis.short_term.reasoning && (
+                            <p className="text-xs text-slate-400 line-clamp-2">
+                              {analysis.short_term.reasoning}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Medium Term */}
+                      {analysis.medium_term && (
+                        <div className="bg-slate-600 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-slate-300">Medium Term</h4>
+                            <span className="text-xs text-slate-400">1-4 weeks</span>
+                          </div>
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className={`px-2 py-1 text-xs font-medium rounded ${
+                              analysis.medium_term.market_direction === 'BULLISH' ? 'bg-green-900 text-green-300' :
+                              analysis.medium_term.market_direction === 'BEARISH' ? 'bg-red-900 text-red-300' :
+                              'bg-slate-500 text-slate-300'
+                            }`}>
+                              {analysis.medium_term.market_direction}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {analysis.medium_term.confidence}%
+                            </span>
+                          </div>
+                          {analysis.medium_term.reasoning && (
+                            <p className="text-xs text-slate-400 line-clamp-2">
+                              {analysis.medium_term.reasoning}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Long Term */}
+                      {analysis.long_term && (
+                        <div className="bg-slate-600 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-slate-300">Long Term</h4>
+                            <span className="text-xs text-slate-400">1-6 months</span>
+                          </div>
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className={`px-2 py-1 text-xs font-medium rounded ${
+                              analysis.long_term.market_direction === 'BULLISH' ? 'bg-green-900 text-green-300' :
+                              analysis.long_term.market_direction === 'BEARISH' ? 'bg-red-900 text-red-300' :
+                              'bg-slate-500 text-slate-300'
+                            }`}>
+                              {analysis.long_term.market_direction}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {analysis.long_term.confidence}%
+                            </span>
+                          </div>
+                          {analysis.long_term.reasoning && (
+                            <p className="text-xs text-slate-400 line-clamp-2">
+                              {analysis.long_term.reasoning}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* AI Models Used */}
+                    {analysis.providers && (
+                      <div className="mb-4">
+                        <h4 className="text-sm font-medium text-slate-300 mb-2">AI Models Used</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.keys(analysis.providers).map((model) => (
+                            <span key={model} className="px-2 py-1 bg-slate-600 text-slate-300 text-xs rounded">
+                              {model.charAt(0).toUpperCase() + model.slice(1)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reasoning */}
+                    {analysis.reasoning && (
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-300 mb-2">Analysis Reasoning</h4>
+                        <p className="text-sm text-slate-400 leading-relaxed">
+                          {analysis.reasoning}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Standard Table View for other data types
+              <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-700">
                 <tr>
@@ -884,6 +1119,8 @@ const HistoricalData = ({ userData }) => {
               </tbody>
             </table>
           </div>
+            )}
+          </>
         )}
       </div>
 

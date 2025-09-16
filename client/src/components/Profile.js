@@ -347,12 +347,12 @@ const Profile = ({ onProfileUpdate }) => {
           )}
           {hasPremiumAccess(userData) && (
             <Link
-              to="/advanced-export"
+              to="/app/data-export"
               className="flex items-center space-x-3 p-4 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
             >
               <Database className="w-5 h-5 text-slate-300" />
               <div>
-                <span className="text-slate-300 font-medium">Advanced Export</span>
+                <span className="text-slate-300 font-medium">Data Export</span>
                 <p className="text-slate-400 text-sm">Scheduled exports</p>
               </div>
             </Link>

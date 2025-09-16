@@ -83,7 +83,8 @@ const AdvancedAnalytics = ({ userData }) => {
       setAnalyticsData({
         marketData,
         backtestData,
-        correlationData
+        correlationData: correlationData?.error ? null : correlationData,
+        correlationError: correlationData?.error || null
       });
 
       // Calculate market metrics
@@ -127,7 +128,11 @@ const AdvancedAnalytics = ({ userData }) => {
       return response.data;
     } catch (error) {
       console.error('Error fetching correlation data:', error);
-      return null;
+      // Return error information instead of null
+      if (error.response && error.response.status === 503) {
+        return { error: error.response.data };
+      }
+      return { error: { message: 'Failed to fetch correlation data. Please try again later.' } };
     }
   };
 
@@ -377,72 +382,71 @@ const AdvancedAnalytics = ({ userData }) => {
 
           {/* Correlation Matrix */}
           <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h3 className="text-xl font-semibold text-white mb-4">Market Correlation</h3>
+            <h3 className="text-xl font-semibold text-white mb-4">Crypto Correlation</h3>
             {analyticsData?.correlationData ? (
               <div className="h-64 overflow-auto">
-                <div className="grid grid-cols-7 gap-2 text-xs">
+                <div className="grid grid-cols-6 gap-2 text-xs">
                   {/* Header row */}
                   <div className="font-semibold text-slate-300 p-2"></div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">SP500</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">NASDAQ</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">DXY</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">VIX</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">10Y</div>
-                  <div className="font-semibold text-slate-300 p-2 text-center">2Y</div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">BTC</div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">ETH</div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">SOL</div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">SUI</div>
+                  <div className="font-semibold text-slate-300 p-2 text-center">XRP</div>
                   
-                  {/* SP500 row */}
-                  <div className="font-semibold text-slate-300 p-2">SP500</div>
+                  {/* BTC row */}
+                  <div className="font-semibold text-slate-300 p-2">BTC</div>
                   <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_NASDAQ?.toFixed(2) || '0.95'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_DXY?.toFixed(2) || '-0.45'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_VIX?.toFixed(2) || '-0.75'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_10Y?.toFixed(2) || '0.15'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_2Y?.toFixed(2) || '0.25'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_ETH?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SOL?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SUI?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_XRP?.toFixed(2) || 'N/A'}</div>
                   
-                  {/* NASDAQ row */}
-                  <div className="font-semibold text-slate-300 p-2">NASDAQ</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_NASDAQ?.toFixed(2) || '0.95'}</div>
+                  {/* ETH row */}
+                  <div className="font-semibold text-slate-300 p-2">ETH</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_ETH?.toFixed(2) || 'N/A'}</div>
                   <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.NASDAQ_DXY?.toFixed(2) || '-0.42'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.NASDAQ_VIX?.toFixed(2) || '-0.78'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.NASDAQ_10Y?.toFixed(2) || '0.12'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.NASDAQ_2Y?.toFixed(2) || '0.22'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SOL?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SUI?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_XRP?.toFixed(2) || 'N/A'}</div>
                   
-                  {/* DXY row */}
-                  <div className="font-semibold text-slate-300 p-2">DXY</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_DXY?.toFixed(2) || '-0.45'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.NASDAQ_DXY?.toFixed(2) || '-0.42'}</div>
+                  {/* SOL row */}
+                  <div className="font-semibold text-slate-300 p-2">SOL</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SOL?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SOL?.toFixed(2) || 'N/A'}</div>
                   <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.DXY_VIX?.toFixed(2) || '0.35'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.DXY_10Y?.toFixed(2) || '0.55'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.DXY_2Y?.toFixed(2) || '0.65'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_SUI?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_XRP?.toFixed(2) || 'N/A'}</div>
                   
-                  {/* VIX row */}
-                  <div className="font-semibold text-slate-300 p-2">VIX</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_VIX?.toFixed(2) || '-0.75'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.NASDAQ_VIX?.toFixed(2) || '-0.78'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.DXY_VIX?.toFixed(2) || '0.35'}</div>
+                  {/* SUI row */}
+                  <div className="font-semibold text-slate-300 p-2">SUI</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_SUI?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_SUI?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_SUI?.toFixed(2) || 'N/A'}</div>
                   <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.VIX_10Y?.toFixed(2) || '-0.25'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.VIX_2Y?.toFixed(2) || '-0.15'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SUI_XRP?.toFixed(2) || 'N/A'}</div>
                   
-                  {/* 10Y row */}
-                  <div className="font-semibold text-slate-300 p-2">10Y</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_10Y?.toFixed(2) || '0.15'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.NASDAQ_10Y?.toFixed(2) || '0.12'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.DXY_10Y?.toFixed(2) || '0.55'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.VIX_10Y?.toFixed(2) || '-0.25'}</div>
+                  {/* XRP row */}
+                  <div className="font-semibold text-slate-300 p-2">XRP</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.BTC_XRP?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.ETH_XRP?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SOL_XRP?.toFixed(2) || 'N/A'}</div>
+                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SUI_XRP?.toFixed(2) || 'N/A'}</div>
                   <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData['10Y_2Y']?.toFixed(2) || '0.85'}</div>
-                  
-                  {/* 2Y row */}
-                  <div className="font-semibold text-slate-300 p-2">2Y</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.SP500_2Y?.toFixed(2) || '0.25'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.NASDAQ_2Y?.toFixed(2) || '0.22'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.DXY_2Y?.toFixed(2) || '0.65'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData.VIX_2Y?.toFixed(2) || '-0.15'}</div>
-                  <div className="bg-slate-600 p-2 text-center rounded">{analyticsData.correlationData['10Y_2Y']?.toFixed(2) || '0.85'}</div>
-                  <div className="bg-crypto-green/20 text-crypto-green p-2 text-center rounded">1.00</div>
+                </div>
+              </div>
+            ) : analyticsData?.correlationError ? (
+              <div className="h-64 flex items-center justify-center text-slate-400">
+                <div className="text-center">
+                  <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-red-400 mb-2">Correlation data unavailable</p>
+                  <p className="text-sm text-slate-500">{analyticsData.correlationError.message}</p>
+                  <button 
+                    onClick={() => fetchAnalyticsData()}
+                    className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                  >
+                    Retry
+                  </button>
                 </div>
               </div>
             ) : (
@@ -453,7 +457,7 @@ const AdvancedAnalytics = ({ userData }) => {
                 </div>
               </div>
             )}
-            <p className="text-sm text-slate-400 mt-2">Market correlation matrix (1.00 = perfect correlation, -1.00 = perfect negative correlation)</p>
+            <p className="text-sm text-slate-400 mt-2">Crypto correlation matrix (1.00 = perfect correlation, -1.00 = perfect negative correlation)</p>
           </div>
         </div>
 

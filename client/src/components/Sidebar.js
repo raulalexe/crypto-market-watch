@@ -48,13 +48,6 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
       requiresPro: true
     },
     {
-      path: '/app/advanced-export',
-      name: 'Advanced Export',
-      icon: Download,
-      requiresAuth: true,
-      requiresPro: true
-    },
-    {
       path: '/app/advanced-analytics',
       name: 'Advanced Analytics',
       icon: BarChart3,

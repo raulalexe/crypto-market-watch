@@ -15,7 +15,6 @@ import ErrorLogs from './components/ErrorLogs';
 import DataExport from './components/DataExport';
 import AlertsPage from './components/AlertsPage';
 import AdvancedAnalytics from './components/AdvancedAnalytics';
-import AdvancedDataExport from './components/AdvancedDataExport';
 import CustomAlertThresholds from './components/CustomAlertThresholds';
 import HistoricalData from './components/HistoricalData';
 import SubscriptionPlans from './components/SubscriptionPlans';
@@ -258,10 +257,6 @@ function App() {
               <Route 
                 path="advanced-analytics" 
                 element={<AdvancedAnalytics userData={userData} />} 
-              />
-              <Route 
-                path="advanced-export" 
-                element={<AdvancedDataExport />} 
               />
               <Route 
                 path="custom-alerts" 
