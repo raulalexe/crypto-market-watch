@@ -586,41 +586,43 @@ const UpcomingEventsPage = () => {
               >
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex-1">
-                    <div className="flex items-start space-x-4">
-                      <div className="flex-shrink-0">
+                    <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
+                      <div className="flex-shrink-0 mx-auto sm:mx-0">
                         <div className={`p-2 rounded-lg ${getImpactColor(event?.impact || 'medium')}`}>
                           {getEventIcon(event?.category || 'other')}
                         </div>
                       </div>
                       
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">{event?.title || 'Untitled Event'}</h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')}`}>
-                            {getImpactLabel(event?.impact || 'medium')}
-                          </span>
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300">
-                            {getCategoryLabel(event?.category || 'other')}
-                          </span>
-                          {event?.daysUntil === 3 && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-900/20 text-orange-400 border border-orange-500/30 flex items-center space-x-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              <span>Notification Sent</span>
+                      <div className="flex-1 min-w-0 text-center sm:text-left">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0 mb-2">
+                          <h3 className="text-lg font-semibold text-white break-words">{event?.title || 'Untitled Event'}</h3>
+                          <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(event?.impact || 'medium')}`}>
+                              {getImpactLabel(event?.impact || 'medium')}
                             </span>
-                          )}
-                          {event?.ignored && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900/20 text-gray-400 border border-gray-500/30 flex items-center space-x-1">
-                              <EyeOff className="w-3 h-3" />
-                              <span>Ignored</span>
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300">
+                              {getCategoryLabel(event?.category || 'other')}
                             </span>
-                          )}
+                            {event?.daysUntil === 3 && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-900/20 text-orange-400 border border-orange-500/30 flex items-center space-x-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>Notification Sent</span>
+                              </span>
+                            )}
+                            {event?.ignored && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-900/20 text-gray-400 border border-gray-500/30 flex items-center space-x-1">
+                                <EyeOff className="w-3 h-3" />
+                                <span>Ignored</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                         
-                        <p className="text-slate-400 mb-3">{event?.description || 'No description available'}</p>
+                        <p className="text-slate-400 mb-3 break-words">{event?.description || 'No description available'}</p>
                         
-                        <div className="flex items-center space-x-4 text-sm text-slate-500">
+                        <div className="flex items-center justify-center sm:justify-start space-x-4 text-sm text-slate-500">
                           <div className="flex items-center space-x-1">
-                            <Info className="w-4 h-4" />
+                            <Info className="w-4 h-4 flex-shrink-0" />
                             <span>{event?.source || 'Unknown source'}</span>
                           </div>
                         </div>
@@ -629,7 +631,7 @@ const UpcomingEventsPage = () => {
                   </div>
                   
                   <div className="mt-4 lg:mt-0 lg:ml-6">
-                    <div className="text-right">
+                    <div className="text-center lg:text-right">
                       <div className="text-lg font-semibold text-white">
                         {event?.date ? new Date(event.date).toLocaleDateString('en-US', { 
                           month: 'short', 
@@ -652,7 +654,7 @@ const UpcomingEventsPage = () => {
                       </div>
                       <div className="text-sm text-crypto-blue font-medium mt-1">
                         {event?.timeRemaining ? (
-                          <span className="flex items-center space-x-1">
+                          <span className="flex items-center justify-center lg:justify-end space-x-1">
                             <Clock className="w-4 h-4" />
                             <span>{event.timeRemaining}</span>
                           </span>
@@ -664,7 +666,7 @@ const UpcomingEventsPage = () => {
                       {/* Admin Actions */}
                       {isAdminUser && (
                         <div className="mt-3 pt-3 border-t border-slate-600">
-                          <div className="flex items-center justify-end space-x-2">
+                          <div className="flex items-center justify-center lg:justify-end space-x-2">
                             {event?.ignored ? (
                               <button
                                 onClick={(e) => {

@@ -139,7 +139,7 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         {/* Mobile header with close button */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700 md:hidden">
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 md:hidden flex-shrink-0">
           <div className="flex items-center space-x-3">
             <TrendingUp className="w-8 h-8 text-crypto-blue" />
             <h1 className="text-xl font-bold">Crypto Market Watch</h1>
@@ -153,7 +153,7 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4">
+        <nav className="flex-1 p-4 overflow-y-auto">
           <ul className="space-y-2">
             {/* Regular Navigation Items */}
             {navItems.map((item) => {

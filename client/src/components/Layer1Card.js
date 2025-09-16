@@ -186,19 +186,19 @@ const Layer1Card = () => {
           <div key={chain.id} className="bg-slate-700 rounded-lg border border-slate-600">
             {/* Chain Header */}
             <div className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-slate-600 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-slate-600 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-bold text-white">{chain.symbol}</span>
                   </div>
-                  <div>
-                    <h4 className="text-lg font-semibold text-white">{chain.name}</h4>
-                    <p className="text-sm text-slate-400">{chain.narrative}</p>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-lg font-semibold text-white break-words">{chain.name}</h4>
+                    <p className="text-sm text-slate-400 break-words">{chain.narrative}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
+                <div className="flex items-center justify-between sm:justify-end space-x-4">
+                  <div className="text-left sm:text-right">
                     <div className="text-lg font-bold text-white">
                       {formatCurrency(chain.price)}
                     </div>
@@ -208,7 +208,7 @@ const Layer1Card = () => {
                   </div>
                   <button
                     onClick={() => toggleChain(chain.id)}
-                    className="text-slate-400 hover:text-white transition-colors"
+                    className="text-slate-400 hover:text-white transition-colors flex-shrink-0"
                   >
                     {expandedChains[chain.id] ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
                   </button>
@@ -220,46 +220,46 @@ const Layer1Card = () => {
             {expandedChains[chain.id] && (
               <div className="px-4 pb-4 border-t border-slate-600">
                 {/* Metrics Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
                   <div className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <DollarSign className="w-4 h-4 text-crypto-green" />
+                    <div className="flex items-center space-x-2 mb-2">
+                      <DollarSign className="w-4 h-4 text-crypto-green flex-shrink-0" />
                       <span className="text-xs text-slate-400">Market Cap</span>
                     </div>
-                    <div className="text-sm font-medium text-white">
+                    <div className="text-sm font-medium text-white break-words">
                       {formatCurrency(chain.market_cap)}
                     </div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-400 mt-1">
                       {chain.dominance}% dominance
                     </div>
                   </div>
 
                   <div className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <BarChart3 className="w-4 h-4 text-crypto-blue" />
+                    <div className="flex items-center space-x-2 mb-2">
+                      <BarChart3 className="w-4 h-4 text-crypto-blue flex-shrink-0" />
                       <span className="text-xs text-slate-400">Volume 24h</span>
                     </div>
-                    <div className="text-sm font-medium text-white">
+                    <div className="text-sm font-medium text-white break-words">
                       {formatCurrency(chain.volume_24h)}
                     </div>
                   </div>
 
                   <div className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <Activity className="w-4 h-4 text-crypto-yellow" />
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Activity className="w-4 h-4 text-crypto-yellow flex-shrink-0" />
                       <span className="text-xs text-slate-400">TPS</span>
                     </div>
-                    <div className="text-sm font-medium text-white">
+                    <div className="text-sm font-medium text-white break-words">
                       {typeof chain.tps === 'string' ? parseInt(chain.tps).toLocaleString() : chain.tps.toLocaleString()}
                     </div>
                   </div>
 
                   <div className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <Users className="w-4 h-4 text-crypto-purple" />
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Users className="w-4 h-4 text-crypto-purple flex-shrink-0" />
                       <span className="text-xs text-slate-400">Active Addresses</span>
                     </div>
-                    <div className="text-sm font-medium text-white">
+                    <div className="text-sm font-medium text-white break-words">
                       {typeof chain.active_addresses === 'string' ? parseInt(chain.active_addresses).toLocaleString() : chain.active_addresses.toLocaleString()}
                     </div>
                   </div>

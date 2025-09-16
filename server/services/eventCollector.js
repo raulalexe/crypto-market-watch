@@ -155,10 +155,34 @@ class EventCollector {
 
   // Helper methods to calculate event dates
   getNextFOMCMeeting() {
-    // FOMC meetings typically occur every 6 weeks
+    // FOMC meetings are scheduled for specific dates in 2025
     const now = moment();
-    const nextMeeting = moment().add(6, 'weeks').startOf('week').add(2, 'days'); // Tuesday
-    return nextMeeting.format('YYYY-MM-DD HH:mm:ss');
+    
+    // Known FOMC meeting dates for 2025
+    const fomcDates = [
+      '2025-01-28 14:00:00', // January 28-29, 2025
+      '2025-03-18 14:00:00', // March 18-19, 2025
+      '2025-04-29 14:00:00', // April 29-30, 2025
+      '2025-06-10 14:00:00', // June 10-11, 2025
+      '2025-07-29 14:00:00', // July 29-30, 2025
+      '2025-09-16 14:00:00', // September 16-17, 2025 (TODAY/TOMORROW)
+      '2025-10-28 14:00:00', // October 28-29, 2025
+      '2025-12-16 14:00:00'  // December 16-17, 2025
+    ];
+    
+    // Find the next FOMC meeting after now
+    for (const dateStr of fomcDates) {
+      const meetingDate = moment(dateStr);
+      if (meetingDate.isAfter(now)) {
+        console.log(`📅 Next FOMC meeting: ${meetingDate.format('YYYY-MM-DD HH:mm:ss')}`);
+        return meetingDate.format('YYYY-MM-DD HH:mm:ss');
+      }
+    }
+    
+    // Fallback: if all dates have passed, use the next year's first meeting
+    const nextYearFirstMeeting = moment('2026-01-28 14:00:00');
+    console.log(`📅 Using next year's first FOMC meeting: ${nextYearFirstMeeting.format('YYYY-MM-DD HH:mm:ss')}`);
+    return nextYearFirstMeeting.format('YYYY-MM-DD HH:mm:ss');
   }
 
   getNextFedSpeech() {

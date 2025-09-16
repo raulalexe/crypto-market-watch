@@ -255,16 +255,14 @@ const PricingSection = ({
           setAuthModalOpen(true);
           showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
         } catch (error) {
-          // If direct modal opening fails, redirect to app with auth parameter
-          console.log('Direct modal opening failed, redirecting to app:', error);
-          window.location.href = '/app?auth=login';
+          // If direct modal opening fails, show alert and don't redirect immediately
+          console.log('Direct modal opening failed:', error);
+          showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
+          // Don't redirect immediately - let user see the alert first
         }
       } else {
         showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
-        // Redirect to login page if no auth modal handler is available
-        setTimeout(() => {
-          window.location.href = '/app?auth=login';
-        }, 2000);
+        // Don't redirect immediately - let user see the alert first
       }
       return;
     }
@@ -295,16 +293,14 @@ const PricingSection = ({
           setAuthModalOpen(true);
           showAlert('Please sign in or create an account to subscribe to a plan.', 'info');
         } catch (error) {
-          // If direct modal opening fails, redirect to app with auth parameter
-          console.log('Direct modal opening failed, redirecting to app:', error);
-          window.location.href = '/app?auth=login';
+          // If direct modal opening fails, show alert and don't redirect immediately
+          console.log('Direct modal opening failed:', error);
+          showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
+          // Don't redirect immediately - let user see the alert first
         }
       } else {
         showAlert('Please sign in to subscribe to a plan. You can create a free account to get started.', 'warning');
-        // Redirect to login page if no auth modal handler is available
-        setTimeout(() => {
-          window.location.href = '/app?auth=login';
-        }, 2000);
+        // Don't redirect immediately - let user see the alert first
       }
       return;
     }

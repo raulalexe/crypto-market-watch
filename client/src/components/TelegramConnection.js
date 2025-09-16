@@ -173,16 +173,16 @@ const TelegramConnection = () => {
 
       {/* Connection Status */}
       <div className="mb-6">
-        <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-slate-700/50 rounded-lg space-y-3 sm:space-y-0">
           <div className="flex items-center">
-            <div className={`w-3 h-3 rounded-full mr-3 ${
+            <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${
               telegramStatus?.verified ? 'bg-green-500' : 'bg-slate-500'
             }`}></div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h4 className="text-white font-medium">
                 {telegramStatus?.verified ? 'Connected' : 'Not Connected'}
               </h4>
-              <p className="text-slate-400 text-sm">
+              <p className="text-slate-400 text-sm break-words">
                 {telegramStatus?.verified 
                   ? `Chat ID: ${telegramStatus.chatId}` 
                   : 'Connect your Telegram account to receive notifications'
@@ -194,7 +194,7 @@ const TelegramConnection = () => {
             <button
               onClick={disconnectTelegram}
               disabled={disconnecting}
-              className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 disabled:bg-slate-600 text-white rounded flex items-center"
+              className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 disabled:bg-slate-600 text-white rounded flex items-center justify-center w-full sm:w-auto"
             >
               {disconnecting ? (
                 <>
@@ -219,7 +219,8 @@ const TelegramConnection = () => {
             </h4>
             <ol className="text-sm text-slate-300 space-y-2">
               <li>1. Click "Generate Code" below to get a verification code</li>
-              <li>2. Open Telegram and start a conversation with the Crypto Market Watch bot (@crypto-mnarket-watch_bot)</li>
+              <li>2. Open Telegram and start a conversation with the Crypto Market Watch bot</li>
+              <li className="break-words">   Bot: <code className="bg-slate-700 px-2 py-1 rounded">@crypto_market_watch_bot</code></li>
               <li>3. Send the command: <code className="bg-slate-700 px-2 py-1 rounded">/verify YOUR_CODE</code></li>
               <li>4. Your account will be linked and you'll receive notifications</li>
             </ol>
@@ -232,13 +233,13 @@ const TelegramConnection = () => {
                 <CheckCircle className="w-4 h-4 mr-2 text-green-400" />
                 Verification Code Generated
               </h4>
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="bg-slate-700 px-4 py-2 rounded-lg font-mono text-lg text-white">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
+                <div className="bg-slate-700 px-4 py-2 rounded-lg font-mono text-lg text-white text-center sm:text-left break-all">
                   {telegramStatus.code}
                 </div>
                 <button
                   onClick={() => copyToClipboard(telegramStatus.code)}
-                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center"
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center w-full sm:w-auto"
                 >
                   <Copy className="w-4 h-4 mr-1" />
                   Copy
@@ -250,7 +251,10 @@ const TelegramConnection = () => {
               </div>
               <div className="mt-3 p-3 bg-slate-700/50 rounded">
                 <p className="text-sm text-slate-300">
-                  <strong>Next step:</strong> Go to Telegram and send: <code className="bg-slate-600 px-2 py-1 rounded">/verify {telegramStatus.code}</code>
+                  <strong>Next step:</strong> Go to Telegram and send:
+                </p>
+                <p className="text-sm text-slate-300 mt-1 break-all">
+                  <code className="bg-slate-600 px-2 py-1 rounded">/verify {telegramStatus.code}</code>
                 </p>
               </div>
             </div>
