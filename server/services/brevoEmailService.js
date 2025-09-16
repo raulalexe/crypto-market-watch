@@ -839,39 +839,200 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
       <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Your Password - Crypto Market Watch</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-          .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; }
-          .button { display: inline-block; background: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 15px 0; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-          .footer-links { margin-top: 15px; }
-          .footer-links a { color: #dc3545; text-decoration: none; margin: 0 10px; }
-          .footer-links a:hover { text-decoration: underline; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .header { 
+            background: linear-gradient(135deg, #dc3545 0%, #b91c1c 100%);
+            color: white; 
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+            z-index: 1;
+          }
+          .header h1 { 
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+          }
+          .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+            position: relative;
+            z-index: 1;
+          }
+          .content { 
+            background: #1e293b;
+            padding: 40px 30px;
+            color: #f8fafc;
+          }
+          .content p {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+          }
+          .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #dc3545 0%, #b91c1c 100%);
+            color: white; 
+            padding: 16px 32px; 
+            text-decoration: none; 
+            border-radius: 12px; 
+            margin: 25px 0;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+          }
+          .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+          }
+          .link-fallback {
+            background: #334155;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #dc3545;
+          }
+          .link-fallback p {
+            margin: 0;
+            font-size: 14px;
+            color: #94a3b8;
+          }
+          .link-fallback a {
+            color: #dc3545;
+            word-break: break-all;
+          }
+          .footer { 
+            text-align: center; 
+            padding: 30px;
+            background: #0f172a;
+            color: #64748b; 
+            font-size: 14px;
+          }
+          .footer-logo {
+            width: 32px;
+            height: 32px;
+            background: #dc3545;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+          }
+          .footer-links { 
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+          }
+          .footer-links a { 
+            color: #dc3545; 
+            text-decoration: none; 
+            font-weight: 500;
+            transition: color 0.3s ease;
+          }
+          .footer-links a:hover { 
+            color: #fca5a5;
+          }
+          .security-note {
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #fca5a5;
+            font-size: 14px;
+          }
+          @media (max-width: 600px) {
+            .container { margin: 10px; }
+            .header, .content, .footer { padding: 20px; }
+            .footer-links { flex-direction: column; gap: 10px; }
+          }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
+            <div class="logo">🔐</div>
             <h1>Reset Your Password</h1>
+            <p>Secure your account with a new password</p>
           </div>
           
           <div class="content">
             <p>We received a request to reset your password. Click the button below to create a new password:</p>
             
-            <a href="${resetUrl}" class="button">Reset Password</a>
+            <div style="text-align: center;">
+              <a href="${resetUrl}" class="button">Reset Password</a>
+            </div>
             
-            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-            <p>${resetUrl}</p>
+            <div class="link-fallback">
+              <p><strong>Button not working?</strong> Copy and paste this link into your browser:</p>
+              <p><a href="${resetUrl}">${resetUrl}</a></p>
+            </div>
             
-            <p>This link will expire in 1 hour for security reasons.</p>
+            <div class="security-note">
+              <p><strong>Security Note:</strong> This link will expire in 1 hour for security reasons.</p>
+            </div>
             
             <p>If you didn't request a password reset, you can safely ignore this email.</p>
           </div>
           
           <div class="footer">
+            <div class="footer-logo">₿</div>
             <p><strong>Crypto Market Watch</strong></p>
+            <p>Advanced cryptocurrency analytics with AI-powered insights</p>
             <div class="footer-links">
               <a href="${websiteUrl}">Visit Website</a>
               <a href="${websiteUrl}/dashboard">Dashboard</a>
@@ -926,203 +1087,256 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
         <title>Welcome to Crypto Market Watch</title>
         <style>
           body { 
-            font-family: Arial, Helvetica, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
             line-height: 1.6; 
-            color: #333333; 
-            background-color: #f4f4f4;
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             margin: 0;
-            padding: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
-          table { border-collapse: collapse; }
           .container { 
             max-width: 600px; 
             margin: 0 auto; 
-            background-color: #ffffff;
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           }
           .header { 
-            background-color: #00cc6a;
-            color: #ffffff; 
-            padding: 30px 20px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #0f172a; 
+            padding: 40px 30px;
             text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(15,23,42,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            width: 48px;
+            height: 48px;
+            background: #0f172a;
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+            z-index: 1;
           }
           .header h1 { 
             margin: 0;
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
           }
           .header p {
             margin: 10px 0 0;
             font-size: 16px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
           }
           .content { 
-            background-color: #ffffff;
-            padding: 30px 20px;
-            color: #333333;
+            background: #1e293b;
+            padding: 40px 30px;
+            color: #f8fafc;
           }
           .content p {
             font-size: 16px;
             margin-bottom: 20px;
-            color: #333333;
+            color: #cbd5e1;
           }
           .feature { 
-            background-color: #f8f9fa;
+            background: #334155;
             padding: 20px;
             margin: 15px 0;
-            border-left: 4px solid #3b82f6;
+            border-left: 4px solid #00ff88;
+            border-radius: 8px;
           }
           .feature strong {
-            color: #333333;
+            color: #00ff88;
             font-size: 16px;
             display: block;
             margin-bottom: 8px;
           }
           .feature span {
-            color: #666666;
+            color: #cbd5e1;
             font-size: 14px;
           }
           .cta-button { 
             display: inline-block; 
-            background-color: #3b82f6;
-            color: #ffffff; 
-            padding: 15px 30px; 
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #0f172a; 
+            padding: 16px 32px; 
             text-decoration: none; 
-            border-radius: 5px; 
+            border-radius: 12px; 
             margin: 25px 0;
-            font-weight: bold;
+            font-weight: 600;
             font-size: 16px;
             text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+          }
+          .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.4);
           }
           .footer { 
             text-align: center; 
-            padding: 30px 20px;
-            background-color: #0f172a;
-            color: #94a3b8; 
+            padding: 30px;
+            background: #0f172a;
+            color: #64748b; 
+            font-size: 14px;
+          }
+          .footer-logo {
+            width: 32px;
+            height: 32px;
+            background: #00ff88;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0f172a;
+            font-weight: bold;
             font-size: 14px;
           }
           .footer-links { 
             margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
           }
           .footer-links a { 
-            color: #3b82f6; 
+            color: #00ff88; 
             text-decoration: none; 
-            margin: 0 10px;
+            font-weight: 500;
+            transition: color 0.3s ease;
+          }
+          .footer-links a:hover { 
+            color: #34d399;
           }
           .celebration {
-            background-color: #e8f5e8;
-            border: 1px solid #00cc6a;
-            border-radius: 5px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
             padding: 20px;
             margin: 20px 0;
             text-align: center;
           }
           .celebration p {
             margin: 0;
-            color: #00cc6a;
-            font-weight: bold;
+            color: #00ff88;
+            font-weight: 600;
+          }
+          .pro-tip {
+            background: #334155;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #3b82f6;
+          }
+          .pro-tip p {
+            margin: 0;
+            color: #cbd5e1;
+          }
+          .pro-tip strong {
+            color: #3b82f6;
+          }
+          @media (max-width: 600px) {
+            .container { margin: 10px; }
+            .header, .content, .footer { padding: 20px; }
+            .footer-links { flex-direction: column; gap: 10px; }
           }
         </style>
       </head>
       <body>
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4;">
-          <tr>
-            <td align="center">
-              <table class="container" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td class="header">
-                    <h1>Welcome to Crypto Market Watch!</h1>
-                    <p>Your journey to smarter crypto trading starts now</p>
-                  </td>
-                </tr>
-                
-                <tr>
-                  <td class="content">
-                    <p>Hi <strong>${displayName}</strong>,</p>
-                    
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td class="celebration">
-                          <p>Congratulations! Your account is now active and ready to use.</p>
-                        </td>
-                      </tr>
-                    </table>
-                    
-                    <p>Welcome to the most advanced cryptocurrency monitoring platform! We're excited to have you on board and can't wait to help you stay ahead of the market.</p>
-                    
-                    <p>Here's what you can do with your account:</p>
-                    
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td class="feature">
-                          <strong>Real-time Market Data</strong>
-                          <span>Get live cryptocurrency prices, market caps, trading volumes, and comprehensive market analysis</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="feature">
-                          <strong>AI-Powered Analysis</strong>
-                          <span>Receive intelligent market insights, predictions, and automated analysis powered by advanced AI</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="feature">
-                          <strong>Smart Alerts</strong>
-                          <span>Set up custom alerts for price movements, market events, and get notified via email, push notifications, and Telegram</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="feature">
-                          <strong>Advanced Metrics</strong>
-                          <span>Access Bitcoin dominance, stablecoin flows, Layer 1 blockchain metrics, and economic calendar events</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="feature">
-                          <strong>Economic Calendar</strong>
-                          <span>Stay informed about market-impacting events and economic indicators that affect crypto markets</span>
-                        </td>
-                      </tr>
-                    </table>
-                    
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td align="center" style="padding: 30px 0;">
-                          <a href="${frontendUrl}/dashboard" class="cta-button">Get Started Now</a>
-                        </td>
-                      </tr>
-                    </table>
-                    
-                    <p>Ready to explore? Log in to your account and discover all the powerful features waiting for you!</p>
-                    
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #3b82f6;">
-                          <p style="margin: 0;">
-                            <strong>Pro Tip:</strong> Start by setting up your first alert to get notified when Bitcoin reaches a specific price point. It's a great way to test the system and stay informed!
-                          </p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                
-                <tr>
-                  <td class="footer">
-                    <p><strong>Crypto Market Watch</strong></p>
-                    <p>Advanced cryptocurrency analytics with AI-powered insights</p>
-                    <div class="footer-links">
-                      <a href="${frontendUrl}/dashboard">Dashboard</a>
-                      <a href="${frontendUrl}/about">About</a>
-                      ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
-                    </div>
-                    <p style="margin-top: 20px; font-size: 12px; color: #666666;">
-                      Need help? Contact our support team anytime.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
+        <div class="container">
+          <div class="header">
+            <div class="logo">₿</div>
+            <h1>Welcome to Crypto Market Watch!</h1>
+            <p>Your journey to smarter crypto trading starts now</p>
+          </div>
+          
+          <div class="content">
+            <p>Hi <strong>${displayName}</strong>,</p>
+            
+            <div class="celebration">
+              <p>Congratulations! Your account is now active and ready to use.</p>
+            </div>
+            
+            <p>Welcome to the most advanced cryptocurrency monitoring platform! We're excited to have you on board and can't wait to help you stay ahead of the market.</p>
+            
+            <p>Here's what you can do with your account:</p>
+            
+            <div class="feature">
+              <strong>Real-time Market Data</strong>
+              <span>Get live cryptocurrency prices, market caps, trading volumes, and comprehensive market analysis</span>
+            </div>
+            
+            <div class="feature">
+              <strong>AI-Powered Analysis</strong>
+              <span>Receive intelligent market insights, predictions, and automated analysis powered by advanced AI</span>
+            </div>
+            
+            <div class="feature">
+              <strong>Smart Alerts</strong>
+              <span>Set up custom alerts for price movements, market events, and get notified via email, push notifications, and Telegram</span>
+            </div>
+            
+            <div class="feature">
+              <strong>Advanced Metrics</strong>
+              <span>Access Bitcoin dominance, stablecoin flows, Layer 1 blockchain metrics, and economic calendar events</span>
+            </div>
+            
+            <div class="feature">
+              <strong>Economic Calendar</strong>
+              <span>Stay informed about market-impacting events and economic indicators that affect crypto markets</span>
+            </div>
+            
+            <div style="text-align: center;">
+              <a href="${frontendUrl}/dashboard" class="cta-button">Get Started Now</a>
+            </div>
+            
+            <p>Ready to explore? Log in to your account and discover all the powerful features waiting for you!</p>
+            
+            <div class="pro-tip">
+              <p>
+                <strong>Pro Tip:</strong> Start by setting up your first alert to get notified when Bitcoin reaches a specific price point. It's a great way to test the system and stay informed!
+              </p>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <div class="footer-logo">₿</div>
+            <p><strong>Crypto Market Watch</strong></p>
+            <p>Advanced cryptocurrency analytics with AI-powered insights</p>
+            <div class="footer-links">
+              <a href="${frontendUrl}/dashboard">Dashboard</a>
+              <a href="${frontendUrl}/about">About</a>
+              ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
+            </div>
+            <p style="margin-top: 20px; font-size: 12px; color: #94a3b8;">
+              Need help? Contact our support team anytime.
+            </p>
+          </div>
+        </div>
       </body>
       </html>
     `;
@@ -2090,36 +2304,193 @@ Support: ${frontendUrl}/app/support
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Subscription Renewal Reminder</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Subscription Renewal Reminder - Crypto Market Watch</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #1e40af; color: white; padding: 20px; text-align: center; }
-          .content { padding: 20px; background: #f8fafc; }
-          .button { display: inline-block; background: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
-          .footer { padding: 20px; text-align: center; color: #666; font-size: 14px; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .header { 
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #0f172a; 
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(15,23,42,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            width: 48px;
+            height: 48px;
+            background: #0f172a;
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+            z-index: 1;
+          }
+          .header h1 { 
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+          }
+          .content { 
+            background: #1e293b;
+            padding: 40px 30px;
+            color: #f8fafc;
+          }
+          .content h2 {
+            color: #f8fafc;
+            font-size: 24px;
+            margin-bottom: 20px;
+          }
+          .content p {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+          }
+          .content ul {
+            color: #cbd5e1;
+            margin: 20px 0;
+            padding-left: 20px;
+          }
+          .content li {
+            margin-bottom: 10px;
+            font-size: 16px;
+          }
+          .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #fbbf24;
+          }
+          .warning-box strong {
+            color: #fbbf24;
+            font-weight: 600;
+          }
+          .offer-box {
+            background: #334155;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #3b82f6;
+          }
+          .offer-box strong {
+            color: #3b82f6;
+          }
+          .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #0f172a; 
+            padding: 16px 32px; 
+            text-decoration: none; 
+            border-radius: 12px; 
+            margin: 25px 0;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+          }
+          .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+          }
+          .footer { 
+            text-align: center; 
+            padding: 30px;
+            background: #0f172a;
+            color: #64748b; 
+            font-size: 14px;
+          }
+          .footer-logo {
+            width: 32px;
+            height: 32px;
+            background: #f59e0b;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0f172a;
+            font-weight: bold;
+            font-size: 14px;
+          }
+          @media (max-width: 600px) {
+            .container { margin: 10px; }
+            .header, .content, .footer { padding: 20px; }
+          }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>⚠️ Subscription Renewal Reminder</h1>
+            <div class="logo">⚠️</div>
+            <h1>Subscription Renewal Reminder</h1>
           </div>
+          
           <div class="content">
             <h2>Your ${planType} subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}</h2>
-            <p>Don't lose access to your premium features! Renew now to continue enjoying:</p>
+            
+            <div class="warning-box">
+              <p><strong>Don't lose access to your premium features!</strong> Renew now to continue enjoying:</p>
+            </div>
+            
             <ul>
               <li>Advanced market alerts</li>
               <li>Unlimited API access</li>
               <li>AI-powered analysis</li>
               <li>Data export capabilities</li>
             </ul>
-            <p><strong>Special Offer:</strong> Save up to 20% when you prepay for multiple months!</p>
-            <a href="${process.env.FRONTEND_URL}/app/subscription" class="button">Renew Now</a>
+            
+            <div class="offer-box">
+              <p><strong>Special Offer:</strong> Save up to 20% when you prepay for multiple months!</p>
+            </div>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL}/app/subscription" class="button">Renew Now</a>
+            </div>
+            
             <p>If you have any questions, please contact our support team.</p>
           </div>
+          
           <div class="footer">
-            <p>Crypto Market Watch - Your trusted crypto market intelligence platform</p>
+            <div class="footer-logo">₿</div>
+            <p><strong>Crypto Market Watch</strong></p>
+            <p>Your trusted crypto market intelligence platform</p>
           </div>
         </div>
       </body>
@@ -2155,37 +2526,195 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Subscription Expired</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Subscription Expired - Crypto Market Watch</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
-          .content { padding: 20px; background: #f8fafc; }
-          .button { display: inline-block; background: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
-          .footer { padding: 20px; text-align: center; color: #666; font-size: 14px; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .header { 
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white; 
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+            z-index: 1;
+          }
+          .header h1 { 
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+          }
+          .content { 
+            background: #1e293b;
+            padding: 40px 30px;
+            color: #f8fafc;
+          }
+          .content h2 {
+            color: #f8fafc;
+            font-size: 24px;
+            margin-bottom: 20px;
+          }
+          .content p {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+          }
+          .content ul {
+            color: #cbd5e1;
+            margin: 20px 0;
+            padding-left: 20px;
+          }
+          .content li {
+            margin-bottom: 10px;
+            font-size: 16px;
+          }
+          .expired-box {
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #fca5a5;
+          }
+          .expired-box strong {
+            color: #fca5a5;
+            font-weight: 600;
+          }
+          .offer-box {
+            background: #334155;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #3b82f6;
+          }
+          .offer-box strong {
+            color: #3b82f6;
+          }
+          .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white; 
+            padding: 16px 32px; 
+            text-decoration: none; 
+            border-radius: 12px; 
+            margin: 25px 0;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+          }
+          .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+          }
+          .footer { 
+            text-align: center; 
+            padding: 30px;
+            background: #0f172a;
+            color: #64748b; 
+            font-size: 14px;
+          }
+          .footer-logo {
+            width: 32px;
+            height: 32px;
+            background: #dc2626;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+          }
+          @media (max-width: 600px) {
+            .container { margin: 10px; }
+            .header, .content, .footer { padding: 20px; }
+          }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>❌ Subscription Expired</h1>
+            <div class="logo">❌</div>
+            <h1>Subscription Expired</h1>
           </div>
+          
           <div class="content">
             <h2>Your ${planType} subscription has expired</h2>
-            <p>Your premium features are no longer available. You can still access basic features with our free plan.</p>
+            
+            <div class="expired-box">
+              <p><strong>Your premium features are no longer available.</strong> You can still access basic features with our free plan.</p>
+            </div>
+            
             <p>To restore your premium access, please renew your subscription:</p>
+            
             <ul>
               <li>Advanced market alerts</li>
               <li>Unlimited API access</li>
               <li>AI-powered analysis</li>
               <li>Data export capabilities</li>
             </ul>
-            <p><strong>Special Offer:</strong> Save up to 20% when you prepay for multiple months!</p>
-            <a href="${process.env.FRONTEND_URL}/app/subscription" class="button">Renew Now</a>
+            
+            <div class="offer-box">
+              <p><strong>Special Offer:</strong> Save up to 20% when you prepay for multiple months!</p>
+            </div>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL}/app/subscription" class="button">Renew Now</a>
+            </div>
+            
             <p>If you have any questions, please contact our support team.</p>
           </div>
+          
           <div class="footer">
-            <p>Crypto Market Watch - Your trusted crypto market intelligence platform</p>
+            <div class="footer-logo">₿</div>
+            <p><strong>Crypto Market Watch</strong></p>
+            <p>Your trusted crypto market intelligence platform</p>
           </div>
         </div>
       </body>
@@ -2230,18 +2759,146 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>New Inflation Data Available</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
-          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
-          .content { padding: 30px; }
-          .inflation-card { background: #f8f9fa; border-left: 4px solid #007bff; padding: 20px; margin: 15px 0; border-radius: 4px; }
-          .metric { display: flex; justify-content: space-between; margin: 10px 0; }
-          .metric-label { font-weight: bold; color: #495057; }
-          .metric-value { color: #007bff; font-weight: bold; }
-          .change-positive { color: #28a745; }
-          .change-negative { color: #dc3545; }
-          .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
-          .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 40px 30px; 
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+          }
+          .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+            position: relative;
+            z-index: 1;
+          }
+          .content { 
+            background: #1e293b;
+            padding: 40px 30px;
+            color: #f8fafc;
+          }
+          .content h2 {
+            color: #f8fafc;
+            font-size: 24px;
+            margin-bottom: 20px;
+          }
+          .content p {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+          }
+          .inflation-card { 
+            background: #334155; 
+            border-left: 4px solid #667eea; 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 8px;
+          }
+          .inflation-card h3 {
+            color: #667eea;
+            margin: 0 0 15px;
+            font-size: 18px;
+          }
+          .metric { 
+            display: flex; 
+            justify-content: space-between; 
+            margin: 10px 0; 
+            padding: 8px 0;
+            border-bottom: 1px solid #475569;
+          }
+          .metric:last-child {
+            border-bottom: none;
+          }
+          .metric-label { 
+            font-weight: 600; 
+            color: #cbd5e1; 
+          }
+          .metric-value { 
+            color: #667eea; 
+            font-weight: 700; 
+          }
+          .change-positive { color: #10b981; }
+          .change-negative { color: #ef4444; }
+          .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 16px 32px; 
+            text-decoration: none; 
+            border-radius: 12px; 
+            margin: 25px 0;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+          }
+          .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+          }
+          .footer { 
+            background: #0f172a; 
+            padding: 30px; 
+            text-align: center; 
+            color: #64748b; 
+            font-size: 14px;
+          }
+          .footer-logo {
+            width: 32px;
+            height: 32px;
+            background: #667eea;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+          }
+          @media (max-width: 600px) {
+            .container { margin: 10px; }
+            .header, .content, .footer { padding: 20px; }
+          }
         </style>
       </head>
       <body>
@@ -2349,18 +3006,135 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Upcoming Economic Events</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
-          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
-          .content { padding: 30px; }
-          .event-card { background: #f8f9fa; border-left: 4px solid #28a745; padding: 20px; margin: 15px 0; border-radius: 4px; }
-          .event-title { font-weight: bold; color: #495057; margin-bottom: 10px; }
-          .event-details { color: #6c757d; font-size: 14px; }
-          .impact-high { border-left-color: #dc3545; }
-          .impact-medium { border-left-color: #ffc107; }
-          .impact-low { border-left-color: #28a745; }
-          .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
-          .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 40px 30px; 
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+          }
+          .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+            position: relative;
+            z-index: 1;
+          }
+          .content { 
+            background: #1e293b;
+            padding: 40px 30px;
+            color: #f8fafc;
+          }
+          .content h2 {
+            color: #f8fafc;
+            font-size: 24px;
+            margin-bottom: 20px;
+          }
+          .content p {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+          }
+          .event-card { 
+            background: #334155; 
+            border-left: 4px solid #28a745; 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 8px;
+          }
+          .event-title { 
+            font-weight: 700; 
+            color: #28a745; 
+            margin-bottom: 10px; 
+            font-size: 18px;
+          }
+          .event-details { 
+            color: #cbd5e1; 
+            font-size: 14px; 
+            line-height: 1.5;
+          }
+          .impact-high { border-left-color: #ef4444; }
+          .impact-medium { border-left-color: #f59e0b; }
+          .impact-low { border-left-color: #10b981; }
+          .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #28a745 0%, #16a34a 100%); 
+            color: white; 
+            padding: 16px 32px; 
+            text-decoration: none; 
+            border-radius: 12px; 
+            margin: 25px 0;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+          }
+          .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+          }
+          .footer { 
+            background: #0f172a; 
+            padding: 30px; 
+            text-align: center; 
+            color: #64748b; 
+            font-size: 14px;
+          }
+          .footer-logo {
+            width: 32px;
+            height: 32px;
+            background: #28a745;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+          }
+          @media (max-width: 600px) {
+            .container { margin: 10px; }
+            .header, .content, .footer { padding: 20px; }
+          }
         </style>
       </head>
       <body>
@@ -2880,15 +3654,94 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact Form Submission</title>
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-        .content { background: #f8fafc; padding: 20px; border-radius: 0 0 8px 8px; }
-        .field { margin-bottom: 15px; }
-        .label { font-weight: bold; color: #374151; }
-        .value { margin-top: 5px; padding: 10px; background: white; border-radius: 4px; border-left: 4px solid #1e40af; }
-        .message-content { white-space: pre-wrap; }
-        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            line-height: 1.6; 
+            color: #f8fafc; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            margin: 0;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .header { 
+            background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%); 
+            color: white; 
+            padding: 40px 30px; 
+            text-align: center;
+            position: relative;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+        }
+        .content { 
+            background: #1e293b; 
+            padding: 40px 30px; 
+            color: #f8fafc;
+        }
+        .field { margin-bottom: 20px; }
+        .label { 
+            font-weight: 700; 
+            color: #3b82f6; 
+            font-size: 16px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .value { 
+            margin-top: 5px; 
+            padding: 15px; 
+            background: #334155; 
+            border-radius: 8px; 
+            border-left: 4px solid #3b82f6;
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+        .message-content { 
+            white-space: pre-wrap; 
+            line-height: 1.6;
+        }
+        .footer { 
+            margin-top: 30px; 
+            padding: 30px; 
+            background: #0f172a;
+            border-top: 1px solid #334155; 
+            font-size: 14px; 
+            color: #64748b; 
+            text-align: center;
+        }
+        .footer-logo {
+            width: 32px;
+            height: 32px;
+            background: #3b82f6;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
