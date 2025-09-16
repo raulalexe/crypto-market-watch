@@ -46,7 +46,7 @@ const UpcomingEventsCard = ({ events }) => {
   };
 
   const getDaysUntilText = (daysUntil) => {
-    if (daysUntil === 0) return 'Today';
+    if (daysUntil <= 0) return 'Today';
     if (daysUntil === 1) return 'Tomorrow';
     if (daysUntil < 7) return `${daysUntil} days`;
     if (daysUntil < 30) return `${Math.floor(daysUntil / 7)} weeks`;
@@ -176,12 +176,15 @@ const UpcomingEventsCard = ({ events }) => {
           {filteredEvents.slice(0, 10).map((event, index) => {
             const eventDate = new Date(event.date);
             const now = new Date();
-            const daysUntil = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
-            const timeUntil = Math.ceil((eventDate - now) / (1000 * 60));
+            // Calendar day diff to avoid off-by-one due to hours/timezone
+            const startNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const startEvent = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+            const daysUntil = Math.max(0, Math.round((startEvent - startNow) / (1000 * 60 * 60 * 24)));
+            const timeUntil = Math.max(0, Math.ceil((eventDate - now) / (1000 * 60)));
 
             return (
               <div key={index} className={`border rounded-lg p-3 ${getImpactColor(event.impact)}`}>
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start space-x-3 flex-1">
                     <div className="mt-1">
                       {getEventIcon(event.category)}
@@ -194,7 +197,7 @@ const UpcomingEventsCard = ({ events }) => {
                         </span>
                       </div>
                       <p className="text-xs text-slate-300 mb-2">{event.description}</p>
-                      <div className="flex items-center space-x-4 text-xs text-slate-400">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                         <div className="flex items-center space-x-1">
                           <Calendar className="w-3 h-3" />
                           <span>{eventDate.toLocaleDateString()}</span>
@@ -210,7 +213,7 @@ const UpcomingEventsCard = ({ events }) => {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right mt-2 sm:mt-0">
                     <div className="text-xs text-slate-400">
                       {event.category.toUpperCase()}
                     </div>

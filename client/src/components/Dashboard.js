@@ -196,7 +196,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
       </div>
 
       {/* Dashboard Cards - Single Column Layout */}
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-3xl md:max-w-4xl mx-auto space-y-6 px-2 sm:px-0">
         {/* Data Collection Card - Admin only */}
         {userData?.isAdmin && (
           <DataCollectionCard 

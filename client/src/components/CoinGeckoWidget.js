@@ -248,7 +248,7 @@ const CoinGeckoWidget = () => {
 
           {/* Coin Selection */}
           <div className="max-h-40 overflow-y-auto">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {filteredCoins.map((coin) => (
                 <button
                   key={coin.id}
@@ -331,7 +331,7 @@ const CoinGeckoWidget = () => {
           </div>
         ) : (
           <div className="bg-slate-700 rounded-lg overflow-hidden">
-            <div className="max-h-96 overflow-y-auto">
+            <div className="max-h-[70vh] md:max-h-96 overflow-y-auto">
               {selectedCoins.length > 0 ? (
                 <gecko-coin-list-widget 
                   key={widgetKey}
@@ -340,7 +340,7 @@ const CoinGeckoWidget = () => {
                   outlined="true" 
                   coin-ids={selectedCoins.join(',')}
                   initial-currency="usd"
-                  height="400"
+                  height="600"
                   width="100%"
                 ></gecko-coin-list-widget>
               ) : (
@@ -370,7 +370,7 @@ const CoinGeckoWidget = () => {
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500 text-right sm:text-left">
           Updates every 30 seconds • Widget may take a moment to refresh when coins are changed
         </div>
       </div>
