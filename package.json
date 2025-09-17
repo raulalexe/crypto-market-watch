@@ -50,6 +50,7 @@
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.7",
     "pg": "^8.11.3",
+    "puppeteer": "^24.21.0",
     "stripe": "^14.0.0",
     "validator": "^13.15.15",
     "web-push": "^3.6.6"

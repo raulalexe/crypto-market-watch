@@ -367,9 +367,10 @@ const PricingSection = ({
       description: 'Basic access to crypto market data',
       features: [
         'Basic dashboard access',
-        'Real-time crypto prices',
+        'Real-time crypto prices (CoinGecko widget)',
         'Basic market metrics',
         'Fear & Greed Index',
+        'Basic market data (limited history)',
         'Community support'
       ],
       limitations: [
@@ -377,7 +378,9 @@ const PricingSection = ({
         'No market alerts',
         'No data exports',
         'No API access',
-        'No notifications'
+        'No notifications',
+        'Limited historical data (24 hours)',
+        'No advanced analytics'
       ],
       popular: false,
       icon: BarChart3,
@@ -401,9 +404,13 @@ const PricingSection = ({
         'Advanced metrics (VIX, DXY, Treasury yields)',
         'Exchange flow data',
         'Stablecoin metrics (SSR)',
-        'Data exports (CSV, JSON)',
+        'Data exports (CSV, JSON, PDF, Excel)',
+        'Advanced Analytics with correlation matrix',
+        'Historical data access (30+ days)',
         'API access (1,000 calls/day)',
-        'Upcoming market events tracking'
+        'Upcoming market events tracking',
+        'Custom alert thresholds',
+        'Crypto wallet payments (Base, Solana) - Coming Soon'
       ],
       limitations: [
         'Limited API calls (1,000/day)',
@@ -418,19 +425,23 @@ const PricingSection = ({
     {
       id: 'premium',
       name: 'Premium+',
-      price: pricing?.premium?.currentPrice || 99,
-      originalPrice: pricing?.premium?.originalPrice || 99,
+      price: pricing?.premium?.currentPrice || 99.99,
+      originalPrice: pricing?.premium?.originalPrice || 99.99,
       period: 'month',
       description: 'Professional tools for institutions',
       features: [
         'All Pro features',
         'Unlimited API calls',
         'White-label options',
-        'Advanced analytics',
+        'Advanced analytics with backtesting',
         'Priority notification delivery',
         'Custom alert thresholds',
-        'Advanced data exports',
-        'Webhook integrations'
+        'Advanced data exports (all formats)',
+        'Webhook integrations',
+        'Admin dashboard access',
+        'Error logs and monitoring',
+        'Custom integrations',
+        'Priority support'
       ],
       limitations: [],
       popular: false,

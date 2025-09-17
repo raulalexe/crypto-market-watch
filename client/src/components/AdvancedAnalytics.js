@@ -244,6 +244,14 @@ const AdvancedAnalytics = ({ userData }) => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting analytics report:', error);
+      
+      // Handle PDF export error specifically
+      if (format === 'pdf' && error.response?.status === 400) {
+        alert('PDF export is not available. Please use JSON or CSV format instead.');
+        return;
+      }
+      
+      alert('Failed to export report. Please try again.');
     }
   };
 
@@ -298,13 +306,29 @@ const AdvancedAnalytics = ({ userData }) => {
             <p className="text-slate-400">Professional-grade market analysis and insights</p>
           </div>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => exportAnalyticsReport('pdf')}
-              className="px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export Report</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => exportAnalyticsReport('json')}
+                className="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>JSON</span>
+              </button>
+              <button
+                onClick={() => exportAnalyticsReport('csv')}
+                className="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>CSV</span>
+              </button>
+              <button
+                onClick={() => exportAnalyticsReport('pdf')}
+                className="px-3 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>PDF</span>
+              </button>
+            </div>
           </div>
         </div>
 

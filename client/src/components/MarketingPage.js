@@ -84,10 +84,13 @@ const MarketingPage = () => {
       description: 'Comprehensive market metrics and visualizations',
       features: [
         'Real-time price performance charts',
-        'Asset correlation matrix',
+        'Asset correlation matrix (crypto correlations)',
         'Market volatility indicators',
         'Bitcoin dominance tracking',
-        'Total market volume analysis'
+        'Total market volume analysis',
+        'Professional PDF reports',
+        'Risk analysis metrics',
+        'Backtest performance tracking'
       ]
     },
     {
@@ -126,11 +129,12 @@ const MarketingPage = () => {
       title: 'Advanced Data Export',
       description: 'Export your data in multiple formats',
       features: [
-        'CSV & JSON exports',
+        'CSV, JSON, PDF & Excel exports',
         'Custom date ranges',
         'Filtered data sets',
         'Scheduled exports',
-        'API access for developers'
+        'API access for developers (Pro tier required)',
+        'Advanced Analytics PDF reports'
       ]
     },
     {

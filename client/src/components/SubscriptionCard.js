@@ -100,7 +100,7 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
         'Advanced metrics (VIX, DXY, Treasury yields)',
         'Exchange flow data',
         'Stablecoin metrics (SSR)',
-        'Data exports (CSV, JSON)',
+        'Data exports (CSV, JSON, PDF, Excel)',
         'API access (1,000 calls/day)',
         'Upcoming market events tracking'
       ],
@@ -111,7 +111,7 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
         'Advanced analytics',
         'Priority notification delivery',
         'Custom alert thresholds',
-        'Advanced data exports',
+        'Advanced data exports (all formats)',
         'Webhook integrations'
       ],
       api: [
