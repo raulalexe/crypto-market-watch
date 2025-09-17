@@ -1634,21 +1634,8 @@ app.post('/api/exports/create', authenticateToken, requireSubscription('pro'), a
         break;
       case 'pdf':
         try {
-          // Create a simple report for PDF export
-          const pdfReport = {
-            metadata: {
-              generated_at: new Date().toISOString(),
-              data_types: dataTypes,
-              time_range: timeRange
-            },
-            summary: {
-              total_records: allData.length,
-              data_types: dataTypes,
-              time_range: timeRange
-            },
-            data: allData
-          };
-          const pdfBuffer = await generatePDFReport(pdfReport);
+          // Generate PDF for historical data export
+          const pdfBuffer = await generateDataExportPDF(data, dataTypes.join('_'), dateRange);
           res.setHeader('Content-Type', 'application/pdf');
           res.setHeader('Content-Disposition', `attachment; filename="data_export_${dataTypes.join('_')}.pdf"`);
           res.setHeader('Content-Length', pdfBuffer.length);
@@ -1658,7 +1645,7 @@ app.post('/api/exports/create', authenticateToken, requireSubscription('pro'), a
           console.error('Error generating PDF:', error);
           return res.status(500).json({ error: 'Failed to generate PDF report' });
         }
-        break;
+          break;
       case 'xml':
         content = convertToXML(data);
         contentType = 'application/xml';
@@ -1967,14 +1954,14 @@ async function generatePDFReport(report) {
       </head>
       <body>
         <div class="container">
-          <div class="header">
-            <h1>Advanced Analytics Report</h1>
+        <div class="header">
+          <h1>Advanced Analytics Report</h1>
             <p>Generated: ${new Date(report.metadata.generated_at).toLocaleString()}</p>
             <p>Asset: ${report.metadata.asset} | Timeframe: ${report.metadata.timeframe}</p>
-          </div>
-          
-          <div class="section">
-            <h2>Portfolio Metrics</h2>
+        </div>
+        
+        <div class="section">
+          <h2>Portfolio Metrics</h2>
             <div class="metrics-grid">
               <div class="metric">
                 <div class="metric-label">Total Value</div>
@@ -1993,26 +1980,26 @@ async function generatePDFReport(report) {
                 <div class="metric-value">${report.portfolio_metrics.sharpe_ratio}</div>
               </div>
             </div>
-          </div>
-          
-          <div class="section">
-            <h2>Risk Analysis</h2>
-            <table>
+        </div>
+        
+        <div class="section">
+          <h2>Risk Analysis</h2>
+          <table>
               <thead>
-                <tr><th>Metric</th><th>Value</th></tr>
+            <tr><th>Metric</th><th>Value</th></tr>
               </thead>
               <tbody>
-                <tr><td>1 Day VaR (95%)</td><td>${report.risk_analysis.var_1d}%</td></tr>
-                <tr><td>1 Week VaR (95%)</td><td>${report.risk_analysis.var_1w}%</td></tr>
-                <tr><td>1 Month VaR (95%)</td><td>${report.risk_analysis.var_1m}%</td></tr>
-                <tr><td>Max Drawdown</td><td>${report.risk_analysis.max_drawdown}%</td></tr>
+            <tr><td>1 Day VaR (95%)</td><td>${report.risk_analysis.var_1d}%</td></tr>
+            <tr><td>1 Week VaR (95%)</td><td>${report.risk_analysis.var_1w}%</td></tr>
+            <tr><td>1 Month VaR (95%)</td><td>${report.risk_analysis.var_1m}%</td></tr>
+            <tr><td>Max Drawdown</td><td>${report.risk_analysis.max_drawdown}%</td></tr>
                 <tr><td>Current Drawdown</td><td>${report.risk_analysis.current_drawdown}%</td></tr>
               </tbody>
-            </table>
-          </div>
-          
-          <div class="section">
-            <h2>Backtest Performance</h2>
+          </table>
+        </div>
+        
+        <div class="section">
+          <h2>Backtest Performance</h2>
             <div class="metrics-grid">
               <div class="metric">
                 <div class="metric-label">Overall Accuracy</div>
@@ -2146,7 +2133,8 @@ const convertToCSV = (data) => {
 };
 
 // Helper function to generate data export PDF report
-const generateDataExportPDF = (data, type, dateRange) => {
+async function generateDataExportPDF(data, type, dateRange) {
+  const puppeteer = require('puppeteer');
   const timestamp = new Date().toISOString();
   const reportTitle = `Crypto Market Data Report - ${type.replace(/_/g, ' ').toUpperCase()}`;
   
@@ -2286,11 +2274,6 @@ const generateDataExportPDF = (data, type, dateRange) => {
         </div>
       </div>
 
-      <div class="chart-placeholder">
-        <h3>📊 Data Visualization</h3>
-        <p>Interactive charts and graphs would be displayed here in the web interface</p>
-        <p>This PDF report contains the raw data for further analysis</p>
-      </div>
 
       <h2>Data Table</h2>
       <table>
@@ -2318,8 +2301,34 @@ const generateDataExportPDF = (data, type, dateRange) => {
     </html>
   `;
   
-  return html;
-};
+  try {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20mm',
+        right: '20mm',
+        bottom: '20mm',
+        left: '20mm'
+      }
+    });
+    
+    await browser.close();
+    return pdf;
+    
+  } catch (error) {
+    console.error('Error generating data export PDF:', error);
+    throw error;
+  }
+}
 
 // Helper function to convert data to XML
 const convertToXML = (data) => {
@@ -2582,14 +2591,14 @@ async function calculateLocalCorrelations() {
           const correlation = calculateCorrelation(priceData[symbol1], priceData[symbol2]);
           console.log(`📊 Correlation ${symbol1}_${symbol2}: ${correlation}`);
           if (!isNaN(correlation)) {
-            correlationData[`${symbol1}_${symbol2}`] = correlation;
+          correlationData[`${symbol1}_${symbol2}`] = correlation;
           }
         } else {
           console.log(`⚠️ Missing price data for ${symbol1} or ${symbol2}`);
         }
       }
     }
-    
+
     console.log(`✅ Calculated ${Object.keys(correlationData).length} correlation pairs from CoinGecko API`);
     return correlationData;
     
@@ -5282,9 +5291,9 @@ app.delete('/api/exports/scheduled/:id', authenticateToken, requireSubscription(
 // Serve React app for all other routes (if available)
 // This should be the LAST route to avoid interfering with static files
 app.get('*', (req, res) => {
-  // Skip API routes and static file requests
-  if (req.path.startsWith('/api/') || req.path.startsWith('/static/') || req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
-    return res.status(404).send('Not found');
+  // Skip API routes only - let static middleware handle all other files
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).send('API endpoint not found');
   }
   
   const indexPath = path.join(__dirname, '../client/build/index.html');

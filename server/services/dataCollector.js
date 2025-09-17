@@ -737,8 +737,8 @@ class DataCollector {
         return await this.makeCoinGeckoRequest('global');
       });
       
-      if (globalResponse && globalResponse.data) {
-        const globalData = globalResponse.data;
+      if (globalResponse && globalResponse.data && globalResponse.data.data) {
+        const globalData = globalResponse.data.data;
         
         // Get Bitcoin dominance and total market cap directly
         const metrics = {
@@ -1381,7 +1381,7 @@ class DataCollector {
   // Get market data summary for AI analysis
   async getMarketDataSummary() {
     try {
-      const { getLatestMarketData } = require('../database');
+      const { getLatestMarketData, getLatestBitcoinDominance } = require('../database');
       
       // Get latest data for each market indicator
       const dxy = await getLatestMarketData('DXY', 'USD_INDEX');
@@ -1397,6 +1397,9 @@ class DataCollector {
       const m2MoneySupply = await getLatestMarketData('MONEY_SUPPLY', 'M2');
       const m3MoneySupply = await getLatestMarketData('MONEY_SUPPLY', 'M3');
       const bankReserves = await getLatestMarketData('MONEY_SUPPLY', 'BANK_RESERVES');
+      
+      // Get Bitcoin dominance
+      const bitcoinDominance = await getLatestBitcoinDominance();
       
       // Get latest crypto prices with 24h changes
       const cryptoPrices = {};
@@ -1424,7 +1427,8 @@ class DataCollector {
         m1MoneySupply?.timestamp,
         m2MoneySupply?.timestamp,
         m3MoneySupply?.timestamp,
-        bankReserves?.timestamp
+        bankReserves?.timestamp,
+        bitcoinDominance?.timestamp
       ].filter(Boolean);
       
       const latestTimestamp = timestamps.length > 0 
@@ -1446,6 +1450,7 @@ class DataCollector {
         m2_money_supply: m2MoneySupply?.value,
         m3_money_supply: m3MoneySupply?.value,
         bank_reserves: bankReserves?.value,
+        bitcoin_dominance: bitcoinDominance?.value,
         crypto_prices: cryptoPrices
       };
     } catch (error) {
@@ -1900,8 +1905,9 @@ class DataCollector {
       const dominance = globalMetrics.bitcoinDominance;
       const source = 'CoinGecko Global';
       
-      // Convert to percentage if it's a decimal (e.g., 0.45 -> 45)
-      const dominancePercentage = dominance < 1 ? dominance * 100 : dominance;
+      // CoinGecko API returns dominance as a percentage (e.g., 55.15 for 55.15%)
+      // No conversion needed - use the value directly
+      const dominancePercentage = parseFloat(dominance);
       
       // Store the result
       const { insertBitcoinDominance } = require('../database');

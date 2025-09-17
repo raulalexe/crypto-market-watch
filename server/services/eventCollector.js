@@ -1,4 +1,4 @@
-const moment = require('moment');
+const moment = require('moment-timezone');
 require('dotenv').config({ path: '.env.local' });
 
 const { insertUpcomingEvent, getUpcomingEvents } = require('../database');
@@ -155,10 +155,25 @@ class EventCollector {
 
   // Helper methods to calculate event dates
   getNextFOMCMeeting() {
-    // FOMC meetings typically occur every 6 weeks
+    // FOMC meetings for 2025 (hardcoded actual dates)
+    const fomcDates = [
+      '2025-01-29', '2025-03-19', '2025-04-30', '2025-06-11',
+      '2025-07-30', '2025-09-17', '2025-10-29', '2025-12-17'
+    ];
+    
     const now = moment();
-    const nextMeeting = moment().add(6, 'weeks').startOf('week').add(2, 'days'); // Tuesday
-    return nextMeeting.format('YYYY-MM-DD HH:mm:ss');
+    
+    // Find the next FOMC meeting date
+    for (const date of fomcDates) {
+      const meetingDate = moment.tz(date, 'America/New_York').hour(14).minute(0).second(0); // 2:00 PM ET
+      if (meetingDate.isAfter(now)) {
+        return meetingDate.utc().format('YYYY-MM-DD HH:mm:ss');
+      }
+    }
+    
+    // If no future meetings found, return the last one
+    const lastMeeting = moment.tz(fomcDates[fomcDates.length - 1], 'America/New_York').hour(14).minute(0).second(0);
+    return lastMeeting.utc().format('YYYY-MM-DD HH:mm:ss');
   }
 
   getNextFedSpeech() {
