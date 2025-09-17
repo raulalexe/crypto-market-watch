@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Bitcoin, Zap, Check, X, Loader } from 'lucide-react';
+import logger from '../utils/logger';
 import axios from 'axios';
 
 const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = null }) => {
@@ -19,7 +20,7 @@ const SubscriptionCard = ({ subscriptionStatus = null, onSubscriptionUpdate = nu
       setPlans(response.data?.plans || []);
       setPaymentMethods(response.data?.paymentMethods || {});
     } catch (error) {
-      console.error('Error fetching plans:', error);
+      logger.error('Error fetching plans:', error);
       setPlans([]);
       setPaymentMethods({});
     }

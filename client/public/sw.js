@@ -4,16 +4,25 @@ const STATIC_CACHE = 'static-v1';
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
+  if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+    console.log('Service Worker installing...');
+  }
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then(cache => {
-        return cache.addAll([
-          '/',
-          '/static/js/bundle.js',
-          '/static/css/main.css',
-          '/favicon.ico'
-        ]);
+        // Cache only essential files that are guaranteed to exist
+        const urlsToCache = ['/'];
+        
+        // Add files one by one to avoid failing on missing files
+        return Promise.allSettled(
+          urlsToCache.map(url => 
+            cache.add(url).catch(error => {
+              if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+                console.warn(`Failed to cache ${url}:`, error);
+              }
+            })
+          )
+        );
       })
       .then(() => self.skipWaiting())
   );
@@ -21,13 +30,17 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
+  if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+    console.log('Service Worker activating...');
+  }
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== STATIC_CACHE && cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+            if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+              console.log('Deleting old cache:', cacheName);
+            }
             return caches.delete(cacheName);
           }
         })
@@ -38,14 +51,18 @@ self.addEventListener('activate', (event) => {
 
 // Push event - handle incoming push notifications
 self.addEventListener('push', (event) => {
-  console.log('Push event received:', event);
+  if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+    console.log('Push event received:', event);
+  }
   
   let data = {};
   if (event.data) {
     try {
       data = event.data.json();
     } catch (error) {
-      console.error('Error parsing push data:', error);
+      if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+        console.error('Error parsing push data:', error);
+      }
       data = {
         title: 'Market Alert',
         body: 'New market alert received',
@@ -85,7 +102,9 @@ self.addEventListener('push', (event) => {
 
 // Notification click event - handle user interaction
 self.addEventListener('notificationclick', (event) => {
-  console.log('Notification clicked:', event);
+  if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+    console.log('Notification clicked:', event);
+  }
   
   event.notification.close();
 
@@ -112,7 +131,9 @@ self.addEventListener('notificationclick', (event) => {
 
 // Background sync for offline functionality
 self.addEventListener('sync', (event) => {
-  console.log('Background sync:', event);
+  if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+    console.log('Background sync:', event);
+  }
   
   if (event.tag === 'background-sync') {
     event.waitUntil(
@@ -138,13 +159,19 @@ async function acknowledgeAlert(alertId) {
       });
       
       if (response.ok) {
-        console.log('Alert acknowledged successfully');
+        if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+          console.log('Alert acknowledged successfully');
+        }
       } else {
-        console.error('Failed to acknowledge alert');
+        if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+          console.error('Failed to acknowledge alert');
+        }
       }
     }
   } catch (error) {
-    console.error('Error acknowledging alert:', error);
+    if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+      console.error('Error acknowledging alert:', error);
+    }
   }
 }
 
@@ -163,7 +190,9 @@ async function getAuthToken() {
       }
     }
   } catch (error) {
-    console.error('Error getting auth token:', error);
+    if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+      console.error('Error getting auth token:', error);
+    }
   }
   return null;
 }
@@ -172,23 +201,31 @@ async function getAuthToken() {
 async function syncData() {
   try {
     // Sync any pending data when connection is restored
-    console.log('Performing background sync...');
+    if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+      console.log('Performing background sync...');
+    }
     
     // You can add offline data sync logic here
     // For example, sync pending alert acknowledgments
     
   } catch (error) {
-    console.error('Background sync error:', error);
+    if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+      console.error('Background sync error:', error);
+    }
   }
 }
 
 // Message event - handle messages from main thread
 self.addEventListener('message', (event) => {
-  console.log('Service Worker received message:', event.data);
+  if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+    console.log('Service Worker received message:', event.data);
+  }
   
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
-console.log('Service Worker loaded successfully');
+if (process.env.NODE_ENV === 'development' || process.env.VERBOSE_LOGGING === 'true') {
+  console.log('Service Worker loaded successfully');
+}

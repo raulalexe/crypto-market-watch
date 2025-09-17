@@ -28,6 +28,7 @@
     "test:frontend": "jest tests/integration/frontend.test.js",
     "test:brevo": "node test-brevo-email.js",
     "create-admin": "node scripts/createProductionAdmin.js",
+    "migrate": "node scripts/migrate-database.js",
     "db:start": "docker-compose up -d postgres",
     "db:stop": "docker-compose down",
     "db:reset": "docker-compose down -v && docker-compose up -d postgres",

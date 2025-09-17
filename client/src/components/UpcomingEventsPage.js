@@ -584,9 +584,11 @@ const UpcomingEventsPage = () => {
                 key={index} 
                 className="bg-slate-800 rounded-lg p-4 sm:p-6 border border-slate-700"
               >
-                <div className="flex flex-col space-y-4">
-                  {/* Header section with icon and title */}
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4 space-y-3 sm:space-y-0">
+                <div className="flex flex-col xl:flex-row xl:items-start xl:space-x-6 space-y-4 xl:space-y-0">
+                  {/* Main content section */}
+                  <div className="flex-1">
+                    {/* Header section with icon and title */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4 space-y-3 sm:space-y-0">
                     <div className="flex-shrink-0 mx-auto sm:mx-0">
                       <div className={`p-2 rounded-lg ${getImpactColor(event?.impact || 'medium')}`}>
                         {getEventIcon(event?.category || 'other')}
@@ -626,37 +628,123 @@ const UpcomingEventsPage = () => {
                       </div>
                     </div>
                   </div>
+                  </div>
                   
-                  {/* Date and time section - centered on mobile */}
-                  <div className="text-center sm:text-left">
+                  {/* Date and time section - centered on mobile, right side on desktop */}
+                  <div className="text-center xl:text-right xl:min-w-[200px]">
                     <div className="text-lg font-semibold text-white">
-                      {event?.date ? new Date(event.date).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric',
-                        year: 'numeric'
-                      }) : 'Date not available'}
+                      {event?.date ? (() => {
+                        const eventDate = new Date(event.date);
+                        // For FOMC meetings, show the date in the user's timezone
+                        if (event?.title === 'FOMC Meeting') {
+                          try {
+                            // Create 2:00 PM ET (18:00 UTC) for the event date
+                            const year = eventDate.getFullYear();
+                            const month = eventDate.getMonth();
+                            const day = eventDate.getDate();
+                            const fomcTime = new Date(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T18:00:00.000Z`);
+                            
+                            // Get user's timezone
+                            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                            
+                            // Format the date in user's timezone
+                            return fomcTime.toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              year: 'numeric',
+                              timeZone: userTimezone
+                            });
+                          } catch (error) {
+                            // Fallback to original date
+                            return eventDate.toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              year: 'numeric'
+                            });
+                          }
+                        }
+                        // For other events, show the original date
+                        return eventDate.toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        });
+                      })() : 'Date not available'}
                     </div>
                     <div className="text-sm text-slate-400">
-                      {event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        timeZoneName: 'short'
-                      }) : ''}
+                      {event?.date ? (() => {
+                        const eventDate = new Date(event.date);
+                        // For FOMC meetings, always show 2:00 PM ET converted to user's timezone
+                        if (event?.title === 'FOMC Meeting') {
+                          try {
+                            // FOMC meetings are always at 2:00 PM Eastern Time
+                            // In September (EDT), this is 18:00 UTC
+                            const eventDate = new Date(event.date);
+                            const year = eventDate.getFullYear();
+                            const month = eventDate.getMonth();
+                            const day = eventDate.getDate();
+                            
+                            // Create 2:00 PM ET (18:00 UTC) for the event date
+                            const fomcTime = new Date(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T18:00:00.000Z`);
+                            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                            
+                            return fomcTime.toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              timeZone: userTimezone
+                            });
+                          } catch (error) {
+                            // Fallback to showing stored time in user's timezone
+                            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                            return eventDate.toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              timeZone: userTimezone
+                            });
+                          }
+                        }
+                        return eventDate.toLocaleTimeString('en-US', { 
+                          hour: '2-digit', 
+                          minute: '2-digit',
+                          timeZoneName: 'short'
+                        });
+                      })() : ''}
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
-                      {event?.source === 'BLS' || event?.source === 'Bureau of Labor Statistics' ? 'Eastern Time' : 
+                      {event?.source === 'BLS' || event?.source === 'Bureau of Labor Statistics' || event?.title === 'FOMC Meeting' ? 
+                        (() => {
+                          try {
+                            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                            if (userTimezone === 'America/New_York') {
+                              return 'Eastern Time';
+                            } else {
+                              // Get the timezone abbreviation for the user's timezone
+                              const now = new Date();
+                              const timeZoneAbbr = now.toLocaleString('en-US', { 
+                                timeZone: userTimezone,
+                                timeZoneName: 'short'
+                              }).split(' ').pop();
+                              return `${userTimezone} (${timeZoneAbbr})`;
+                            }
+                          } catch (error) {
+                            return 'Eastern Time';
+                          }
+                        })() : 
                        event?.date ? new Date(event.date).toLocaleTimeString('en-US', { 
                          timeZoneName: 'long'
                        }) : ''}
                     </div>
                     <div className="text-sm text-crypto-blue font-medium mt-1">
                       {event?.timeRemaining ? (
-                        <span className="flex items-center justify-center sm:justify-start space-x-1">
+                        <span className="flex items-center justify-center xl:justify-end space-x-1">
                           <Clock className="w-4 h-4" />
                           <span>{event.timeRemaining}</span>
                         </span>
                       ) : (
-                        event?.date ? getDaysUntilText(event.date) : 'Time not available'
+                        <span className="flex items-center justify-center xl:justify-end space-x-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>{event?.date ? getDaysUntilText(event.date) : 'Time not available'}</span>
+                        </span>
                       )}
                     </div>
                   </div>

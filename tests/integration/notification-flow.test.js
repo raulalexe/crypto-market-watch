@@ -19,7 +19,12 @@ jest.mock('../../server/services/telegramService', () => {
   }));
 });
 
-jest.mock('../../server/database');
+jest.mock('../../server/database', () => ({
+  getUsersWithNotifications: jest.fn(),
+  insertAlert: jest.fn(),
+  getAlerts: jest.fn(),
+  updateAlert: jest.fn()
+}));
 
 const BrevoEmailService = require('../../server/services/brevoEmailService');
 const PushService = require('../../server/services/pushService');

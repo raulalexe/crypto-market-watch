@@ -13,6 +13,7 @@ import {
   Zap,
   Shield
 } from 'lucide-react';
+import logger from '../utils/logger';
 import axios from 'axios';
 import { isAdmin } from '../utils/authUtils';
 
@@ -96,7 +97,7 @@ const AdvancedAnalytics = ({ userData }) => {
       setOnchainData(onchain);
 
     } catch (error) {
-      console.error('Error fetching analytics data:', error);
+      logger.error('Error fetching analytics data:', error);
     } finally {
       setLoading(false);
     }
@@ -107,7 +108,7 @@ const AdvancedAnalytics = ({ userData }) => {
       const response = await axios.get('/api/dashboard');
       return response.data;
     } catch (error) {
-      console.error('Error fetching market data:', error);
+      logger.error('Error fetching market data:', error);
       return null;
     }
   };
@@ -117,7 +118,7 @@ const AdvancedAnalytics = ({ userData }) => {
       const response = await axios.get('/api/backtest');
       return response.data;
     } catch (error) {
-      console.error('Error fetching backtest data:', error);
+      logger.error('Error fetching backtest data:', error);
       return null;
     }
   };
@@ -127,7 +128,7 @@ const AdvancedAnalytics = ({ userData }) => {
       const response = await axios.get('/api/correlation');
       return response.data;
     } catch (error) {
-      console.error('Error fetching correlation data:', error);
+      logger.error('Error fetching correlation data:', error);
       // Return error information instead of null
       if (error.response && error.response.status === 503) {
         return { error: error.response.data };

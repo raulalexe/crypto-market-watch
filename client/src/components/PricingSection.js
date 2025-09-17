@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import logger from '../utils/logger';
 import { 
   Check, 
   X, 
@@ -60,7 +61,7 @@ const PricingSection = ({
         
         // Handle other errors - stop polling on non-network errors
         if (status && status.error) {
-          console.error('Payment processing error:', status.error);
+          logger.error('Payment processing error:', status.error);
           if (status.error === 'network_error' && attempts < maxAttempts) {
             setTimeout(poll, 5000); // Wait 5 seconds before retry
             return;
@@ -112,7 +113,7 @@ const PricingSection = ({
               })
             });
           } catch (emailError) {
-            console.error('Failed to send payment processing alert email:', emailError);
+            logger.error('Failed to send payment processing alert email:', emailError);
           }
 
           showAlert('⏳ Your payment is being processed. Pro access will be enabled within 24 hours. We\'ve been notified and will resolve this quickly. Please check back later or contact support if needed.', 'warning');
@@ -129,7 +130,7 @@ const PricingSection = ({
         setTimeout(poll, 5000);
         
       } catch (error) {
-        console.error('Error during payment polling:', error);
+        logger.error('Error during payment polling:', error);
         if (attempts < maxAttempts) {
           setTimeout(poll, 5000); // Wait 5 seconds before retry
         } else {
@@ -198,7 +199,7 @@ const PricingSection = ({
       setSubscriptionStatus(response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching subscription status:', error);
+      logger.error('Error fetching subscription status:', error);
       return { error: 'network_error' };
     }
   };
@@ -212,7 +213,7 @@ const PricingSection = ({
         setDiscountActive(data.discountActive);
       }
     } catch (error) {
-      console.error('Error fetching pricing:', error);
+      logger.error('Error fetching pricing:', error);
     }
   };
 
@@ -352,7 +353,7 @@ const PricingSection = ({
         }
       }
     } catch (error) {
-      console.error('Subscription error:', error);
+      logger.error('Subscription error:', error);
       showAlert('Subscription failed. Please try again.', 'error');
     }
   };

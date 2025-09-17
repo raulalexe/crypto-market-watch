@@ -271,170 +271,53 @@ const HistoricalData = ({ userData }) => {
     URL.revokeObjectURL(url);
   };
 
-  // Export to PDF function
-  const exportToPDF = () => {
+  // Export to PDF function - uses server-side PDF generation
+  const exportToPDF = async () => {
     if (finalData.length === 0) return;
 
-    const timestamp = new Date().toISOString();
-    const reportTitle = `${selectedDataType.replace(/_/g, ' ')} Historical Data Report`;
-    
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>${reportTitle}</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            color: #333;
-          }
-          .header {
-            text-align: center;
-            border-bottom: 2px solid #2563eb;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-          }
-          .header h1 {
-            color: #2563eb;
-            margin: 0;
-            font-size: 24px;
-          }
-          .header p {
-            color: #666;
-            margin: 5px 0;
-          }
-          .summary {
-            background: #f8fafc;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-          }
-          .summary h2 {
-            color: #2563eb;
-            margin-top: 0;
-            font-size: 18px;
-          }
-          .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 10px;
-          }
-          .summary-item {
-            text-align: center;
-            padding: 10px;
-            background: white;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-          }
-          .summary-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2563eb;
-          }
-          .summary-label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 12px;
-          }
-          th, td {
-            border: 1px solid #e2e8f0;
-            padding: 8px;
-            text-align: left;
-          }
-          th {
-            background: #2563eb;
-            color: white;
-            font-weight: bold;
-          }
-          tr:nth-child(even) {
-            background: #f8fafc;
-          }
-          .footer {
-            margin-top: 30px;
-            text-align: center;
-            color: #666;
-            font-size: 12px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 20px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>${reportTitle}</h1>
-          <p>Generated on: ${new Date(timestamp).toLocaleString()}</p>
-          <p>Data Type: ${selectedDataType.replace(/_/g, ' ').toUpperCase()}</p>
-        </div>
+    try {
+      // Map the selected data type to the server's expected format
+      const dataTypeMapping = {
+        'EQUITY_INDEX': 'market_data',
+        'CRYPTO_PRICE': 'market_data', 
+        'TOTAL_MARKET_CAP': 'market_data',
+        'VOLATILITY_INDEX': 'market_data',
+        'TREASURY_YIELD': 'market_data',
+        'FEAR_GREED_INDEX': 'fear_greed',
+        'AI_ANALYSIS': 'ai_analysis',
+        'TRENDING_NARRATIVES': 'narratives',
+        'ALERTS': 'alerts',
+        'BACKTEST_RESULTS': 'backtest_results'
+      };
 
-        <div class="summary">
-          <h2>Report Summary</h2>
-          <div class="summary-grid">
-            <div class="summary-item">
-              <div class="summary-value">${finalData.length}</div>
-              <div class="summary-label">Total Records</div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-value">${selectedDataType.replace(/_/g, ' ').toUpperCase()}</div>
-              <div class="summary-label">Data Type</div>
-            </div>
-          </div>
-        </div>
+      const serverDataType = dataTypeMapping[selectedDataType] || 'market_data';
+      
+      const response = await axios.post('/api/exports/create', {
+        dataTypes: [serverDataType],
+        dateRange: 'all', // Export all available data
+        format: 'pdf'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        responseType: 'blob'
+      });
 
-        <h2>Data Table</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>TIMESTAMP</th>
-              <th>SYMBOL</th>
-              <th>VALUE</th>
-              <th>CHANGE</th>
-              <th>CHANGE %</th>
-              <th>SOURCE</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${finalData.slice(0, 50).map(item => `
-              <tr>
-                <td>${new Date(item.timestamp).toLocaleString()}</td>
-                <td>${item.symbol || 'N/A'}</td>
-                <td>${formatValue(item.value, selectedDataType)}</td>
-                <td>${item.change !== null ? (item.change >= 0 ? '+' : '') + item.change.toFixed(2) : 'N/A'}</td>
-                <td>${item.changePercent !== null ? (item.changePercent >= 0 ? '+' : '') + item.changePercent.toFixed(2) + '%' : 'N/A'}</td>
-                <td>${item.source || 'N/A'}</td>
-              </tr>
-            `).join('')}
-            ${finalData.length > 50 ? `<tr><td colspan="6" style="text-align: center; font-style: italic;">... and ${finalData.length - 50} more records</td></tr>` : ''}
-          </tbody>
-        </table>
-
-        <div class="footer">
-          <p>Generated by Crypto Market Watch</p>
-          <p>For professional use only - Not financial advice</p>
-          <p>Report ID: ${Date.now()}</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${selectedDataType.toLowerCase()}_historical_data_${new Date().toISOString().split('T')[0]}.html`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      // Create download link for the PDF
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${selectedDataType.toLowerCase()}_historical_data_${new Date().toISOString().split('T')[0]}.pdf`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      alert('Failed to export PDF. Please try again.');
+    }
   };
 
   const formatValue = (value, dataType) => {

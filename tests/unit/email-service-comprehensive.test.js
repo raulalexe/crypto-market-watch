@@ -15,8 +15,12 @@ jest.mock('../../server/database', () => ({
 
 jest.mock('@getbrevo/brevo', () => ({
   TransactionalEmailsApi: jest.fn().mockImplementation(() => ({
-    sendTransacEmail: jest.fn().mockResolvedValue({ messageId: 'test-message-id' })
-  }))
+    sendTransacEmail: jest.fn().mockResolvedValue({ messageId: 'test-message-id' }),
+    setApiKey: jest.fn()
+  })),
+  TransactionalEmailsApiApiKeys: {
+    apiKey: 'apiKey'
+  }
 }));
 
 describe('Comprehensive Email Service Tests', () => {

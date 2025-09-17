@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap } from 'lucide-react';
+import logger from '../utils/logger';
 import NarrativesCard from './NarrativesCard';
 import Layer1Card from './Layer1Card';
 import AdvancedMetricsCard from './AdvancedMetricsCard';
@@ -67,7 +68,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         setAlerts(data.alerts || []);
       }
     } catch (error) {
-      console.error('Error fetching alerts:', error);
+      logger.error('Error fetching alerts:', error);
     }
   };
 
@@ -88,21 +89,10 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         setAlerts(prev => prev.filter(alert => alert.id !== alertId));
       }
     } catch (error) {
-      console.error('Error acknowledging alert:', error);
+      logger.error('Error acknowledging alert:', error);
     }
   };
 
-  const handleUpgradeClick = () => {
-    // Check if this is a premium upgrade
-    const subscriptionStatus = dashboardData?.subscriptionStatus;
-    if (subscriptionStatus?.plan === 'pro') {
-      // Pro to Premium upgrade - redirect to contact
-      window.location.href = '/app/contact';
-    } else {
-      // Other upgrades - go to subscription page
-      navigate('/app/subscription');
-    }
-  };
 
   const renderSubscriptionButton = () => {
     const subscriptionStatus = dashboardData?.subscriptionStatus;
@@ -133,7 +123,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
       }
       return (
         <button
-          onClick={handleUpgradeClick}
+          onClick={() => navigate('/app/subscription')}
           className="bg-crypto-blue hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center space-x-2"
         >
           <Zap className="w-5 h-5" />
@@ -153,15 +143,12 @@ const Dashboard = ({ isAuthenticated, userData }) => {
     }
 
     if (subscriptionStatus.plan === 'pro') {
-      // Pro user - show contact sales for Premium+
+      // Pro user - show PRO badge
       return (
-        <button
-          onClick={handleUpgradeClick}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center space-x-2"
-        >
+        <div className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2">
           <Zap className="w-5 h-5" />
-          <span>Contact Sales</span>
-        </button>
+          <span>PRO</span>
+        </div>
       );
     }
 
