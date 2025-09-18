@@ -233,13 +233,7 @@ const AlertsPage = ({ isAuthenticated, userData }) => {
               <h1 className="text-3xl font-bold mb-2">Market Alerts</h1>
               <p className="text-gray-400">Monitor and manage system-generated market alerts</p>
             </div>
-            <button
-              onClick={fetchAlerts}
-              className="flex items-center gap-2 px-4 py-2 bg-crypto-blue hover:bg-blue-600 rounded-lg transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </button>
+            {/* Refresh button removed - alerts now update in real-time via WebSocket */}
           </div>
         </div>
 

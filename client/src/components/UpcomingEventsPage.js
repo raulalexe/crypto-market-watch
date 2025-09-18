@@ -550,12 +550,7 @@ const UpcomingEventsPage = () => {
                   />
                   <span>Show Ignored Events</span>
                 </label>
-                <button
-                  onClick={fetchEvents}
-                  className="px-3 py-1 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors text-sm"
-                >
-                  Refresh
-                </button>
+                {/* Refresh button removed - events now update in real-time via WebSocket */}
               </div>
             </div>
           )}

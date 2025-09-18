@@ -376,6 +376,7 @@ const AdvancedAnalytics = ({ userData }) => {
               <button 
                 onClick={fetchAnalyticsData}
                 className="w-full px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2"
+                title="Refresh chart data and correlations"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Refresh Chart</span>

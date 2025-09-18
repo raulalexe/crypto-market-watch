@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap } from 'lucide-react';
 import logger from '../utils/logger';
+import websocketService from '../services/websocketService';
 import NarrativesCard from './NarrativesCard';
 import Layer1Card from './Layer1Card';
 import AdvancedMetricsCard from './AdvancedMetricsCard';
@@ -24,6 +25,23 @@ const Dashboard = ({ isAuthenticated, userData }) => {
   useEffect(() => {
     fetchDashboardData();
     fetchAlerts();
+
+    // Set up WebSocket listeners for real-time updates
+    const handleDashboardUpdate = (data) => {
+      setDashboardData(data.data);
+    };
+
+    const handleAlertsUpdate = (data) => {
+      setAlerts(data.alerts || []);
+    };
+
+    websocketService.on('dashboard_update', handleDashboardUpdate);
+    websocketService.on('alerts_update', handleAlertsUpdate);
+
+    return () => {
+      websocketService.off('dashboard_update', handleDashboardUpdate);
+      websocketService.off('alerts_update', handleAlertsUpdate);
+    };
   }, []);
 
   const fetchDashboardData = async () => {

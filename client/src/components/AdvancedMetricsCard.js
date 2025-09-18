@@ -371,7 +371,7 @@ const AdvancedMetricsCard = () => {
         <h4 className="text-sm font-medium text-white mb-2">Metric Interpretations</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-300">
           <div>
-            <strong>Bitcoin Dominance:</strong> Higher = BTC outperforming altcoins
+            <strong>Bitcoin Dominance:</strong> 60%+ = strong Bitcoin season, 50-60% = transition zone, 40-50% = neutral, &lt;40% = altcoin season
           </div>
           <div>
             <strong>SSR (Stablecoin Supply Ratio):</strong> Lower = more buying power available

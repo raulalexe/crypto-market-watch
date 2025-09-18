@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, RefreshCw, TrendingUp, Bell, User, LogOut } from 'lucide-react';
 import AlertPopup from './AlertPopup';
+import websocketService from '../services/websocketService';
 
 const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loading, isAuthenticated, userData, setAuthModalOpen }) => {
   const [alerts, setAlerts] = useState([]);
@@ -32,7 +33,7 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
     };
   }, [isProfileDropdownOpen]);
 
-  // Fetch alerts
+  // Fetch alerts (fallback for initial load)
   const fetchAlerts = async () => {
     try {
       const token = localStorage.getItem('authToken');
@@ -48,31 +49,65 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
         const data = await response.json();
         const fetchedAlerts = data.alerts || [];
         setAlerts(fetchedAlerts);
-        
-        // Calculate unread count based on last seen alert ID
-        if (lastSeenAlertId) {
-          const unread = fetchedAlerts.filter(alert => 
-            alert.id > lastSeenAlertId && !alert.acknowledged
-          ).length;
-          setUnreadCount(unread);
-        } else {
-          // If no last seen ID, count all unacknowledged alerts
-          const unread = fetchedAlerts.filter(alert => !alert.acknowledged).length;
-          setUnreadCount(unread);
-        }
+        updateUnreadCount(fetchedAlerts);
       }
     } catch (error) {
       console.error('Error fetching alerts:', error);
     }
   };
 
-  // Fetch alerts on mount and when authenticated
+  // Update unread count based on alerts
+  const updateUnreadCount = (alerts) => {
+    if (lastSeenAlertId) {
+      const unread = alerts.filter(alert => 
+        alert.id > lastSeenAlertId && !alert.acknowledged
+      ).length;
+      setUnreadCount(unread);
+    } else {
+      const unread = alerts.filter(alert => !alert.acknowledged).length;
+      setUnreadCount(unread);
+    }
+  };
+
+  // WebSocket connection and alert updates
   useEffect(() => {
     if (isAuthenticated) {
-      fetchAlerts();
-      // Set up interval to fetch alerts every 30 seconds
-      const interval = setInterval(fetchAlerts, 30000);
-      return () => clearInterval(interval);
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        // Connect to WebSocket
+        websocketService.connect(token).catch(error => {
+          console.error('WebSocket connection failed:', error);
+          // Fallback to polling if WebSocket fails
+          fetchAlerts();
+          const interval = setInterval(fetchAlerts, 5 * 60 * 1000); // 5 minutes fallback
+          return () => clearInterval(interval);
+        });
+
+        // Set up WebSocket event listeners
+        const handleAlertsUpdate = (data) => {
+          setAlerts(data.alerts || []);
+          updateUnreadCount(data.alerts || []);
+        };
+
+        const handleNewAlert = (data) => {
+          setAlerts(prev => [data.alert, ...prev]);
+          updateUnreadCount([data.alert, ...alerts]);
+        };
+
+        websocketService.on('alerts_update', handleAlertsUpdate);
+        websocketService.on('new_alert', handleNewAlert);
+
+        // Initial fetch
+        fetchAlerts();
+
+        return () => {
+          websocketService.off('alerts_update', handleAlertsUpdate);
+          websocketService.off('new_alert', handleNewAlert);
+        };
+      }
+    } else {
+      // Disconnect WebSocket when not authenticated
+      websocketService.disconnect();
     }
   }, [isAuthenticated, lastSeenAlertId]);
 
@@ -141,14 +176,19 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
         </div>
         
         <div className="flex items-center space-x-2">
-          {/* Refresh button - Only for authenticated users */}
+          {/* Refresh button - Only for authenticated users, with WebSocket status indicator */}
           {isAuthenticated && (
             <button
               onClick={onRefreshClick}
               disabled={loading}
-              className="p-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed relative"
+              title={websocketService.isConnectedToServer() ? "Force refresh (WebSocket connected)" : "Refresh (WebSocket disconnected)"}
             >
               <RefreshCw className={`w-5 h-5 text-slate-300 ${loading ? 'animate-spin' : ''}`} />
+              {/* WebSocket status indicator */}
+              <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
+                websocketService.isConnectedToServer() ? 'bg-green-500' : 'bg-red-500'
+              }`} />
             </button>
           )}
           

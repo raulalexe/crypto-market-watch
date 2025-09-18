@@ -409,7 +409,7 @@ class AIAnalyzer {
 
 CRITICAL ANALYSIS REQUIREMENTS:
 1. **Bitcoin Price Analysis**: Pay special attention to BTC price levels, 24h changes, and volume patterns
-2. **Bitcoin Dominance (BTC.D)**: Analyze Bitcoin's market dominance percentage and its implications
+2. **Bitcoin Dominance (BTC.D)**: Analyze Bitcoin's market dominance percentage and its implications. Note: 60%+ = strong Bitcoin season, 50-60% = transition zone (altcoin season approaching), 40-50% = neutral/mixed, below 40% = altcoin season
 3. **Market Sentiment**: Consider Fear & Greed Index, VIX volatility, and overall market mood
 4. **Macro Factors**: Evaluate DXY (dollar strength), Treasury yields, equity markets, and oil prices
 5. **Inflation Impact**: Assess how inflation data (CPI, PCE, PPI) affects crypto markets specifically
@@ -484,7 +484,7 @@ Please provide a structured JSON response with detailed reasoning:
 ANALYSIS REQUIREMENTS:
 - **MUST** check news and other sources for any major events that could impact the market
 - **MUST** analyze BTC price levels and 24h changes specifically
-- **MUST** evaluate Bitcoin dominance (BTC.D) percentage and implications
+- **MUST** evaluate Bitcoin dominance (BTC.D) percentage and implications: 60%+ = strong Bitcoin season, 50-60% = transition zone (altcoin season approaching), 40-50% = neutral/mixed, <40% = altcoin season
 - **MUST** consider Fear & Greed Index for market sentiment
 - **MUST** assess VIX volatility impact on crypto markets
 - **MUST** evaluate DXY dollar strength correlation with crypto

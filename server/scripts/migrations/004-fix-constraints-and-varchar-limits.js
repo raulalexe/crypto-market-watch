@@ -19,21 +19,34 @@ async function fixConstraintsAndVarcharLimits() {
     // 1. Fix inflation_data table unique constraint
     console.log('📊 Fixing inflation_data table constraints...');
     
-    // First, check if the constraint exists
-    const constraintCheck = await client.query(`
-      SELECT constraint_name 
-      FROM information_schema.table_constraints 
-      WHERE table_name = 'inflation_data' 
-      AND constraint_type = 'UNIQUE'
-      AND constraint_name LIKE '%type%'
-    `);
+    // Helper function to add constraint if it doesn't exist
+    const addConstraintIfNotExists = async (tableName, constraintName, constraintSQL) => {
+      try {
+        // Check if constraint already exists
+        const result = await client.query(`
+          SELECT constraint_name 
+          FROM information_schema.table_constraints 
+          WHERE table_name = $1 AND constraint_name = $2
+        `, [tableName, constraintName]);
+        
+        if (result.rows.length === 0) {
+          await client.query(`ALTER TABLE ${tableName} ADD CONSTRAINT ${constraintName} ${constraintSQL}`);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.warn(`⚠️ Could not add constraint ${constraintName}: ${error.message}`);
+        return false;
+      }
+    };
     
-    if (constraintCheck.rows.length === 0) {
-      console.log('⚠️ Unique constraint missing on inflation_data table, adding it...');
-      await client.query(`
-        ALTER TABLE inflation_data 
-        ADD CONSTRAINT inflation_data_type_date_unique UNIQUE (type, date)
-      `);
+    const constraintAdded = await addConstraintIfNotExists(
+      'inflation_data', 
+      'inflation_data_type_date_unique',
+      'UNIQUE (type, date)'
+    );
+    
+    if (constraintAdded) {
       console.log('✅ Added unique constraint to inflation_data table');
     } else {
       console.log('✅ Unique constraint already exists on inflation_data table');

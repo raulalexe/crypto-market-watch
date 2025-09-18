@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import pushNotificationService from './services/pushNotificationService';
 import authService from './services/authService';
+import websocketService from './services/websocketService';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
 import Header from './components/Header';
@@ -105,11 +106,9 @@ function App() {
     // Start monitoring for PPI releases
     ppiNotificationService.startMonitoring();
     
-    // Refresh data every 5 minutes
-    const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
+    // WebSocket will handle real-time updates, no need for polling
     
     return () => {
-      clearInterval(interval);
       unsubscribePPI();
       ppiNotificationService.stopMonitoring();
     };

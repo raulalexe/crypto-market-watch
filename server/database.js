@@ -382,10 +382,19 @@ const initDatabase = async () => {
     
     // Add unique constraint if it doesn't exist
     try {
-      await client.query(`
-        ALTER TABLE inflation_data 
-        ADD CONSTRAINT IF NOT EXISTS inflation_data_type_date_unique UNIQUE (type, date)
+      // Check if constraint already exists
+      const constraintCheck = await client.query(`
+        SELECT constraint_name 
+        FROM information_schema.table_constraints 
+        WHERE table_name = 'inflation_data' AND constraint_name = 'inflation_data_type_date_unique'
       `);
+      
+      if (constraintCheck.rows.length === 0) {
+        await client.query(`
+          ALTER TABLE inflation_data 
+          ADD CONSTRAINT inflation_data_type_date_unique UNIQUE (type, date)
+        `);
+      }
     } catch (error) {
       // Constraint might already exist, ignore error
     }
@@ -856,20 +865,20 @@ const getBacktestResults = (limit = 50) => {
 // Error logging functions
 const insertErrorLog = (errorData) => {
   return new Promise((resolve, reject) => {
-    dbAdapter.run(
-      'INSERT INTO error_logs (type, source, message, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+    db.query(
+      'INSERT INTO error_logs (type, source, message, details, timestamp) VALUES ($1, $2, $3, $4, $5) RETURNING id',
       [errorData.type, errorData.source, errorData.message, errorData.details, errorData.timestamp]
-    ).then(result => resolve(result.lastID))
+    ).then(result => resolve(result.rows[0].id))
      .catch(reject);
   });
 };
 
 const getErrorLogs = (limit = 50) => {
   return new Promise((resolve, reject) => {
-    dbAdapter.all(
+    db.query(
       'SELECT * FROM error_logs ORDER BY timestamp DESC LIMIT $1',
       [limit]
-    ).then(resolve).catch(reject);
+    ).then(result => resolve(result.rows)).catch(reject);
   });
 };
 
@@ -1751,6 +1760,23 @@ const cleanupDuplicateEvents = () => {
   });
 };
 
+// Clean up alerts for past events
+const cleanupPastEventAlerts = () => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.run(`
+      DELETE FROM alerts 
+      WHERE type = 'UPCOMING_EVENT' 
+      AND eventId IN (
+        SELECT id FROM upcoming_events WHERE date <= NOW()
+      )
+    `).then(result => {
+      const totalCleaned = result.changes;
+      console.log(`🧹 Cleaned up ${totalCleaned} alerts for past events`);
+      resolve(totalCleaned);
+    }).catch(reject);
+  });
+};
+
 const getAllUpcomingEvents = (limit = 20) => {
   return new Promise((resolve, reject) => {
     dbAdapter.all(
@@ -2429,6 +2455,7 @@ module.exports = {
   getPastEvents,
   getAllEvents,
   cleanupDuplicateEvents,
+  cleanupPastEventAlerts,
   ignoreUpcomingEvent,
   unignoreUpcomingEvent,
   deleteUpcomingEvent,

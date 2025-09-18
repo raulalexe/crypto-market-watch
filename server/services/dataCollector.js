@@ -1774,6 +1774,10 @@ class DataCollector {
         
         // Cleanup duplicate alerts
         await this.alertService.cleanupDuplicateAlerts();
+        
+        // Cleanup alerts for past events
+        const { cleanupPastEventAlerts } = require('../database');
+        await cleanupPastEventAlerts();
       } catch (error) {
         console.error('Error checking alerts:', error.message);
       }

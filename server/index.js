@@ -48,6 +48,7 @@ const DataCollector = require('./services/dataCollector');
 const AIAnalyzer = require('./services/aiAnalyzer');
 const PaymentService = require('./services/paymentService');
 const EventCollector = require('./services/eventCollector');
+const WebSocketService = require('./services/websocketService');
 const EventNotificationService = require('./services/eventNotificationService');
 const BrevoEmailService = require('./services/brevoEmailService');
 const PushService = require('./services/pushService');
@@ -1119,6 +1120,10 @@ app.get('/api/alerts', authenticateToken, requireSubscription('pro'), async (req
   try {
     const { limit = 10 } = req.query;
     const alerts = await getUniqueAlerts(parseInt(limit));
+    
+    // Broadcast alerts update via WebSocket
+    WebSocketService.broadcastAlerts(req.user.id, alerts);
+    
     res.json({ alerts });
   } catch (error) {
     console.error('Error fetching alerts:', error);
@@ -1131,6 +1136,11 @@ app.post('/api/alerts/:id/acknowledge', authenticateToken, requireSubscription('
   try {
     const { id } = req.params;
     await acknowledgeAlert(parseInt(id));
+    
+    // Get updated alerts and broadcast
+    const alerts = await getUniqueAlerts(20);
+    WebSocketService.broadcastAlerts(req.user.id, alerts);
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error acknowledging alert:', error);
@@ -3004,6 +3014,12 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
       lastCollectionTime,
       timestamp: lastCollectionTime || new Date().toISOString()
     };
+    
+    // Broadcast dashboard update via WebSocket if user is authenticated
+    if (req.user) {
+      WebSocketService.broadcastDashboardUpdate(req.user.id, dashboardData);
+    }
+    
     res.json(dashboardData);
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
@@ -5335,6 +5351,9 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+  
+  // Initialize WebSocket service
+  WebSocketService.initialize(server);
   
   // Log Stripe webhook configuration
   const isProduction = process.env.NODE_ENV === 'production';
