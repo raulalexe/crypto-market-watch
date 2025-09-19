@@ -1,5 +1,5 @@
 const SibApiV3Sdk = require('@getbrevo/brevo');
-const { alert: alertTemplate, confirmation, accountDeleted, upgrade, renewal, inflation, event, contact } = require('../templates/email');
+const { alert: alertTemplate, confirmation, accountDeleted, upgrade, renewal, inflation, event: eventTemplate, contact } = require('../templates/email');
 
 class BrevoEmailService {
   constructor() {
@@ -469,8 +469,8 @@ class BrevoEmailService {
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
       
       sendSmtpEmail.subject = `📅 Upcoming Event: ${event.title}`;
-      sendSmtpEmail.htmlContent = event.generateHTML({ events: [event], daysUntilEvent }, userEmail);
-      sendSmtpEmail.textContent = event.generateText({ events: [event], daysUntilEvent }, userEmail);
+      sendSmtpEmail.htmlContent = eventTemplate.generateHTML({ events: [event], daysUntilEvent }, userEmail);
+      sendSmtpEmail.textContent = eventTemplate.generateText({ events: [event], daysUntilEvent }, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
         email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'

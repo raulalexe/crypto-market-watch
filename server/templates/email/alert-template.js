@@ -31,7 +31,7 @@ class AlertEmailTemplate extends BaseEmailTemplate {
     // Header content
     const headerContent = `
       <h1 style="background: ${severityColor}; color: white; padding: 30px 20px; text-align: center; margin: 0;">
-        ${severityEmoji} ${alertType}
+        ${severityEmoji} Alert: ${alertType}
       </h1>
     `;
 
