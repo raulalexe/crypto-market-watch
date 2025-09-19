@@ -27,6 +27,19 @@ class BrevoEmailService {
     }
   }
 
+  /**
+   * Helper method to log email sending results consistently
+   */
+  logEmailResult(emailType, recipient, result) {
+    const messageId = result.messageId || result.id || 'no-id-returned';
+    console.log(`✅ ${emailType} sent to ${recipient}: ${messageId}`);
+    
+    // Log full response if no messageId is found (for debugging)
+    if (!result.messageId && !result.id) {
+      console.log(`📧 Brevo response for ${emailType}:`, JSON.stringify(result, null, 2));
+    }
+  }
+
   async sendAlertEmail(userEmail, alert, userPreferences = {}) {
     if (!this.isConfigured) {
       console.log('⚠️ Brevo email service not configured, skipping email send');
@@ -52,7 +65,7 @@ class BrevoEmailService {
       }];
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`✅ Alert email sent to ${userEmail}: ${result.messageId}`);
+      this.logEmailResult('Alert email', userEmail, result);
       return true;
     } catch (error) {
       console.error('❌ Error sending alert email:', error);
@@ -192,7 +205,7 @@ class BrevoEmailService {
       }];
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`✅ Welcome email sent to ${actualEmail}: ${result.messageId}`);
+      this.logEmailResult('Welcome email', actualEmail, result);
       return true;
     } catch (error) {
       console.error('❌ Error sending welcome email:', error);
@@ -481,7 +494,7 @@ class BrevoEmailService {
       }];
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`✅ Event reminder email sent to ${userEmail}: ${result.messageId}`);
+      this.logEmailResult('Event reminder email', userEmail, result);
       return true;
     } catch (error) {
       console.error('❌ Error sending event reminder email:', error);
