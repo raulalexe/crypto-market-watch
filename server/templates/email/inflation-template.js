@@ -69,7 +69,7 @@ class InflationEmailTemplate extends BaseEmailTemplate {
         <tr>
           <td style="background: #334155; padding: 20px; margin: 15px 0; border-left: 4px solid #3b82f6; border-radius: 8px;">
             <strong style="color: #3b82f6; font-size: 16px; display: block; margin-bottom: 8px;">Core CPI</strong>
-            <span style="color: #cbd5e1; font-size: 14px;">${inflationData.coreCpi ? `${inflationData.coreCpi}%` : 'Data not available'}</span>
+            <span style="color: #cbd5e1; font-size: 14px;">${inflationData.core_cpi ? `${inflationData.core_cpi}%` : 'Data not available'}</span>
           </td>
         </tr>
       </table>
@@ -77,11 +77,22 @@ class InflationEmailTemplate extends BaseEmailTemplate {
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td style="background: #334155; padding: 20px; margin: 15px 0; border-left: 4px solid #3b82f6; border-radius: 8px;">
-            <strong style="color: #3b82f6; font-size: 16px; display: block; margin-bottom: 8px;">Producer Price Index (PPI)</strong>
-            <span style="color: #cbd5e1; font-size: 14px;">${inflationData.ppi ? `${inflationData.ppi}%` : 'Data not available'}</span>
+            <strong style="color: #3b82f6; font-size: 16px; display: block; margin-bottom: 8px;">Personal Consumption Expenditures (PCE)</strong>
+            <span style="color: #cbd5e1; font-size: 14px;">${inflationData.pce ? `${inflationData.pce}%` : 'Data not available'}</span>
           </td>
         </tr>
       </table>
+      
+      ${inflationData.ppi ? `
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="background: #334155; padding: 20px; margin: 15px 0; border-left: 4px solid #3b82f6; border-radius: 8px;">
+            <strong style="color: #3b82f6; font-size: 16px; display: block; margin-bottom: 8px;">Producer Price Index (PPI)</strong>
+            <span style="color: #cbd5e1; font-size: 14px;">${inflationData.ppi}%</span>
+          </td>
+        </tr>
+      </table>
+      ` : ''}
       ` : ''}
       
       <table width="100%" cellpadding="0" cellspacing="0">
@@ -162,8 +173,9 @@ Here are the latest inflation and economic indicators that may impact cryptocurr
 ${inflationData ? `
 Latest Inflation Data:
 - Consumer Price Index (CPI): ${inflationData.cpi ? `${inflationData.cpi}%` : 'Data not available'}
-- Core CPI: ${inflationData.coreCpi ? `${inflationData.coreCpi}%` : 'Data not available'}
-- Producer Price Index (PPI): ${inflationData.ppi ? `${inflationData.ppi}%` : 'Data not available'}
+- Core CPI: ${inflationData.core_cpi ? `${inflationData.core_cpi}%` : 'Data not available'}
+- Personal Consumption Expenditures (PCE): ${inflationData.pce ? `${inflationData.pce}%` : 'Data not available'}
+${inflationData.ppi ? `- Producer Price Index (PPI): ${inflationData.ppi}%` : ''}
 ` : ''}
 
 Market Impact Analysis:
