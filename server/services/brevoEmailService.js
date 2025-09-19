@@ -535,7 +535,7 @@ class BrevoEmailService {
                       <a href="${frontendUrl}/settings">Settings</a>
                       ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
                     </div>
-                    <p style="margin-top: 20px; font-size: 12px; color: #666666;">
+                    <p style="margin-top: 20px; font-size: 12px; color: #cbd5e1;">
                       You can manage your notification preferences in your account settings.
                     </p>
                   </td>
@@ -798,7 +798,7 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
               <a href="${frontendUrl}/about">About</a>
               ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
             </div>
-            <p style="margin-top: 20px; font-size: 12px; color: #64748b;">
+            <p style="margin-top: 20px; font-size: 12px; color: #cbd5e1;">
               If you didn't create this account, you can safely ignore this email.
             </p>
           </div>
@@ -947,7 +947,7 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
             color: #94a3b8;
           }
           .link-fallback a {
-            color: #dc3545;
+            color: #fca5a5;
             word-break: break-all;
           }
           .footer { 
@@ -978,13 +978,13 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
             flex-wrap: wrap;
           }
           .footer-links a { 
-            color: #dc3545; 
+            color: #fca5a5; 
             text-decoration: none; 
             font-weight: 500;
             transition: color 0.3s ease;
           }
           .footer-links a:hover { 
-            color: #fca5a5;
+            color: #fecaca;
           }
           .security-note {
             background: rgba(220, 53, 69, 0.1);
@@ -1332,7 +1332,7 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
               <a href="${frontendUrl}/about">About</a>
               ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
             </div>
-            <p style="margin-top: 20px; font-size: 12px; color: #94a3b8;">
+            <p style="margin-top: 20px; font-size: 12px; color: #cbd5e1;">
               Need help? Contact our support team anytime.
             </p>
           </div>
@@ -2125,7 +2125,7 @@ This is an automated message. Please do not reply to this email.
             </div>
             <p>Crypto Market Watch Team</p>
             <p>This is an automated message. Please do not reply to this email.</p>
-            ${unsubscribeUrl ? `<p><a href="${unsubscribeUrl}" style="color: #64748b; font-size: 12px;">Unsubscribe</a></p>` : ''}
+            ${unsubscribeUrl ? `<p><a href="${unsubscribeUrl}" style="color: #cbd5e1; font-size: 12px;">Unsubscribe</a></p>` : ''}
           </div>
         </div>
       </body>

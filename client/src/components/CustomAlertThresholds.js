@@ -103,12 +103,12 @@ const CustomAlertThresholds = () => {
       id: `custom_${Date.now()}`,
       name: 'New Alert',
       description: 'Custom alert threshold',
-      metric: 'btc_price',
+      metric: 'ssr',
       condition: 'above',
       value: 0,
       enabled: true,
       icon: 'Bell', // Store as string for database serialization
-      unit: 'USD'
+      unit: ''
     };
     setThresholds([newThreshold, ...thresholds]); // Add to the top
   };
@@ -145,16 +145,12 @@ const CustomAlertThresholds = () => {
   };
 
   const getMetricOptions = () => [
-    { value: 'btc_price', label: 'Bitcoin Price' },
-    { value: 'eth_price', label: 'Ethereum Price' },
-    { value: 'sol_price', label: 'Solana Price' },
     { value: 'ssr', label: 'Stablecoin Supply Ratio' },
     { value: 'btc_dominance', label: 'Bitcoin Dominance' },
     { value: 'exchange_flow', label: 'Exchange Flow' },
     { value: 'fear_greed', label: 'Fear & Greed Index' },
     { value: 'vix', label: 'VIX Index' },
     { value: 'dxy', label: 'Dollar Index' },
-    { value: 'volume_24h', label: '24h Volume' },
     { value: 'ai_prediction_short', label: 'AI Prediction (Short Term)' },
     { value: 'ai_prediction_medium', label: 'AI Prediction (Medium Term)' },
     { value: 'ai_prediction_long', label: 'AI Prediction (Long Term)' },
@@ -346,12 +342,6 @@ const CustomAlertThresholds = () => {
                 {thresholds.filter(t => t.enabled).length}
               </div>
               <p className="text-slate-400">Active Alerts</p>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-crypto-yellow mb-2">
-                {thresholds.filter(t => t.metric === 'btc_price').length}
-              </div>
-              <p className="text-slate-400">Price Alerts</p>
             </div>
           </div>
         </div>

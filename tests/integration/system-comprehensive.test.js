@@ -292,11 +292,11 @@ describe('Comprehensive System Integration Tests', () => {
   describe('Email System Integration', () => {
     test('should send alert emails', async () => {
       const alert = {
-        type: 'PRICE_ALERT',
-        message: 'Bitcoin price exceeded $50,000',
+        type: 'SSR_ALERT',
+        message: 'Stablecoin Supply Ratio exceeded 2.0',
         severity: 'high',
-        metric: 'btc_price',
-        value: 50000,
+        metric: 'ssr',
+        value: 2.0,
         timestamp: new Date().toISOString()
       };
 

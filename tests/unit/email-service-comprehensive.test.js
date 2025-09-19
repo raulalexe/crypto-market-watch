@@ -49,11 +49,11 @@ describe('Comprehensive Email Service Tests', () => {
   describe('Email Template Generation', () => {
     test('should generate alert email template with proper styling', () => {
       const alert = {
-        type: 'PRICE_ALERT',
-        message: 'Bitcoin price exceeded $50,000',
+        type: 'SSR_ALERT',
+        message: 'Stablecoin Supply Ratio exceeded 2.0',
         severity: 'high',
-        metric: 'btc_price',
-        value: 50000,
+        metric: 'ssr',
+        value: 2.0,
         timestamp: new Date().toISOString()
       };
 
@@ -61,10 +61,10 @@ describe('Comprehensive Email Service Tests', () => {
       
       expect(template).toContain('₿ Crypto Market Watch');
       expect(template).toContain('Real-time market intelligence & alerts');
-      expect(template).toContain('Bitcoin price exceeded $50,000');
+      expect(template).toContain('Stablecoin Supply Ratio exceeded 2.0');
       expect(template).toContain('HIGH');
-      expect(template).toContain('btc_price');
-      expect(template).toContain('50000');
+      expect(template).toContain('ssr');
+      expect(template).toContain('2.0');
       expect(template).toContain('background-color: #0f172a');
       expect(template).toContain('color: #f8fafc');
     });
@@ -138,18 +138,18 @@ describe('Comprehensive Email Service Tests', () => {
   describe('Email Sending Functionality', () => {
     test('should generate alert email template correctly', () => {
       const alert = {
-        type: 'PRICE_ALERT',
-        message: 'Bitcoin price alert',
+        type: 'SSR_ALERT',
+        message: 'Stablecoin Supply Ratio alert',
         severity: 'high',
-        metric: 'btc_price',
-        value: 50000,
+        metric: 'ssr',
+        value: 2.0,
         timestamp: new Date().toISOString()
       };
 
       const template = brevoEmailService.generateAlertEmailHTML(alert, 'test@example.com');
       
       expect(template).toContain('Market Alert');
-      expect(template).toContain('Bitcoin price alert');
+      expect(template).toContain('Stablecoin Supply Ratio alert');
       expect(template).toContain('Crypto Market Watch');
     });
 

@@ -78,6 +78,15 @@ const NotificationSettings = () => {
     }
   };
 
+  const updatePushStatus = async () => {
+    try {
+      const status = await pushNotificationService.getSubscriptionStatus();
+      setPushStatus(status);
+    } catch (error) {
+      console.error('Error updating push status:', error);
+    }
+  };
+
   const handleToggle = async (type) => {
     if (type === 'pushNotifications') {
       await handlePushToggle();
@@ -115,20 +124,19 @@ const NotificationSettings = () => {
         const subscribeResult = await pushNotificationService.subscribe();
 
         if (subscribeResult.success) {
-          setPushStatus(prev => ({ ...prev, isSubscribed: true }));
+          await updatePushStatus(); // Update status after successful subscription
           const newPreferences = { ...preferences, pushNotifications: true };
           setPreferences(newPreferences);
           await savePreferencesWithData(newPreferences);
           setMessage({ type: 'success', text: 'Successfully subscribed to push notifications!' });
         } else {
-
           setMessage({ type: 'error', text: subscribeResult.error });
         }
       } else {
         // Unsubscribe from push notifications
         const unsubscribeResult = await pushNotificationService.unsubscribe();
         if (unsubscribeResult.success) {
-          setPushStatus(prev => ({ ...prev, isSubscribed: false }));
+          await updatePushStatus(); // Update status after successful unsubscription
           const newPreferences = { ...preferences, pushNotifications: false };
           setPreferences(newPreferences);
           await savePreferencesWithData(newPreferences);
@@ -191,6 +199,7 @@ const NotificationSettings = () => {
       });
 
       // Also send a server-side test notification
+      console.log('🔔 Sending test notification to server...');
       const response = await fetch('/api/push/test', {
         method: 'POST',
         headers: {
@@ -204,8 +213,11 @@ const NotificationSettings = () => {
         })
       });
 
+      console.log('🔔 Test notification response:', response.status, response.statusText);
+
       if (response.ok) {
         setMessage({ type: 'success', text: 'Test notification sent successfully!' });
+        await updatePushStatus(); // Update status after test
       } else {
         const errorData = await response.json();
         setMessage({ type: 'error', text: errorData.error || 'Failed to send test notification' });

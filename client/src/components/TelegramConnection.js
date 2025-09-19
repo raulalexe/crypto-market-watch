@@ -219,7 +219,7 @@ const TelegramConnection = () => {
             </h4>
             <ol className="text-sm text-slate-300 space-y-2">
               <li>1. Click "Generate Code" below to get a verification code</li>
-              <li>2. Open Telegram and start a conversation with the Crypto Market Watch bot (@crypto-mnarket-watch_bot)</li>
+              <li>2. Open Telegram and start a conversation with the Crypto Market Watch bot (@crypto-market-watch_bot)</li>
               <li>3. Send the command: <code className="bg-slate-700 px-2 py-1 rounded">/verify YOUR_CODE</code></li>
               <li>4. Your account will be linked and you'll receive notifications</li>
             </ol>

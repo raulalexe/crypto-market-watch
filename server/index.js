@@ -1164,7 +1164,7 @@ app.get('/api/push/vapid-public-key', authenticateToken, (req, res) => {
 app.post('/api/push/subscribe', authenticateToken, async (req, res) => {
   try {
     const { endpoint, keys } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
 
 
@@ -1193,7 +1193,7 @@ app.post('/api/push/subscribe', authenticateToken, async (req, res) => {
 app.post('/api/push/unsubscribe', authenticateToken, async (req, res) => {
   try {
     const { endpoint } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     const { deletePushSubscription } = require('./database');
     await deletePushSubscription(userId, endpoint);
@@ -1208,14 +1208,25 @@ app.post('/api/push/unsubscribe', authenticateToken, async (req, res) => {
 app.post('/api/push/test', authenticateToken, async (req, res) => {
   try {
     const { title, body, icon } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     const { getPushSubscriptions } = require('./database');
-    const subscriptions = await getPushSubscriptions(userId);
+    const subscriptionRows = await getPushSubscriptions(userId);
 
-    if (!subscriptions || subscriptions.length === 0) {
+    console.log(`🔔 Test notification request for user ${userId}, found ${subscriptionRows?.length || 0} subscriptions`);
+
+    if (!subscriptionRows || subscriptionRows.length === 0) {
       return res.status(400).json({ error: 'No push subscriptions found for user' });
     }
+
+    // Format subscriptions for push service
+    const subscriptions = subscriptionRows.map(row => ({
+      endpoint: row.endpoint,
+      keys: {
+        p256dh: row.p256dh,
+        auth: row.auth
+      }
+    }));
 
     const pushService = dataCollector.pushService;
     const testAlert = {
@@ -1461,6 +1472,47 @@ app.post('/api/telegram/test-message', authenticateToken, requireAdmin, async (r
   } catch (error) {
     console.error('Error sending test message:', error);
     res.status(500).json({ error: 'Failed to send test message' });
+  }
+});
+
+// Send mass Telegram message to all subscribers (admin only)
+app.post('/api/telegram/mass-message', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, message, type = 'announcement' } = req.body;
+    
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message are required' });
+    }
+
+    console.log(`📢 Admin sending mass Telegram message: "${title}"`);
+
+    // Create a custom alert object for the mass message
+    const massAlert = {
+      id: `mass-${Date.now()}`,
+      type: type,
+      title: title,
+      message: message,
+      severity: 'medium',
+      timestamp: new Date().toISOString(),
+      metric: 'admin_announcement',
+      value: null
+    };
+
+    // Send to all Telegram subscribers
+    const results = await telegramService.sendBulkAlertMessages(massAlert);
+    
+    res.json({ 
+      success: true, 
+      message: `Mass message sent to ${results.sent} subscribers`,
+      results: {
+        sent: results.sent,
+        failed: results.failed,
+        total: results.sent + results.failed
+      }
+    });
+  } catch (error) {
+    console.error('Error sending mass Telegram message:', error);
+    res.status(500).json({ error: 'Failed to send mass message' });
   }
 });
 

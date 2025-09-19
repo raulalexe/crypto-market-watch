@@ -13,8 +13,12 @@ class AlertService {
         veryBearish: 8.0     // SSR > 8 = very bearish
       },
       btcDominance: {
-        high: 55.0,          // BTC dominance > 55%
+        high: 60.0,          // BTC dominance > 60%
         low: 40.0            // BTC dominance < 40%
+      },
+      altcoinSeason: {
+        high: 60.0,          // Altcoin season index > 60% (altcoin season approaching)
+        veryHigh: 75.0       // Altcoin season index > 75% (strong altcoin season)
       },
       exchangeFlows: {
         extremeInflow: 1000000,  // $1M+ inflow
@@ -103,20 +107,86 @@ class AlertService {
     }
     
     if (numDominance > this.alertThresholds.btcDominance.high) {
+      // High BTC dominance = Bitcoin season
       alerts.push({
         type: 'BTC_DOMINANCE_HIGH',
-        message: `Bitcoin dominance at ${numDominance.toFixed(2)}% - BTC outperforming altcoins significantly.`,
+        message: `Bitcoin dominance at ${numDominance.toFixed(2)}% - Strong Bitcoin season, BTC outperforming altcoins significantly.`,
         severity: 'medium',
         metric: 'btc_dominance',
         value: numDominance
       });
     } else if (numDominance < this.alertThresholds.btcDominance.low) {
+      // Low BTC dominance = Altcoin season approaching
+      // Get altcoin season data to provide more context
+      const { getMarketData } = require('../database');
+      const altcoinSeasonData = await getMarketData('ALTCOIN_SEASON', 1, 'ALTCOIN_INDEX');
+      
+      let message = `Bitcoin dominance at ${numDominance.toFixed(2)}% - Altcoin season signals! Altcoins outperforming BTC.`;
+      let severity = 'high'; // Higher severity for altcoin season
+      
+      // Check if altcoin season index confirms the signal
+      if (altcoinSeasonData && altcoinSeasonData.length > 0) {
+        const altcoinIndex = parseFloat(altcoinSeasonData[0].value);
+        const metadata = altcoinSeasonData[0].metadata ? JSON.parse(altcoinSeasonData[0].metadata) : null;
+        
+        // If altcoin season index is also high, it confirms altcoin season
+        if (altcoinIndex >= 70) {
+          message = `Bitcoin dominance at ${numDominance.toFixed(2)}% - Strong altcoin season! Altcoin season index at ${altcoinIndex.toFixed(1)}% confirms altcoins are outperforming BTC.`;
+          severity = 'high';
+        } else if (altcoinIndex >= 50) {
+          message = `Bitcoin dominance at ${numDominance.toFixed(2)}% - Altcoin season approaching. Altcoin season index at ${altcoinIndex.toFixed(1)}% shows altcoins gaining momentum.`;
+        }
+        
+        // Add season context if available
+        if (metadata && metadata.season) {
+          message += ` (Current season: ${metadata.season})`;
+        }
+      }
+      
       alerts.push({
         type: 'BTC_DOMINANCE_LOW',
-        message: `Bitcoin dominance at ${numDominance.toFixed(2)}% - Altcoins outperforming BTC.`,
-        severity: 'medium',
+        message: message,
+        severity: severity,
         metric: 'btc_dominance',
         value: numDominance
+      });
+    }
+
+    return alerts;
+  }
+
+  // Check Altcoin Season alerts
+  async checkAltcoinSeasonAlerts(altcoinSeasonData) {
+    const alerts = [];
+    
+    if (!altcoinSeasonData || altcoinSeasonData.length === 0) {
+      return alerts;
+    }
+    
+    const altcoinIndex = parseFloat(altcoinSeasonData[0].value);
+    const metadata = altcoinSeasonData[0].metadata ? JSON.parse(altcoinSeasonData[0].metadata) : null;
+    
+    // Check if conversion was successful
+    if (isNaN(altcoinIndex)) {
+      console.error('Invalid altcoin season index value:', altcoinSeasonData[0].value);
+      return alerts;
+    }
+    
+    if (altcoinIndex >= this.alertThresholds.altcoinSeason.veryHigh) {
+      alerts.push({
+        type: 'ALTCOIN_SEASON_VERY_HIGH',
+        message: `Altcoin season index at ${altcoinIndex.toFixed(1)}% - Strong altcoin season! ${metadata?.outperforming_altcoins || 'Many'} altcoins outperforming Bitcoin.`,
+        severity: 'high',
+        metric: 'altcoin_season',
+        value: altcoinIndex
+      });
+    } else if (altcoinIndex >= this.alertThresholds.altcoinSeason.high) {
+      alerts.push({
+        type: 'ALTCOIN_SEASON_HIGH',
+        message: `Altcoin season index at ${altcoinIndex.toFixed(1)}% - Altcoin season approaching. ${metadata?.outperforming_altcoins || 'Many'} altcoins outperforming Bitcoin.`,
+        severity: 'medium',
+        metric: 'altcoin_season',
+        value: altcoinIndex
       });
     }
 
@@ -213,6 +283,16 @@ class AlertService {
       allAlerts.push(...btcAlerts);
     }
 
+    // Check Altcoin Season alerts
+    if (metrics.altcoinSeason && metrics.altcoinSeason.indicator) {
+      const altcoinSeasonData = [{
+        value: metrics.altcoinSeason.indicator,
+        metadata: metrics.altcoinSeason.metadata ? JSON.stringify(metrics.altcoinSeason.metadata) : null
+      }];
+      const altcoinAlerts = await this.checkAltcoinSeasonAlerts(altcoinSeasonData);
+      allAlerts.push(...altcoinAlerts);
+    }
+
     // Check Exchange Flow alerts
     if (metrics.exchangeFlows) {
       const flowAlerts = await this.checkExchangeFlowAlerts(metrics.exchangeFlows);
@@ -292,15 +372,6 @@ class AlertService {
       } else {
         // Handle regular metrics
         switch (metric) {
-          case 'btc_price':
-            currentValue = metrics.cryptoPrices?.btc?.price;
-            break;
-          case 'eth_price':
-            currentValue = metrics.cryptoPrices?.eth?.price;
-            break;
-          case 'sol_price':
-            currentValue = metrics.cryptoPrices?.sol?.price;
-            break;
           case 'ssr':
             currentValue = metrics.stablecoinMetrics?.ssr;
             break;
@@ -318,9 +389,6 @@ class AlertService {
             break;
           case 'dxy':
             currentValue = metrics.marketData?.dxy;
-            break;
-          case 'volume_24h':
-            currentValue = metrics.cryptoPrices?.btc?.volume_24h;
             break;
         }
       }

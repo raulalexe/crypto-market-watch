@@ -721,6 +721,24 @@ const migrations = [
     name: 'remove_subscriptions_table',
     description: 'Remove subscriptions table as we now use users table for subscription data',
     sql: `DROP TABLE IF EXISTS subscriptions;`
+  },
+  {
+    name: 'fix_alert_thresholds_value_type',
+    description: 'Fix user_alert_thresholds value column to support TEXT values for AI alerts',
+    sql: `
+      DO $fix_value_type$ 
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'user_alert_thresholds' 
+          AND column_name = 'value' 
+          AND data_type = 'numeric'
+        ) THEN
+          ALTER TABLE user_alert_thresholds 
+          ALTER COLUMN value TYPE TEXT USING value::TEXT;
+        END IF;
+      END $fix_value_type$;
+    `
   }
 ];
 

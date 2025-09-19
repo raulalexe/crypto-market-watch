@@ -48,6 +48,8 @@ class PushService {
       return false;
     }
 
+    console.log(`📱 Sending push notification to endpoint: ${subscription.endpoint?.substring(0, 50)}...`);
+
     try {
       const severityEmoji = this.getSeverityEmoji(alert.severity);
       const alertType = alert.type.replace(/_/g, ' ');

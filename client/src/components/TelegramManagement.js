@@ -12,6 +12,12 @@ const TelegramManagement = () => {
   const [testChatId, setTestChatId] = useState('');
   const [message, setMessage] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState({ show: false, chatId: null, userName: '' });
+  
+  // Mass messaging state
+  const [massMessageTitle, setMassMessageTitle] = useState('');
+  const [massMessageContent, setMassMessageContent] = useState('');
+  const [massMessageType, setMassMessageType] = useState('announcement');
+  const [sendingMassMessage, setSendingMassMessage] = useState(false);
 
   useEffect(() => {
     fetchTelegramData();
@@ -117,6 +123,47 @@ const TelegramManagement = () => {
 
   const hideDeleteConfirmation = () => {
     setConfirmDelete({ show: false, chatId: null, userName: '' });
+  };
+
+  const sendMassMessage = async () => {
+    if (!massMessageTitle.trim() || !massMessageContent.trim()) {
+      setMessage({ type: 'error', text: 'Please provide both title and message content' });
+      return;
+    }
+
+    try {
+      setSendingMassMessage(true);
+      const token = localStorage.getItem('authToken');
+      
+      const response = await axios.post('/api/telegram/mass-message', {
+        title: massMessageTitle,
+        message: massMessageContent,
+        type: massMessageType
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setMessage({ 
+          type: 'success', 
+          text: `Mass message sent successfully! ${response.data.message}` 
+        });
+        // Clear the form
+        setMassMessageTitle('');
+        setMassMessageContent('');
+        setMassMessageType('announcement');
+      } else {
+        setMessage({ type: 'error', text: 'Failed to send mass message' });
+      }
+    } catch (error) {
+      console.error('Error sending mass message:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.response?.data?.error || 'Failed to send mass message' 
+      });
+    } finally {
+      setSendingMassMessage(false);
+    }
   };
 
   const confirmDeleteChat = async () => {
@@ -321,7 +368,57 @@ const TelegramManagement = () => {
         </div>
       </div>
 
-              {/* Subscribers List */}
+      {/* Mass Message */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">📢 Send Mass Message</h3>
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <input
+              type="text"
+              value={massMessageTitle}
+              onChange={(e) => setMassMessageTitle(e.target.value)}
+              placeholder="Message title (e.g., 'Important Market Update')"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-500"
+            />
+            <select
+              value={massMessageType}
+              onChange={(e) => setMassMessageType(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+            >
+              <option value="announcement">Announcement</option>
+              <option value="event">Event Notification</option>
+              <option value="alert">Market Alert</option>
+              <option value="update">System Update</option>
+            </select>
+          </div>
+          <div>
+            <textarea
+              value={massMessageContent}
+              onChange={(e) => setMassMessageContent(e.target.value)}
+              placeholder="Enter your message content here..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-500"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              This message will be sent to all {stats.active} active Telegram subscribers
+            </div>
+            <button
+              onClick={sendMassMessage}
+              disabled={sendingMassMessage || !massMessageTitle.trim() || !massMessageContent.trim()}
+              className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {sendingMassMessage ? 'Sending...' : 'Send to All Subscribers'}
+            </button>
+          </div>
+          <div className="text-xs text-gray-500">
+            ⚠️ Use this feature responsibly. Mass messages are sent to all active subscribers.
+          </div>
+        </div>
+      </div>
+
+      {/* Subscribers List */}
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Subscribers ({subscribers?.length || 0})</h3>
           
