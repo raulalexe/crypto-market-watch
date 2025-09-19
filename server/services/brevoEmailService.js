@@ -360,6 +360,14 @@ class BrevoEmailService {
     }
 
     try {
+      // Ensure userEmail is a string
+      const actualEmail = String(userEmail || '');
+      if (!actualEmail || !actualEmail.includes('@')) {
+        throw new Error('No valid email address provided');
+      }
+
+      console.log(`📧 Sending renewal reminder email to: ${actualEmail}`);
+
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
       
       sendSmtpEmail.subject = `⚠️ Your ${planType} subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`;
@@ -370,12 +378,12 @@ class BrevoEmailService {
         email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
-        email: userEmail,
-        name: userEmail.split('@')[0]
+        email: actualEmail,
+        name: actualEmail.split('@')[0]
       }];
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`✅ Renewal reminder email sent to ${userEmail}: ${result.messageId}`);
+      console.log(`✅ Renewal reminder email sent to ${actualEmail}: ${result.messageId}`);
       return true;
     } catch (error) {
       console.error('❌ Error sending renewal reminder email:', error);
@@ -390,6 +398,14 @@ class BrevoEmailService {
     }
 
     try {
+      // Ensure userEmail is a string
+      const actualEmail = String(userEmail || '');
+      if (!actualEmail || !actualEmail.includes('@')) {
+        throw new Error('No valid email address provided');
+      }
+
+      console.log(`📧 Sending subscription expired email to: ${actualEmail}`);
+
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
       
       sendSmtpEmail.subject = `❌ Your ${planType} subscription has expired`;
@@ -400,12 +416,12 @@ class BrevoEmailService {
         email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
-        email: userEmail,
-        name: userEmail.split('@')[0]
+        email: actualEmail,
+        name: actualEmail.split('@')[0]
       }];
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`✅ Subscription expired email sent to ${userEmail}: ${result.messageId}`);
+      console.log(`✅ Subscription expired email sent to ${actualEmail}: ${result.messageId}`);
       return true;
     } catch (error) {
       console.error('❌ Error sending subscription expired email:', error);

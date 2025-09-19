@@ -14,7 +14,7 @@ class BaseEmailTemplate {
         color: #f8fafc; 
         background-color: #0f172a;
         margin: 0;
-        padding: 0;
+        padding: 20px 0 0 0;
       }
       table { border-collapse: collapse; }
       .container { 
@@ -70,6 +70,8 @@ class BaseEmailTemplate {
       }
       .cta-button { 
         display: inline-block; 
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
         padding: 15px 30px; 
         text-decoration: none; 
         border-radius: 8px; 
@@ -77,6 +79,12 @@ class BaseEmailTemplate {
         font-weight: bold;
         font-size: 16px;
         text-align: center;
+        border: none;
+        cursor: pointer;
+      }
+      .cta-button:hover {
+        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+        color: white;
       }
       .footer { 
         text-align: center; 
