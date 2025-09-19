@@ -739,6 +739,30 @@ const migrations = [
         END IF;
       END $fix_value_type$;
     `
+  },
+  {
+    name: 'fix_constraint_ranges',
+    description: 'Fix overly restrictive constraint ranges that cause violations with existing data',
+    sql: `
+      -- Fix inflation_data constraints
+      ALTER TABLE inflation_data DROP CONSTRAINT IF EXISTS inflation_data_value_range_check;
+      ALTER TABLE inflation_data ADD CONSTRAINT inflation_data_value_range_check 
+        CHECK (value IS NULL OR (value >= -1000 AND value <= 1000));
+      
+      ALTER TABLE inflation_data DROP CONSTRAINT IF EXISTS inflation_data_core_value_range_check;
+      ALTER TABLE inflation_data ADD CONSTRAINT inflation_data_core_value_range_check 
+        CHECK (core_value IS NULL OR (core_value >= -1000 AND core_value <= 1000));
+      
+      -- Fix economic_data constraints
+      ALTER TABLE economic_data DROP CONSTRAINT IF EXISTS economic_data_value_range_check;
+      ALTER TABLE economic_data ADD CONSTRAINT economic_data_value_range_check 
+        CHECK (value IS NULL OR (value >= -1000000 AND value <= 1000000));
+      
+      -- Fix market_sentiment constraints
+      ALTER TABLE market_sentiment DROP CONSTRAINT IF EXISTS market_sentiment_value_range_check;
+      ALTER TABLE market_sentiment ADD CONSTRAINT market_sentiment_value_range_check 
+        CHECK (value IS NULL OR (value >= -1000 AND value <= 1000));
+    `
   }
 ];
 

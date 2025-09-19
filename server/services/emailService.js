@@ -316,7 +316,7 @@ class EmailService {
       <body>
         <div class="container">
           <div class="brand-header">
-            <div class="brand-logo">₿ Crypto Market Watch</div>
+            <div class="brand-logo">Crypto Market Watch</div>
             <p class="brand-name">Real-time market intelligence & alerts</p>
           </div>
           <div class="header">

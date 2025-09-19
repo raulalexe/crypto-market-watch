@@ -475,7 +475,7 @@ class BrevoEmailService {
               <table class="container" cellpadding="0" cellspacing="0">
                 <tr>
                   <td class="brand-header">
-                    <div class="brand-logo">₿ Crypto Market Watch</div>
+                    <div class="brand-logo">Crypto Market Watch</div>
                     <p class="brand-name">Real-time market intelligence & alerts</p>
                   </td>
                 </tr>
@@ -1087,78 +1087,79 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
         <title>Welcome to Crypto Market Watch</title>
         <style>
           body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
             line-height: 1.6; 
             color: #f8fafc; 
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background-color: #0f172a;
             margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 0;
           }
+          table { border-collapse: collapse; }
           .container { 
             max-width: 600px; 
             margin: 0 auto; 
-            background: #1e293b;
-            border-radius: 16px;
+            background-color: #1e293b;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          }
+          .brand-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f8fafc;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #3b82f6;
+          }
+          .brand-logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 8px;
+            display: inline-block;
+          }
+          .brand-name {
+            font-size: 14px;
+            color: #94a3b8;
+            margin: 0;
           }
           .header { 
             background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
             color: #0f172a; 
-            padding: 40px 30px;
+            padding: 30px 20px;
             text-align: center;
-            position: relative;
-          }
-          .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(15,23,42,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-            opacity: 0.3;
-          }
-          .logo {
-            width: 48px;
-            height: 48px;
-            background: #0f172a;
-            border-radius: 12px;
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            position: relative;
-            z-index: 1;
           }
           .header h1 { 
             margin: 0;
-            font-size: 28px;
-            font-weight: 700;
-            position: relative;
-            z-index: 1;
+            font-size: 24px;
+            font-weight: bold;
           }
           .header p {
-            margin: 10px 0 0;
+            margin: 8px 0 0;
             font-size: 16px;
             opacity: 0.9;
-            position: relative;
-            z-index: 1;
           }
           .content { 
-            background: #1e293b;
-            padding: 40px 30px;
+            background-color: #1e293b;
+            padding: 30px 20px;
             color: #f8fafc;
           }
           .content p {
             font-size: 16px;
             margin-bottom: 20px;
             color: #cbd5e1;
+          }
+          .celebration {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+          }
+          .celebration p {
+            margin: 0;
+            color: #00ff88;
+            font-weight: 600;
           }
           .feature { 
             background: #334155;
@@ -1181,68 +1182,13 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
             display: inline-block; 
             background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
             color: #0f172a; 
-            padding: 16px 32px; 
+            padding: 15px 30px; 
             text-decoration: none; 
-            border-radius: 12px; 
+            border-radius: 8px; 
             margin: 25px 0;
-            font-weight: 600;
+            font-weight: bold;
             font-size: 16px;
             text-align: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
-          }
-          .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.4);
-          }
-          .footer { 
-            text-align: center; 
-            padding: 30px;
-            background: #0f172a;
-            color: #64748b; 
-            font-size: 14px;
-          }
-          .footer-logo {
-            width: 32px;
-            height: 32px;
-            background: #00ff88;
-            border-radius: 8px;
-            margin: 0 auto 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #0f172a;
-            font-weight: bold;
-            font-size: 14px;
-          }
-          .footer-links { 
-            margin: 20px 0;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-          }
-          .footer-links a { 
-            color: #00ff88; 
-            text-decoration: none; 
-            font-weight: 500;
-            transition: color 0.3s ease;
-          }
-          .footer-links a:hover { 
-            color: #34d399;
-          }
-          .celebration {
-            background: rgba(0, 255, 136, 0.1);
-            border: 1px solid rgba(0, 255, 136, 0.3);
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-            text-align: center;
-          }
-          .celebration p {
-            margin: 0;
-            color: #00ff88;
-            font-weight: 600;
           }
           .pro-tip {
             background: #334155;
@@ -1259,84 +1205,166 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
           .pro-tip strong {
             color: #3b82f6;
           }
-          @media (max-width: 600px) {
-            .container { margin: 10px; }
-            .header, .content, .footer { padding: 20px; }
-            .footer-links { flex-direction: column; gap: 10px; }
+          .footer { 
+            text-align: center; 
+            padding: 30px 20px;
+            background-color: #0f172a;
+            color: #94a3b8; 
+            font-size: 14px;
+          }
+          .footer-links { 
+            margin: 20px 0;
+          }
+          .footer-links a { 
+            color: #3b82f6; 
+            text-decoration: none; 
+            margin: 0 10px;
           }
         </style>
       </head>
       <body>
-        <div class="container">
-          <div class="header">
-            <div class="logo">₿</div>
-            <h1 style="color: #0f172a; margin: 0; font-size: 28px; font-weight: 700;">Welcome to Crypto Market Watch!</h1>
-            <p style="color: #0f172a; margin: 10px 0 0; opacity: 0.9; font-size: 16px;">Your journey to smarter crypto trading starts now</p>
-          </div>
-          
-          <div class="content">
-            <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">Hi <strong style="color: #00ff88;">${displayName}</strong>,</p>
-            
-            <div class="celebration">
-              <p style="margin: 0; color: #00ff88; font-weight: 600;">Congratulations! Your account is now active and ready to use.</p>
-            </div>
-            
-            <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">Welcome to the most advanced cryptocurrency monitoring platform! We're excited to have you on board and can't wait to help you stay ahead of the market.</p>
-            
-            <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">Here's what you can do with your account:</p>
-            
-            <div class="feature">
-              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Real-time Market Data</strong>
-              <span style="color: #cbd5e1; font-size: 14px;">Get live cryptocurrency prices, market caps, trading volumes, and comprehensive market analysis</span>
-            </div>
-            
-            <div class="feature">
-              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">AI-Powered Analysis</strong>
-              <span style="color: #cbd5e1; font-size: 14px;">Receive intelligent market insights, predictions, and automated analysis powered by advanced AI</span>
-            </div>
-            
-            <div class="feature">
-              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Smart Alerts</strong>
-              <span style="color: #cbd5e1; font-size: 14px;">Set up custom alerts for price movements, market events, and get notified via email, push notifications, and Telegram</span>
-            </div>
-            
-            <div class="feature">
-              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Advanced Metrics</strong>
-              <span style="color: #cbd5e1; font-size: 14px;">Access Bitcoin dominance, stablecoin flows, Layer 1 blockchain metrics, and economic calendar events</span>
-            </div>
-            
-            <div class="feature">
-              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Economic Calendar</strong>
-              <span style="color: #cbd5e1; font-size: 14px;">Stay informed about market-impacting events and economic indicators that affect crypto markets</span>
-            </div>
-            
-            <div style="text-align: center;">
-              <a href="${frontendUrl}/dashboard" class="cta-button">Get Started Now</a>
-            </div>
-            
-            <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">Ready to explore? Log in to your account and discover all the powerful features waiting for you!</p>
-            
-            <div class="pro-tip">
-              <p style="margin: 0; color: #cbd5e1;">
-                <strong style="color: #3b82f6;">Pro Tip:</strong> Start by setting up your first alert to get notified when Bitcoin reaches a specific price point. It's a great way to test the system and stay informed!
-              </p>
-            </div>
-          </div>
-          
-          <div class="footer">
-            <div class="footer-logo">₿</div>
-            <p style="color: #64748b; font-size: 14px; margin: 0;"><strong style="color: #00ff88;">Crypto Market Watch</strong></p>
-            <p style="color: #64748b; font-size: 14px; margin: 10px 0;">Advanced cryptocurrency analytics with AI-powered insights</p>
-            <div class="footer-links">
-              <a href="${frontendUrl}/dashboard" style="color: #00ff88; text-decoration: none; font-weight: 500;">Dashboard</a>
-              <a href="${frontendUrl}/about" style="color: #00ff88; text-decoration: none; font-weight: 500;">About</a>
-              ${unsubscribeUrl ? `<a href="${unsubscribeUrl}" style="color: #00ff88; text-decoration: none; font-weight: 500;">Unsubscribe</a>` : ''}
-            </div>
-            <p style="margin-top: 20px; font-size: 12px; color: #cbd5e1;">
-              Need help? Contact our support team anytime.
-            </p>
-          </div>
-        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a;">
+          <tr>
+            <td align="center">
+              <table class="container" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td class="brand-header">
+                    <div class="brand-logo">Crypto Market Watch</div>
+                    <p class="brand-name">Real-time market intelligence & alerts</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="header">
+                    <h1>🎉 Welcome to Crypto Market Watch!</h1>
+                    <p>Your journey to smarter crypto trading starts now</p>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td class="content">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td>
+                          <p>Hi <strong style="color: #00ff88;">${displayName}</strong>,</p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="celebration">
+                          <p>Congratulations! Your account is now active and ready to use.</p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td>
+                          <p>Welcome to the most advanced cryptocurrency monitoring platform! We're excited to have you on board and can't wait to help you stay ahead of the market.</p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td>
+                          <p>Here's what you can do with your account:</p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="feature">
+                          <strong>Real-time Market Data</strong>
+                          <span>Get live cryptocurrency prices, market caps, trading volumes, and comprehensive market analysis</span>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="feature">
+                          <strong>AI-Powered Analysis</strong>
+                          <span>Receive intelligent market insights, predictions, and automated analysis powered by advanced AI</span>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="feature">
+                          <strong>Smart Alerts</strong>
+                          <span>Set up custom alerts for price movements, market events, and get notified via email, push notifications, and Telegram</span>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="feature">
+                          <strong>Advanced Metrics</strong>
+                          <span>Access Bitcoin dominance, stablecoin flows, Layer 1 blockchain metrics, and economic calendar events</span>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="feature">
+                          <strong>Economic Calendar</strong>
+                          <span>Stay informed about market-impacting events and economic indicators that affect crypto markets</span>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" style="padding: 30px 0;">
+                          <a href="${frontendUrl}/dashboard" class="cta-button">Get Started Now</a>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td>
+                          <p>Ready to explore? Log in to your account and discover all the powerful features waiting for you!</p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td class="pro-tip">
+                          <p>
+                            <strong>Pro Tip:</strong> Start by setting up your first alert to get notified when Bitcoin reaches a specific price point. It's a great way to test the system and stay informed!
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td class="footer">
+                    <p><strong>Crypto Market Watch</strong></p>
+                    <p>Advanced cryptocurrency analytics with AI-powered insights</p>
+                    <div class="footer-links">
+                      <a href="${frontendUrl}/dashboard">Dashboard</a>
+                      <a href="${frontendUrl}/about">About</a>
+                      ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
+                    </div>
+                    <p style="margin-top: 20px; font-size: 12px; color: #cbd5e1;">
+                      Need help? Contact our support team anytime.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
@@ -3361,7 +3389,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
         <table class="container" cellpadding="0" cellspacing="0">
           <tr>
             <td class="brand-header">
-              <div class="brand-logo">₿ Crypto Market Watch</div>
+              <div class="brand-logo">Crypto Market Watch</div>
               <p class="brand-name">Real-time market intelligence & alerts</p>
             </td>
           </tr>
@@ -3531,7 +3559,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
         <table class="container" cellpadding="0" cellspacing="0">
           <tr>
             <td class="brand-header">
-              <div class="brand-logo">₿ Crypto Market Watch</div>
+              <div class="brand-logo">Crypto Market Watch</div>
               <p class="brand-name">Real-time market intelligence & alerts</p>
             </td>
           </tr>

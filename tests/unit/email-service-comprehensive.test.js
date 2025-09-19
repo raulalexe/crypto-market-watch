@@ -59,7 +59,7 @@ describe('Comprehensive Email Service Tests', () => {
 
       const template = brevoEmailService.generateAlertEmailHTML(alert, 'test@example.com');
       
-      expect(template).toContain('₿ Crypto Market Watch');
+      expect(template).toContain('Crypto Market Watch');
       expect(template).toContain('Real-time market intelligence & alerts');
       expect(template).toContain('Stablecoin Supply Ratio exceeded 2.0');
       expect(template).toContain('HIGH');
@@ -81,7 +81,7 @@ describe('Comprehensive Email Service Tests', () => {
 
       const template = brevoEmailService.generateEventReminderEmailHTML(event, 'test@example.com', 3);
       
-      expect(template).toContain('₿ Crypto Market Watch');
+      expect(template).toContain('Crypto Market Watch');
       expect(template).toContain('FOMC Meeting');
       expect(template).toContain('Federal Reserve meeting');
       expect(template).toContain('3 days');
@@ -97,7 +97,7 @@ describe('Comprehensive Email Service Tests', () => {
 
       const template = brevoEmailService.generateInflationUpdateEmailHTML(inflationData, 'test@example.com');
       
-      expect(template).toContain('₿ Crypto Market Watch');
+      expect(template).toContain('Crypto Market Watch');
       expect(template).toContain('Inflation Data Update');
       expect(template).toContain('3.2%');
       expect(template).toContain('2.8%');

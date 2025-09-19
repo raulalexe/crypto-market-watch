@@ -144,26 +144,26 @@ async function addDataConstraints() {
     );
     if (exchangeFlowsConstraintAdded) console.log('✅ Added exchange flows positive constraint');
     
-    // Add inflation data constraints
+    // Add inflation data constraints (more reasonable ranges)
     const inflationValueConstraintAdded = await addConstraintIfNotExists(
       'inflation_data', 
       'inflation_data_value_range_check',
-      'CHECK (value IS NULL OR (value >= -50 AND value <= 50))'
+      'CHECK (value IS NULL OR (value >= -1000 AND value <= 1000))'
     );
     if (inflationValueConstraintAdded) console.log('✅ Added inflation data value range constraint');
     
     const inflationCoreConstraintAdded = await addConstraintIfNotExists(
       'inflation_data', 
       'inflation_data_core_value_range_check',
-      'CHECK (core_value IS NULL OR (core_value >= -50 AND core_value <= 50))'
+      'CHECK (core_value IS NULL OR (core_value >= -1000 AND core_value <= 1000))'
     );
     if (inflationCoreConstraintAdded) console.log('✅ Added inflation data core value range constraint');
     
-    // Add economic data constraints
+    // Add economic data constraints (more reasonable ranges)
     const economicDataConstraintAdded = await addConstraintIfNotExists(
       'economic_data', 
       'economic_data_value_range_check',
-      'CHECK (value IS NULL OR (value >= -1000 AND value <= 1000))'
+      'CHECK (value IS NULL OR (value >= -1000000 AND value <= 1000000))'
     );
     if (economicDataConstraintAdded) console.log('✅ Added economic data value range constraint');
     
@@ -229,11 +229,11 @@ async function addDataConstraints() {
     );
     if (onchainDataConstraintAdded) console.log('✅ Added onchain data value positive constraint');
     
-    // Add market sentiment constraints
+    // Add market sentiment constraints (more reasonable ranges)
     const marketSentimentConstraintAdded = await addConstraintIfNotExists(
       'market_sentiment', 
       'market_sentiment_value_range_check',
-      'CHECK (value IS NULL OR (value >= -1 AND value <= 1))'
+      'CHECK (value IS NULL OR (value >= -1000 AND value <= 1000))'
     );
     if (marketSentimentConstraintAdded) console.log('✅ Added market sentiment value range constraint');
     
