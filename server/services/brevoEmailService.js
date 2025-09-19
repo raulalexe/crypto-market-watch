@@ -1270,67 +1270,67 @@ ${unsubscribeUrl ? `\nTo unsubscribe from these emails, visit: ${unsubscribeUrl}
         <div class="container">
           <div class="header">
             <div class="logo">₿</div>
-            <h1>Welcome to Crypto Market Watch!</h1>
-            <p>Your journey to smarter crypto trading starts now</p>
+            <h1 style="color: #0f172a; margin: 0; font-size: 28px; font-weight: 700;">Welcome to Crypto Market Watch!</h1>
+            <p style="color: #0f172a; margin: 10px 0 0; opacity: 0.9; font-size: 16px;">Your journey to smarter crypto trading starts now</p>
           </div>
           
           <div class="content">
-            <p>Hi <strong>${displayName}</strong>,</p>
+            <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">Hi <strong style="color: #00ff88;">${displayName}</strong>,</p>
             
             <div class="celebration">
-              <p>Congratulations! Your account is now active and ready to use.</p>
+              <p style="margin: 0; color: #00ff88; font-weight: 600;">Congratulations! Your account is now active and ready to use.</p>
             </div>
             
-            <p>Welcome to the most advanced cryptocurrency monitoring platform! We're excited to have you on board and can't wait to help you stay ahead of the market.</p>
+            <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">Welcome to the most advanced cryptocurrency monitoring platform! We're excited to have you on board and can't wait to help you stay ahead of the market.</p>
             
-            <p>Here's what you can do with your account:</p>
-            
-            <div class="feature">
-              <strong>Real-time Market Data</strong>
-              <span>Get live cryptocurrency prices, market caps, trading volumes, and comprehensive market analysis</span>
-            </div>
+            <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">Here's what you can do with your account:</p>
             
             <div class="feature">
-              <strong>AI-Powered Analysis</strong>
-              <span>Receive intelligent market insights, predictions, and automated analysis powered by advanced AI</span>
+              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Real-time Market Data</strong>
+              <span style="color: #cbd5e1; font-size: 14px;">Get live cryptocurrency prices, market caps, trading volumes, and comprehensive market analysis</span>
             </div>
             
             <div class="feature">
-              <strong>Smart Alerts</strong>
-              <span>Set up custom alerts for price movements, market events, and get notified via email, push notifications, and Telegram</span>
+              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">AI-Powered Analysis</strong>
+              <span style="color: #cbd5e1; font-size: 14px;">Receive intelligent market insights, predictions, and automated analysis powered by advanced AI</span>
             </div>
             
             <div class="feature">
-              <strong>Advanced Metrics</strong>
-              <span>Access Bitcoin dominance, stablecoin flows, Layer 1 blockchain metrics, and economic calendar events</span>
+              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Smart Alerts</strong>
+              <span style="color: #cbd5e1; font-size: 14px;">Set up custom alerts for price movements, market events, and get notified via email, push notifications, and Telegram</span>
             </div>
             
             <div class="feature">
-              <strong>Economic Calendar</strong>
-              <span>Stay informed about market-impacting events and economic indicators that affect crypto markets</span>
+              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Advanced Metrics</strong>
+              <span style="color: #cbd5e1; font-size: 14px;">Access Bitcoin dominance, stablecoin flows, Layer 1 blockchain metrics, and economic calendar events</span>
+            </div>
+            
+            <div class="feature">
+              <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Economic Calendar</strong>
+              <span style="color: #cbd5e1; font-size: 14px;">Stay informed about market-impacting events and economic indicators that affect crypto markets</span>
             </div>
             
             <div style="text-align: center;">
               <a href="${frontendUrl}/dashboard" class="cta-button">Get Started Now</a>
             </div>
             
-            <p>Ready to explore? Log in to your account and discover all the powerful features waiting for you!</p>
+            <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 20px;">Ready to explore? Log in to your account and discover all the powerful features waiting for you!</p>
             
             <div class="pro-tip">
-              <p>
-                <strong>Pro Tip:</strong> Start by setting up your first alert to get notified when Bitcoin reaches a specific price point. It's a great way to test the system and stay informed!
+              <p style="margin: 0; color: #cbd5e1;">
+                <strong style="color: #3b82f6;">Pro Tip:</strong> Start by setting up your first alert to get notified when Bitcoin reaches a specific price point. It's a great way to test the system and stay informed!
               </p>
             </div>
           </div>
           
           <div class="footer">
             <div class="footer-logo">₿</div>
-            <p><strong>Crypto Market Watch</strong></p>
-            <p>Advanced cryptocurrency analytics with AI-powered insights</p>
+            <p style="color: #64748b; font-size: 14px; margin: 0;"><strong style="color: #00ff88;">Crypto Market Watch</strong></p>
+            <p style="color: #64748b; font-size: 14px; margin: 10px 0;">Advanced cryptocurrency analytics with AI-powered insights</p>
             <div class="footer-links">
-              <a href="${frontendUrl}/dashboard">Dashboard</a>
-              <a href="${frontendUrl}/about">About</a>
-              ${unsubscribeUrl ? `<a href="${unsubscribeUrl}">Unsubscribe</a>` : ''}
+              <a href="${frontendUrl}/dashboard" style="color: #00ff88; text-decoration: none; font-weight: 500;">Dashboard</a>
+              <a href="${frontendUrl}/about" style="color: #00ff88; text-decoration: none; font-weight: 500;">About</a>
+              ${unsubscribeUrl ? `<a href="${unsubscribeUrl}" style="color: #00ff88; text-decoration: none; font-weight: 500;">Unsubscribe</a>` : ''}
             </div>
             <p style="margin-top: 20px; font-size: 12px; color: #cbd5e1;">
               Need help? Contact our support team anytime.

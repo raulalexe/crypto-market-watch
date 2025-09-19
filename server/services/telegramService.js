@@ -132,8 +132,21 @@ class TelegramService {
 
     const results = { sent: 0, failed: 0 };
 
-    for (const chatId of this.chatIds) {
-      const success = await this.sendAlertMessage(chatId, alert);
+    // Get subscribers from database (persistent) instead of just in-memory list
+    const { getUsersWithNotifications } = require('../database');
+    const users = await getUsersWithNotifications();
+    
+    // Filter users who have Telegram notifications enabled and verified chat IDs
+    const telegramUsers = users.filter(user => 
+      user.telegramNotifications && 
+      user.telegramChatId && 
+      user.telegramVerified
+    );
+
+    console.log(`📱 Found ${telegramUsers.length} verified Telegram subscribers in database`);
+
+    for (const user of telegramUsers) {
+      const success = await this.sendAlertMessage(user.telegramChatId, alert);
       if (success) {
         results.sent++;
       } else {
@@ -477,6 +490,9 @@ ${alert.value ? `• Value: ${alert.value}` : ''}
     this.subscribers.set(chatId, userInfo);
     this.chatIds.add(chatId);
 
+    // Update database to mark this chat ID as verified for Telegram notifications
+    await this.updateUserTelegramChatId(chatId, from);
+
     await this.sendMessage(chatId, '✅ You have been subscribed to market alerts!');
   }
 
@@ -692,6 +708,72 @@ This bot sends you real-time cryptocurrency market alerts.
       );
     } catch (error) {
       console.error('❌ Error sending Telegram message:', error.message);
+    }
+  }
+
+  async getSubscriberCount() {
+    return this.chatIds.size;
+  }
+
+  async getDatabaseSubscriberCount() {
+    try {
+      const { getUsersWithNotifications } = require('../database');
+      const users = await getUsersWithNotifications();
+      
+      const telegramUsers = users.filter(user => 
+        user.telegramNotifications && 
+        user.telegramChatId && 
+        user.telegramVerified
+      );
+      
+      return telegramUsers.length;
+    } catch (error) {
+      console.error('Error getting database subscriber count:', error);
+      return 0;
+    }
+  }
+
+  async updateUserTelegramChatId(chatId, from) {
+    try {
+      const { dbAdapter } = require('../database');
+      
+      // Try to find user by Telegram username or ID
+      let user = null;
+      
+      if (from.username) {
+        // Try to find by username first
+        const usernameResult = await dbAdapter.get(
+          'SELECT id FROM users WHERE telegram_username = ?',
+          [from.username]
+        );
+        if (usernameResult) {
+          user = usernameResult;
+        }
+      }
+      
+      if (!user && from.id) {
+        // Try to find by Telegram ID
+        const idResult = await dbAdapter.get(
+          'SELECT id FROM users WHERE telegram_user_id = ?',
+          [from.id.toString()]
+        );
+        if (idResult) {
+          user = idResult;
+        }
+      }
+      
+      if (user) {
+        // Update the user's Telegram chat ID and mark as verified
+        await dbAdapter.run(
+          'UPDATE users SET telegram_chat_id = ?, telegram_verified = true, telegram_notifications = true WHERE id = ?',
+          [chatId, user.id]
+        );
+        console.log(`✅ Updated user ${user.id} with Telegram chat ID: ${chatId}`);
+      } else {
+        console.log(`⚠️ No user found for Telegram chat ID: ${chatId} (username: ${from.username}, id: ${from.id})`);
+      }
+    } catch (error) {
+      console.error('Error updating user Telegram chat ID:', error);
     }
   }
 }

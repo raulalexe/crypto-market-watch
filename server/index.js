@@ -1424,6 +1424,17 @@ app.get('/api/telegram/admin-status', authenticateToken, requireAdmin, async (re
   try {
     console.log('🔍 Admin requesting Telegram status...');
     const status = await telegramService.testConnection();
+    
+    // Get both in-memory and database subscriber counts
+    const inMemoryCount = await telegramService.getSubscriberCount();
+    const databaseCount = await telegramService.getDatabaseSubscriberCount();
+    
+    status.subscribers = {
+      inMemory: inMemoryCount,
+      database: databaseCount,
+      note: 'Database count shows verified users with Telegram notifications enabled'
+    };
+    
     console.log('📊 Returning status to admin:', status);
     res.json(status);
   } catch (error) {
