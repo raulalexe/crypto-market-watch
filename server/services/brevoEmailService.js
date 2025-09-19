@@ -1,5 +1,5 @@
 const SibApiV3Sdk = require('@getbrevo/brevo');
-const { confirmation, accountDeleted, upgrade, renewal, inflation, event, contact } = require('../templates/email');
+const { alert, confirmation, accountDeleted, upgrade, renewal, inflation, event, contact } = require('../templates/email');
 
 class BrevoEmailService {
   constructor() {
@@ -40,8 +40,8 @@ class BrevoEmailService {
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
       
       sendSmtpEmail.subject = `${severityEmoji} Market Alert: ${alertType}`;
-      sendSmtpEmail.htmlContent = this.generateAlertEmailHTML(alert, userEmail);
-      sendSmtpEmail.textContent = this.generateAlertEmailText(alert, userEmail);
+      sendSmtpEmail.htmlContent = alert.generateHTML(alert, userEmail);
+      sendSmtpEmail.textContent = alert.generateText(alert, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
         email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
@@ -154,22 +154,45 @@ class BrevoEmailService {
     }
 
     try {
+      // Handle case where userName might actually be an email address
+      let actualEmail = userEmail;
+      let actualName = userName;
+      
+      // If userEmail is empty but userName looks like an email, swap them
+      if (!userEmail && userName && userName.includes('@')) {
+        actualEmail = userName;
+        actualName = userName.split('@')[0];
+      }
+      
+      // If userEmail looks like a name and userName looks like an email, swap them
+      if (userEmail && !userEmail.includes('@') && userName && userName.includes('@')) {
+        actualEmail = userName;
+        actualName = userEmail;
+      }
+      
+      // Ensure we have a valid email
+      if (!actualEmail) {
+        throw new Error('No valid email address provided');
+      }
+      
+      console.log(`📧 Sending welcome email to: ${actualEmail}, name: ${actualName}`);
+      
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
       
       sendSmtpEmail.subject = 'Welcome to Crypto Market Watch! 🚀';
-      sendSmtpEmail.htmlContent = this.generateWelcomeEmailHTML(userName, userEmail);
-      sendSmtpEmail.textContent = this.generateWelcomeEmailText(userName, userEmail);
+      sendSmtpEmail.htmlContent = this.generateWelcomeEmailHTML(actualName, actualEmail);
+      sendSmtpEmail.textContent = this.generateWelcomeEmailText(actualName, actualEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
         email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
-        email: userEmail,
-        name: userName || userEmail.split('@')[0]
+        email: actualEmail,
+        name: actualName || actualEmail.split('@')[0]
       }];
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`✅ Welcome email sent to ${userEmail}: ${result.messageId}`);
+      console.log(`✅ Welcome email sent to ${actualEmail}: ${result.messageId}`);
       return true;
     } catch (error) {
       console.error('❌ Error sending welcome email:', error);
@@ -184,22 +207,43 @@ class BrevoEmailService {
     }
 
     try {
+      // Handle case where userName might actually be an email address
+      let actualEmail = userEmail;
+      let actualName = userName;
+      
+      // If userEmail is empty but userName looks like an email, swap them
+      if (!userEmail && userName && userName.includes('@')) {
+        actualEmail = userName;
+        actualName = userName.split('@')[0];
+      }
+      
+      // If userEmail looks like a name and userName looks like an email, swap them
+      if (userEmail && !userEmail.includes('@') && userName && userName.includes('@')) {
+        actualEmail = userName;
+        actualName = userEmail;
+      }
+      
+      // Ensure we have a valid email
+      if (!actualEmail) {
+        throw new Error('No valid email address provided');
+      }
+      
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
       
       sendSmtpEmail.subject = `🎉 Welcome to ${planType}! Your upgrade is complete`;
-      sendSmtpEmail.htmlContent = upgrade.generateHTML(userName, userEmail, planType, subscriptionDetails);
-      sendSmtpEmail.textContent = upgrade.generateText(userName, userEmail, planType, subscriptionDetails);
+      sendSmtpEmail.htmlContent = upgrade.generateHTML(actualName, actualEmail, planType, subscriptionDetails);
+      sendSmtpEmail.textContent = upgrade.generateText(actualName, actualEmail, planType, subscriptionDetails);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
         email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
-        email: userEmail,
-        name: userName || userEmail.split('@')[0]
+        email: actualEmail,
+        name: actualName || actualEmail.split('@')[0]
       }];
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`✅ Upgrade email sent to ${userEmail}: ${result.messageId}`);
+      console.log(`✅ Upgrade email sent to ${actualEmail}: ${result.messageId}`);
       return true;
     } catch (error) {
       console.error('❌ Error sending upgrade email:', error);
@@ -214,22 +258,43 @@ class BrevoEmailService {
     }
 
     try {
+      // Handle case where userName might actually be an email address
+      let actualEmail = userEmail;
+      let actualName = userName;
+      
+      // If userEmail is empty but userName looks like an email, swap them
+      if (!userEmail && userName && userName.includes('@')) {
+        actualEmail = userName;
+        actualName = userName.split('@')[0];
+      }
+      
+      // If userEmail looks like a name and userName looks like an email, swap them
+      if (userEmail && !userEmail.includes('@') && userName && userName.includes('@')) {
+        actualEmail = userName;
+        actualName = userEmail;
+      }
+      
+      // Ensure we have a valid email
+      if (!actualEmail) {
+        throw new Error('No valid email address provided');
+      }
+      
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
       
       sendSmtpEmail.subject = 'Your Crypto Market Watch Account Has Been Deleted';
-      sendSmtpEmail.htmlContent = accountDeleted.generateAdminDeletedHTML(userName, userEmail);
-      sendSmtpEmail.textContent = accountDeleted.generateAdminDeletedText(userName, userEmail);
+      sendSmtpEmail.htmlContent = accountDeleted.generateAdminDeletedHTML(actualName, actualEmail);
+      sendSmtpEmail.textContent = accountDeleted.generateAdminDeletedText(actualName, actualEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
         email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
-        email: userEmail,
-        name: userName || userEmail.split('@')[0]
+        email: actualEmail,
+        name: actualName || actualEmail.split('@')[0]
       }];
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`✅ Account deleted email sent to ${userEmail}: ${result.messageId}`);
+      console.log(`✅ Account deleted email sent to ${actualEmail}: ${result.messageId}`);
       return true;
     } catch (error) {
       console.error('❌ Error sending account deleted email:', error);
@@ -244,22 +309,43 @@ class BrevoEmailService {
     }
 
     try {
+      // Handle case where userName might actually be an email address
+      let actualEmail = userEmail;
+      let actualName = userName;
+      
+      // If userEmail is empty but userName looks like an email, swap them
+      if (!userEmail && userName && userName.includes('@')) {
+        actualEmail = userName;
+        actualName = userName.split('@')[0];
+      }
+      
+      // If userEmail looks like a name and userName looks like an email, swap them
+      if (userEmail && !userEmail.includes('@') && userName && userName.includes('@')) {
+        actualEmail = userName;
+        actualName = userEmail;
+      }
+      
+      // Ensure we have a valid email
+      if (!actualEmail) {
+        throw new Error('No valid email address provided');
+      }
+      
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
       
       sendSmtpEmail.subject = 'Your Crypto Market Watch Account Has Been Deleted';
-      sendSmtpEmail.htmlContent = accountDeleted.generateUserDeletedHTML(userName, userEmail);
-      sendSmtpEmail.textContent = accountDeleted.generateUserDeletedText(userName, userEmail);
+      sendSmtpEmail.htmlContent = accountDeleted.generateUserDeletedHTML(actualName, actualEmail);
+      sendSmtpEmail.textContent = accountDeleted.generateUserDeletedText(actualName, actualEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
         email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
       };
       sendSmtpEmail.to = [{
-        email: userEmail,
-        name: userName || userEmail.split('@')[0]
+        email: actualEmail,
+        name: actualName || actualEmail.split('@')[0]
       }];
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`✅ Account deleted email sent to ${userEmail}: ${result.messageId}`);
+      console.log(`✅ Account deleted email sent to ${actualEmail}: ${result.messageId}`);
       return true;
     } catch (error) {
       console.error('❌ Error sending account deleted email:', error);
@@ -419,200 +505,8 @@ class BrevoEmailService {
     }
   }
 
-  // Keep the existing methods that are still working (Alert, Welcome, Password Reset)
+  // Keep the existing methods that are still working (Welcome, Password Reset)
   // These use the already-fixed templates
-
-  generateAlertEmailHTML(alert, userEmail = null) {
-    // Use Yahoo-compatible template for better email client support
-    return this.generateYahooCompatibleAlertEmail(alert, userEmail);
-  }
-
-  generateYahooCompatibleAlertEmail(alert, userEmail = null) {
-    const severityColor = this.getSeverityColor(alert.severity);
-    const severityEmoji = this.getSeverityEmoji(alert.severity);
-    const alertType = alert.type.replace(/_/g, ' ');
-    
-    let timestamp;
-    try {
-      timestamp = new Date(alert.timestamp).toLocaleString();
-    } catch (error) {
-      timestamp = 'Time unavailable';
-    }
-    
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Market Alert</title>
-        <style>
-          body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-            line-height: 1.6; 
-            color: #f8fafc; 
-            background-color: #0f172a;
-            margin: 0;
-            padding: 0;
-          }
-          table { border-collapse: collapse; }
-          .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            background-color: #1e293b;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-          }
-          .brand-header {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #f8fafc;
-            padding: 20px;
-            text-align: center;
-            border-bottom: 2px solid #3b82f6;
-          }
-          .brand-logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #3b82f6;
-            margin-bottom: 8px;
-            display: inline-block;
-          }
-          .brand-name {
-            font-size: 14px;
-            color: #94a3b8;
-            margin: 0;
-          }
-          .header { 
-            background: ${severityColor}; 
-            color: white; 
-            padding: 30px 20px;
-            text-align: center;
-          }
-          .header h1 { 
-            margin: 0;
-            font-size: 24px;
-            font-weight: bold;
-          }
-          .content { 
-            background-color: #1e293b;
-            padding: 30px 20px;
-            color: #f8fafc;
-          }
-          .alert-message { 
-            font-size: 18px; 
-            margin: 20px 0;
-            padding: 20px;
-            background-color: #334155;
-            border-radius: 8px;
-            border-left: 4px solid ${severityColor};
-          }
-          .alert-details { 
-            background: #334155; 
-            padding: 20px; 
-            border-radius: 8px; 
-            margin: 20px 0;
-            color: #f8fafc;
-          }
-          .alert-details p {
-            margin: 8px 0;
-            color: #cbd5e1;
-          }
-          .alert-details strong {
-            color: #3b82f6;
-          }
-          .footer { 
-            text-align: center; 
-            padding: 30px 20px;
-            background-color: #0f172a;
-            color: #94a3b8; 
-            font-size: 14px;
-          }
-          .disclaimer { 
-            background: #1e293b; 
-            border: 1px solid #3b82f6; 
-            padding: 15px; 
-            border-radius: 8px; 
-            margin: 15px 0;
-            color: #cbd5e1;
-          }
-        </style>
-      </head>
-      <body>
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a;">
-          <tr>
-            <td align="center">
-              <table class="container" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td class="brand-header">
-                    <div class="brand-logo">Crypto Market Watch</div>
-                    <p class="brand-name">Real-time market intelligence & alerts</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="header">
-                    <h1>${severityEmoji} ${alertType}</h1>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="content">
-                    <div class="alert-message">
-                      ${alert.message}
-                    </div>
-                    
-                    <div class="alert-details">
-                      <p><strong>Alert Type:</strong> ${alertType}</p>
-                      <p><strong>Severity:</strong> ${alert.severity}</p>
-                      <p><strong>Timestamp:</strong> ${timestamp}</p>
-                      ${alert.metric ? `<p><strong>Metric:</strong> ${alert.metric}</p>` : ''}
-                      ${alert.value ? `<p><strong>Value:</strong> ${alert.value}</p>` : ''}
-                    </div>
-                    
-                    <div class="disclaimer">
-                      <p><strong>Disclaimer:</strong> This alert is for informational purposes only and should not be considered as financial advice. Always do your own research before making investment decisions.</p>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="footer">
-                    <p><strong>Crypto Market Watch</strong></p>
-                    <p>Advanced cryptocurrency analytics with AI-powered insights</p>
-                    <p style="margin-top: 20px; font-size: 12px; color: #cbd5e1;">
-                      You can manage your notification preferences in your account settings.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-  }
-
-  generateAlertEmailText(alert, userEmail = null) {
-    const timestamp = new Date(alert.timestamp).toLocaleString();
-    const alertType = alert.type.replace(/_/g, ' ');
-    const severityEmoji = this.getSeverityEmoji(alert.severity);
-    
-    return `
-${severityEmoji} Market Alert: ${alertType}
-
-${alert.message}
-
-Alert Details:
-- Type: ${alertType}
-- Severity: ${alert.severity}
-- Timestamp: ${timestamp}
-${alert.metric ? `- Metric: ${alert.metric}` : ''}
-${alert.value ? `- Value: ${alert.value}` : ''}
-
-Disclaimer: This alert is for informational purposes only and should not be considered as financial advice. Always do your own research before making investment decisions.
-
-Crypto Market Watch - Your trusted crypto market intelligence platform
-    `.trim();
-  }
 
   generatePasswordResetEmailHTML(resetUrl, userEmail = null) {
     const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';

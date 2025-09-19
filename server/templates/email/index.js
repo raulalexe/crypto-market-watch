@@ -5,6 +5,7 @@
  */
 
 const BaseEmailTemplate = require('./base-template');
+const AlertEmailTemplate = require('./alert-template');
 const ConfirmationEmailTemplate = require('./confirmation-template');
 const AccountDeletedEmailTemplate = require('./account-deleted-template');
 const UpgradeEmailTemplate = require('./upgrade-template');
@@ -16,6 +17,7 @@ const ContactEmailTemplate = require('./contact-template');
 // Export all templates
 module.exports = {
   BaseEmailTemplate,
+  AlertEmailTemplate,
   ConfirmationEmailTemplate,
   AccountDeletedEmailTemplate,
   UpgradeEmailTemplate,
@@ -25,6 +27,7 @@ module.exports = {
   ContactEmailTemplate,
   
   // Create instances for easy use
+  alert: new AlertEmailTemplate(),
   confirmation: new ConfirmationEmailTemplate(),
   accountDeleted: new AccountDeletedEmailTemplate(),
   upgrade: new UpgradeEmailTemplate(),
