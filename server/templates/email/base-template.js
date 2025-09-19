@@ -19,7 +19,7 @@ class BaseEmailTemplate {
       table { border-collapse: collapse; }
       .container { 
         max-width: 600px; 
-        margin: 0 auto; 
+        margin: 20px auto 0 auto; 
         background-color: #1e293b;
         border-radius: 12px;
         overflow: hidden;
@@ -127,6 +127,7 @@ class BaseEmailTemplate {
         <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a;">
           <tr>
             <td align="center">
+              <br>
               <table class="container" cellpadding="0" cellspacing="0">
                 <tr>
                   <td class="brand-header">

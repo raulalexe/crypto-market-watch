@@ -3853,12 +3853,12 @@ app.post('/api/admin/send-email', authenticateToken, requireAdmin, async (req, r
         break;
         
       case 'renewal-reminder':
-        emailSent = await brevoEmailService.sendRenewalReminderEmail(recipientEmail, 'Pro Plan', 7);
+        emailSent = await brevoEmailService.sendRenewalReminderEmail('Pro Plan', 7, recipientEmail);
         message = 'Renewal reminder email sent successfully';
         break;
         
       case 'subscription-expired':
-        emailSent = await brevoEmailService.sendSubscriptionExpiredEmail(recipientEmail, 'Pro Plan');
+        emailSent = await brevoEmailService.sendSubscriptionExpiredEmail('Pro Plan', recipientEmail);
         message = 'Subscription expired email sent successfully';
         break;
         
@@ -3895,7 +3895,7 @@ app.post('/api/admin/send-email', authenticateToken, requireAdmin, async (req, r
           date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
           category: 'test'
         };
-        emailSent = await brevoEmailService.sendEventReminderEmail(recipientEmail, testEvent, 1);
+        emailSent = await brevoEmailService.sendEventReminderEmail(testEvent, recipientEmail, 1);
         message = 'Event reminder email sent successfully';
         break;
         
@@ -3908,7 +3908,7 @@ app.post('/api/admin/send-email', authenticateToken, requireAdmin, async (req, r
             date: new Date().toISOString().split('T')[0]
           }
         };
-        emailSent = await brevoEmailService.sendInflationUpdateEmail(recipientEmail, testInflationData);
+        emailSent = await brevoEmailService.sendInflationDataEmail(testInflationData, recipientEmail);
         message = 'Inflation update email sent successfully';
         break;
         
@@ -5021,13 +5021,19 @@ app.post('/api/payment-alert', async (req, res) => {
       const emailServiceInstance = new emailService();
       
       const adminEmail = process.env.ADMIN_EMAIL || 'admin@crypto-market-watch.xyz';
-      const emailSent = await emailServiceInstance.sendAlertEmail(
-        adminEmail,
-        'Payment Processing Alert',
-        `Payment Processing Issue - ${subject}`,
-        `Priority: ${priority}\n\n${message}\n\nTime: ${new Date().toISOString()}`,
-        'high'
-      );
+      const paymentAlert = {
+        type: 'payment_processing_alert',
+        severity: 'high',
+        message: `Payment Processing Issue - ${subject}`,
+        timestamp: new Date().toISOString(),
+        data: {
+          priority: priority,
+          details: message,
+          subject: subject
+        }
+      };
+      
+      const emailSent = await emailServiceInstance.sendAlertEmail(adminEmail, paymentAlert);
       
       if (emailSent) {
         console.log('📧 Payment alert email sent to admin');

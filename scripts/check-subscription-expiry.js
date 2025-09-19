@@ -43,8 +43,8 @@ async function checkSubscriptionExpiry() {
         if (subscription.email_notifications) {
           try {
             await emailService.sendSubscriptionExpiredEmail(
-              subscription.email,
-              subscription.plan_type
+              subscription.plan_type,
+              subscription.email
             );
             console.log(`📧 Expiration email sent to ${subscription.email}`);
           } catch (error) {
@@ -60,9 +60,9 @@ async function checkSubscriptionExpiry() {
         if (subscription.email_notifications) {
           try {
             await emailService.sendRenewalReminderEmail(
-              subscription.email,
               subscription.plan_type,
-              daysUntilExpiry
+              daysUntilExpiry,
+              subscription.email
             );
             console.log(`📧 Renewal reminder sent to ${subscription.email}`);
             reminderCount++;
