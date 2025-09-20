@@ -847,7 +847,7 @@ const AdvancedAnalytics = ({ userData }) => {
                 disabled={loading}
                 className="bg-crypto-blue hover:bg-crypto-blue-dark text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                <Activity className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 {loading ? 'Collecting...' : 'Collect Data'}
               </button>
             </div>

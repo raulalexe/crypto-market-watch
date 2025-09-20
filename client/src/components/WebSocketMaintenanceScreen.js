@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wifi, WifiOff, AlertTriangle, RefreshCw, Clock } from 'lucide-react';
+import { WifiOff, AlertTriangle, RefreshCw } from 'lucide-react';
 import websocketService from '../services/websocketService';
 
 const WebSocketMaintenanceScreen = ({ children }) => {

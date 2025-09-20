@@ -6,7 +6,7 @@ import {
   AlertCircle,
   Settings,
   Database,
-  BarChart3
+  Activity
 } from 'lucide-react';
 import axios from 'axios';
 import { shouldShowPremiumUpgradePrompt } from '../utils/authUtils';
@@ -384,7 +384,7 @@ const DataExport = () => {
                   >
                     {exporting ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <Activity className="w-4 h-4 animate-spin" />
                         <span>Exporting...</span>
                       </>
                     ) : (
