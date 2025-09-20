@@ -81,7 +81,13 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) =>
         }
       }
     } catch (error) {
-      setError(error.response?.data?.error || 'Authentication failed');
+      // Handle specific case where user exists but email is not verified
+      if (error.response?.status === 409 && error.response?.data?.requiresConfirmation) {
+        setEmailSent(true);
+        setConfirmationMessage(error.response.data.message);
+      } else {
+        setError(error.response?.data?.error || 'Authentication failed');
+      }
     } finally {
       setLoading(false);
     }

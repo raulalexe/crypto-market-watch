@@ -17,7 +17,7 @@ class WebSocketService {
 
     return new Promise((resolve, reject) => {
       const serverUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://crypto-market-watch.xyz'
+        ? 'https://www.crypto-market-watch.xyz'
         : 'http://localhost:3001';
 
       this.socket = io(serverUrl, {
@@ -27,7 +27,7 @@ class WebSocketService {
       });
 
       this.socket.on('connect', () => {
-        console.log('🔌 WebSocket connected');
+        // Debug logging removed for production
         this.isConnected = true;
         this.reconnectAttempts = 0;
         
@@ -37,7 +37,7 @@ class WebSocketService {
       });
 
       this.socket.on('authenticated', (data) => {
-        console.log('✅ WebSocket authenticated:', data);
+        // Debug logging removed for production
         this.setupEventListeners();
       });
 
@@ -47,7 +47,7 @@ class WebSocketService {
       });
 
       this.socket.on('disconnect', (reason) => {
-        console.log('🔌 WebSocket disconnected:', reason);
+        // Debug logging removed for production
         this.isConnected = false;
         this.handleReconnect();
       });
@@ -112,7 +112,7 @@ class WebSocketService {
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
     
-    console.log(`🔄 Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    // Debug logging removed for production
     
     setTimeout(() => {
       const token = localStorage.getItem('authToken');

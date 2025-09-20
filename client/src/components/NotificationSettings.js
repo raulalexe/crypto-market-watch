@@ -199,7 +199,7 @@ const NotificationSettings = () => {
       });
 
       // Also send a server-side test notification
-      console.log('🔔 Sending test notification to server...');
+      // Debug logging removed for production
       const response = await fetch('/api/push/test', {
         method: 'POST',
         headers: {
@@ -213,7 +213,7 @@ const NotificationSettings = () => {
         })
       });
 
-      console.log('🔔 Test notification response:', response.status, response.statusText);
+      // Debug logging removed for production
 
       if (response.ok) {
         setMessage({ type: 'success', text: 'Test notification sent successfully!' });

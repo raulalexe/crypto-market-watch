@@ -763,6 +763,21 @@ const migrations = [
       ALTER TABLE market_sentiment ADD CONSTRAINT market_sentiment_value_range_check 
         CHECK (value IS NULL OR (value >= -1000 AND value <= 1000));
     `
+  },
+  {
+    name: 'fix_ai_analysis_and_market_sentiment_constraints',
+    description: 'Fix ai_analysis confidence and market_sentiment constraints to handle existing data ranges',
+    sql: `
+      -- Fix ai_analysis confidence constraint to handle both 0-1 and 0-100 ranges
+      ALTER TABLE ai_analysis DROP CONSTRAINT IF EXISTS ai_analysis_confidence_range_check;
+      ALTER TABLE ai_analysis ADD CONSTRAINT ai_analysis_confidence_range_check 
+        CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 100));
+      
+      -- Fix market_sentiment constraint to handle existing data (wider range for different sentiment metrics)
+      ALTER TABLE market_sentiment DROP CONSTRAINT IF EXISTS market_sentiment_value_range_check;
+      ALTER TABLE market_sentiment ADD CONSTRAINT market_sentiment_value_range_check 
+        CHECK (value IS NULL OR (value >= -1000 AND value <= 1000));
+    `
   }
 ];
 

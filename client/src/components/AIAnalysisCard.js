@@ -12,8 +12,7 @@ const AIAnalysisCard = ({ data }) => {
     }));
   };
 
-  // Debug logging
-  console.log('AIAnalysisCard received data:', data);
+  // Debug logging (removed for production)
 
   const getDirectionIcon = (direction) => {
     switch (direction) {
@@ -92,12 +91,7 @@ const AIAnalysisCard = ({ data }) => {
   if (data?.medium_term) availableTimeframes.push({ key: 'medium', timeframeData: data.medium_term, label: 'Medium Term' });
   if (data?.long_term) availableTimeframes.push({ key: 'long', timeframeData: data.long_term, label: 'Long Term' });
 
-  // Debug logging (after variables are defined)
-  console.log('AIAnalysisCard hasMultiTimeframe:', hasMultiTimeframe);
-  console.log('AIAnalysisCard hasMultipleProviders:', hasMultipleProviders);
-  console.log('AIAnalysisCard providers:', data?.providers);
-  console.log('AIAnalysisCard availableTimeframes:', availableTimeframes);
-  console.log('AIAnalysisCard short_term factors:', data?.short_term?.factors_analyzed);
+  // Debug logging (removed for production)
 
   // Early return if no analysis data
   if (!data) {

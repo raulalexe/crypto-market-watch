@@ -73,7 +73,7 @@ const CustomAlertThresholds = () => {
       const response = await axios.get('/api/alerts/thresholds', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('authToken')}` }
       });
-      console.log('Loaded thresholds from API:', response.data);
+      // Debug logging removed for production
       setThresholds(response.data.length > 0 ? response.data : []);
     } catch (error) {
       console.error('Error loading thresholds:', error);
@@ -183,7 +183,7 @@ const CustomAlertThresholds = () => {
 
   // Function to get icon component from icon name or component
   const getIconComponent = (icon) => {
-    console.log('getIconComponent called with:', icon, 'type:', typeof icon);
+    // Debug logging removed for production
     
     if (typeof icon === 'string') {
       // Map string names to components
@@ -197,7 +197,7 @@ const CustomAlertThresholds = () => {
         'Brain': Brain
       };
       const component = iconMap[icon];
-      console.log('Icon mapping result:', icon, '->', component);
+      // Debug logging removed for production
       return component || Bell; // Default to Bell if not found
     }
     
@@ -207,7 +207,7 @@ const CustomAlertThresholds = () => {
     }
     
     // Fallback to Bell for any other case
-    console.log('Fallback to Bell icon');
+    // Debug logging removed for production
     return Bell;
   };
 
@@ -350,7 +350,7 @@ const CustomAlertThresholds = () => {
         <div className="space-y-6">
           {thresholds.map((threshold) => {
             const IconComponent = getIconComponent(threshold.icon);
-            console.log('Rendering threshold:', threshold.id, 'with icon:', threshold.icon, 'IconComponent:', IconComponent);
+            // Debug logging removed for production
             
             // Safety check - if IconComponent is undefined, use Bell
             if (!IconComponent) {

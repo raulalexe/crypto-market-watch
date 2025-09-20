@@ -40,7 +40,7 @@ const TelegramManagement = () => {
         const statusResponse = await axios.get('/api/telegram/admin-status', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        console.log('📊 Telegram status response:', statusResponse.data);
+        // Debug logging removed for production
         setStatus(statusResponse.data);
       } catch (statusError) {
         console.error('Error fetching status:', statusError);

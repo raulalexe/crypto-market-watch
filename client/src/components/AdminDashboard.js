@@ -271,16 +271,14 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
 
 
   const exportData = async (collectionName) => {
-    console.log('🚀 exportData function called with:', collectionName);
+    // Debug logging removed for production
     try {
       setExporting(prev => ({ ...prev, [collectionName]: true }));
-      console.log('🔄 Starting export for collection:', collectionName);
+      // Debug logging removed for production
       
       const authToken = localStorage.getItem('authToken');
-      console.log('🔑 Auth token exists:', !!authToken);
-      console.log('🔑 Auth token length:', authToken ? authToken.length : 0);
-      console.log('🔑 User data:', userData);
-      console.log('🔑 Is authenticated:', isAuthenticated);
+      // Debug logging removed for production
+      // Debug logging removed for production
       
       const response = await fetch(`/api/admin/export/${collectionName}`, {
         headers: {

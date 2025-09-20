@@ -4440,7 +4440,7 @@ app.post('/api/auth/login', validateRequestBody(VALIDATION_RULES.userLogin), asy
   }
     
     // Check if email is verified
-  if (!user.email_verified) {
+  if (!Boolean(user.email_verified)) {
     throw createError.authentication('Please check your email and click the confirmation link to activate your account before signing in.');
   }
   
@@ -4474,7 +4474,20 @@ app.post('/api/auth/register', validateRequestBody(VALIDATION_RULES.userRegistra
   // Check if user already exists
   const existingUser = await getUserByEmail(email);
   if (existingUser) {
-    throw createError.conflict('User already exists');
+    // Handle boolean conversion properly (PostgreSQL might return 0/1 or true/false)
+    const isEmailVerified = Boolean(existingUser.email_verified);
+    
+    if (!isEmailVerified) {
+      // User exists but email is not verified - offer to resend confirmation
+      return res.status(409).json({
+        error: 'User already exists but email is not verified',
+        requiresConfirmation: true,
+        message: 'An account with this email already exists but is not verified. Would you like to resend the confirmation email?'
+      });
+    } else {
+      // User exists and is verified
+      throw createError.conflict('User already exists');
+    }
   }
     
     // Hash password
@@ -4524,7 +4537,7 @@ app.post('/api/auth/resend-confirmation', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    if (user.email_verified) {
+    if (Boolean(user.email_verified)) {
       return res.status(400).json({ error: 'Email is already verified' });
     }
     

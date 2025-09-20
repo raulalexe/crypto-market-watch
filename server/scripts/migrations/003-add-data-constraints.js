@@ -90,11 +90,11 @@ async function addDataConstraints() {
     );
     if (cryptoMarketCapConstraintAdded) console.log('✅ Added crypto market cap positive constraint');
     
-    // Add AI analysis confidence range constraint
+    // Add AI analysis confidence range constraint (0-100 to handle both decimal and percentage formats)
     const aiConfidenceConstraintAdded = await addConstraintIfNotExists(
       'ai_analysis', 
       'ai_analysis_confidence_range_check',
-      'CHECK (confidence >= 0 AND confidence <= 1)'
+      'CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 100))'
     );
     if (aiConfidenceConstraintAdded) console.log('✅ Added AI analysis confidence range constraint');
     
