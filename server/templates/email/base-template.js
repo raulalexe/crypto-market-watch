@@ -19,11 +19,19 @@ class BaseEmailTemplate {
       table { border-collapse: collapse; }
       .container { 
         max-width: 600px; 
+        width: 100%;
         margin: 20px auto 0 auto; 
         background-color: #1e293b;
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      @media screen and (max-width: 600px) {
+        .container {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 10px !important;
+        }
       }
       .brand-header {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -101,6 +109,21 @@ class BaseEmailTemplate {
         text-decoration: none; 
         margin: 0 10px;
       }
+      /* Yahoo-specific fixes */
+      .yahoo-fix {
+        width: 100% !important;
+        max-width: 600px !important;
+      }
+      /* Prevent horizontal scrolling */
+      body, table, td, p, a, li, blockquote {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+      }
+      /* Yahoo width fix */
+      table[class="container"] {
+        width: 100% !important;
+        max-width: 600px !important;
+      }
     `;
   }
 
@@ -128,7 +151,7 @@ class BaseEmailTemplate {
           <tr>
             <td align="center">
               <br>
-              <table class="container" cellpadding="0" cellspacing="0">
+              <table class="container yahoo-fix" cellpadding="0" cellspacing="0" style="width: 100%; max-width: 600px;">
                 <tr>
                   <td class="brand-header">
                     <div class="brand-logo">Crypto Market Watch</div>

@@ -25,73 +25,73 @@ class ConfirmationEmailTemplate extends BaseEmailTemplate {
 
     // Body content
     const bodyContent = `
-      <table width="100%" cellpadding="0" cellspacing="0">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 100%;">
         <tr>
-          <td>
+          <td style="padding: 0 10px;">
             <p>Thank you for signing up! To complete your registration and start using Crypto Market Watch, please confirm your email address by clicking the button below:</p>
           </td>
         </tr>
       </table>
       
-      <table width="100%" cellpadding="0" cellspacing="0">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 100%;">
         <tr>
-          <td align="center" style="padding: 30px 0;">
-            <a href="${confirmationUrl}" class="cta-button" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white;">Confirm Email Address</a>
+          <td align="center" style="padding: 30px 10px;">
+            <a href="${confirmationUrl}" class="cta-button" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; max-width: 280px; width: 100%;">Confirm Email Address</a>
           </td>
         </tr>
       </table>
       
-      <table width="100%" cellpadding="0" cellspacing="0">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 100%;">
         <tr>
-          <td style="background: #334155; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+          <td style="background: #334155; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; padding: 20px 10px;">
             <p style="margin: 0; font-size: 14px; color: #94a3b8;">
               <strong>Button not working?</strong> Copy and paste this link into your browser:
             </p>
             <p style="margin: 8px 0 0; font-size: 14px;">
-              <a href="${confirmationUrl}" style="color: #3b82f6; word-break: break-all;">${confirmationUrl}</a>
+              <a href="${confirmationUrl}" style="color: #3b82f6; word-break: break-all; max-width: 100%; overflow-wrap: break-word;">${confirmationUrl}</a>
             </p>
           </td>
         </tr>
       </table>
       
-      <table width="100%" cellpadding="0" cellspacing="0">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 100%;">
         <tr>
-          <td>
+          <td style="padding: 0 10px;">
             <p>Once confirmed, you'll have access to:</p>
           </td>
         </tr>
       </table>
       
-      <table width="100%" cellpadding="0" cellspacing="0">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 100%;">
         <tr>
-          <td style="background: #334155; padding: 20px; margin: 15px 0; border-left: 4px solid #00ff88; border-radius: 8px;">
+          <td style="background: #334155; padding: 20px 10px; margin: 15px 0; border-left: 4px solid #00ff88; border-radius: 8px;">
             <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Real-time Market Data</strong>
             <span style="color: #cbd5e1; font-size: 14px;">Live cryptocurrency prices, market caps, and trading volumes</span>
           </td>
         </tr>
       </table>
       
-      <table width="100%" cellpadding="0" cellspacing="0">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 100%;">
         <tr>
-          <td style="background: #334155; padding: 20px; margin: 15px 0; border-left: 4px solid #00ff88; border-radius: 8px;">
+          <td style="background: #334155; padding: 20px 10px; margin: 15px 0; border-left: 4px solid #00ff88; border-radius: 8px;">
             <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">AI-Powered Analysis</strong>
             <span style="color: #cbd5e1; font-size: 14px;">Intelligent market insights and automated predictions</span>
           </td>
         </tr>
       </table>
       
-      <table width="100%" cellpadding="0" cellspacing="0">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 100%;">
         <tr>
-          <td style="background: #334155; padding: 20px; margin: 15px 0; border-left: 4px solid #00ff88; border-radius: 8px;">
+          <td style="background: #334155; padding: 20px 10px; margin: 15px 0; border-left: 4px solid #00ff88; border-radius: 8px;">
             <strong style="color: #00ff88; font-size: 16px; display: block; margin-bottom: 8px;">Smart Alerts</strong>
             <span style="color: #cbd5e1; font-size: 14px;">Custom notifications for price movements and market events</span>
           </td>
         </tr>
       </table>
       
-      <table width="100%" cellpadding="0" cellspacing="0">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 100%;">
         <tr>
-          <td>
+          <td style="padding: 0 10px;">
             <p>This confirmation link will expire in 24 hours for security reasons.</p>
             <p>If you didn't create an account with us, you can safely ignore this email.</p>
           </td>
