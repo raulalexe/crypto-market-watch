@@ -728,12 +728,18 @@ const migrations = [
     sql: `
       DO $fix_value_type$ 
       BEGIN
+        -- Check if column exists and is numeric type
         IF EXISTS (
           SELECT 1 FROM information_schema.columns 
           WHERE table_name = 'user_alert_thresholds' 
           AND column_name = 'value' 
           AND data_type = 'numeric'
         ) THEN
+          -- Drop the value range constraint that prevents conversion
+          ALTER TABLE user_alert_thresholds 
+          DROP CONSTRAINT IF EXISTS user_alert_thresholds_value_range_check;
+          
+          -- Convert column to TEXT
           ALTER TABLE user_alert_thresholds 
           ALTER COLUMN value TYPE TEXT USING value::TEXT;
         END IF;

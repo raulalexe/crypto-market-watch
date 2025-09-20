@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ExternalLink, RefreshCw } from 'lucide-react';
+import { Search, ExternalLink } from 'lucide-react';
 
 const CoinGeckoWidget = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -215,13 +215,6 @@ const CoinGeckoWidget = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <button
-            onClick={resetToDefault}
-            className="text-slate-400 hover:text-white transition-colors"
-            title="Reset to default coins"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="text-slate-400 hover:text-white transition-colors"

@@ -37,6 +37,7 @@ import EmailConfirmError from './components/EmailConfirmError';
 import PPIReleasePopup from './components/PPIReleasePopup';
 import ppiNotificationService from './services/ppiNotificationService';
 import RenewalReminder from './components/RenewalReminder';
+import WebSocketMaintenanceScreen from './components/WebSocketMaintenanceScreen';
 
 function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -198,7 +199,6 @@ function App() {
       <>
         <Header 
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          onRefreshClick={fetchDashboardData}
           onAuthClick={() => {
             window.location.href = '/app?auth=login';
           }}
@@ -381,7 +381,11 @@ function App() {
 
           
           {/* App routes with header and sidebar */}
-          <Route path="/app/*" element={<AppRoutes />} />
+          <Route path="/app/*" element={
+            <WebSocketMaintenanceScreen>
+              <AppRoutes />
+            </WebSocketMaintenanceScreen>
+          } />
         </Routes>
       </div>
       

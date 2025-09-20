@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, TrendingDown, Minus, Target, RefreshCw, AlertTriangle, Calendar, BarChart3, DollarSign, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Target, AlertTriangle, Calendar, BarChart3, DollarSign, Activity } from 'lucide-react';
 
 const InflationDataCard = ({ userData }) => {
   const [inflationData, setInflationData] = useState(null);
@@ -191,12 +191,6 @@ const InflationDataCard = ({ userData }) => {
       <div className="flex items-center space-x-3 mb-4">
         <BarChart3 className="w-6 h-6 text-crypto-blue" />
         <h3 className="text-lg font-semibold text-white">Inflation Data</h3>
-        <button
-          onClick={fetchInflationData}
-          className="text-slate-400 hover:text-white transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Market Sentiment */}

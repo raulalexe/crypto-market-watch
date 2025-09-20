@@ -6,7 +6,6 @@ import {
   Activity,
   Download,
   Filter,
-  RefreshCw,
   PieChart,
   LineChart,
   ScatterChart,
@@ -371,16 +370,6 @@ const AdvancedAnalytics = ({ userData }) => {
                   <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
-            </div>
-            <div className="flex items-end">
-              <button 
-                onClick={fetchAnalyticsData}
-                className="w-full px-4 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2"
-                title="Refresh chart data and correlations"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>Refresh Chart</span>
-              </button>
             </div>
           </div>
         </div>

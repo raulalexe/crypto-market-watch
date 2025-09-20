@@ -732,7 +732,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
             color: #f8fafc; 
             background-color: #0f172a;
             margin: 0;
-            padding: 0;
+            padding: 20px 0 0 0;
           }
           table { border-collapse: collapse; }
           .container { 
@@ -767,6 +767,7 @@ Crypto Market Watch - Your trusted crypto market intelligence platform
             color: #0f172a; 
             padding: 30px 20px;
             text-align: center;
+            margin-top: 20px;
           }
           .header h1 { 
             margin: 0;

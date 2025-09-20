@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, RefreshCw, TrendingUp, Bell, User, LogOut } from 'lucide-react';
+import { Menu, TrendingUp, Bell, User, LogOut } from 'lucide-react';
 import AlertPopup from './AlertPopup';
 import websocketService from '../services/websocketService';
 
-const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loading, isAuthenticated, userData, setAuthModalOpen }) => {
+const Header = ({ onMenuClick, onAuthClick, onLogoutClick, loading, isAuthenticated, userData, setAuthModalOpen }) => {
   const [alerts, setAlerts] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isAlertPopupOpen, setIsAlertPopupOpen] = useState(false);
@@ -176,20 +176,16 @@ const Header = ({ onMenuClick, onRefreshClick, onAuthClick, onLogoutClick, loadi
         </div>
         
         <div className="flex items-center space-x-2">
-          {/* Refresh button - Only for authenticated users, with WebSocket status indicator */}
+          {/* WebSocket status indicator */}
           {isAuthenticated && (
-            <button
-              onClick={onRefreshClick}
-              disabled={loading}
-              className="p-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed relative"
-              title={websocketService.isConnectedToServer() ? "Force refresh (WebSocket connected)" : "Refresh (WebSocket disconnected)"}
-            >
-              <RefreshCw className={`w-5 h-5 text-slate-300 ${loading ? 'animate-spin' : ''}`} />
-              {/* WebSocket status indicator */}
-              <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${
                 websocketService.isConnectedToServer() ? 'bg-green-500' : 'bg-red-500'
               }`} />
-            </button>
+              <span className="text-xs text-slate-400">
+                {websocketService.isConnectedToServer() ? 'Live' : 'Offline'}
+              </span>
+            </div>
           )}
           
           {isAuthenticated ? (

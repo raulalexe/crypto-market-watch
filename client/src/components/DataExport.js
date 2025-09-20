@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Download, 
   FileText, 
-  RefreshCw,
   CheckCircle,
   AlertCircle,
   Settings,
@@ -312,12 +311,6 @@ const DataExport = () => {
             <p className="text-slate-400">Export comprehensive market data in multiple formats</p>
           </div>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={fetchExportHistory}
-              className="p-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
           </div>
         </div>
 
