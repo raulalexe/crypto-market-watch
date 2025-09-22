@@ -278,7 +278,9 @@ app.get('/api/config', async (req, res) => {
     res.json({
       adminEmail: process.env.ADMIN_EMAIL || 'admin@crypto-market-watch.xyz',
       environment: process.env.NODE_ENV || 'development',
-      websocketUrl: websocketUrl
+      websocketUrl: websocketUrl,
+      jwtSecretSet: !!process.env.JWT_SECRET,
+      jwtSecretLength: process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 0
     });
   } catch (error) {
     console.error('Error getting app config:', error);

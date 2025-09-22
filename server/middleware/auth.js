@@ -22,6 +22,8 @@ const authenticateToken = async (req, res, next) => {
 
   try {
     console.log('🔐 Verifying token...');
+    console.log('🔐 JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'NOT SET');
+    console.log('🔐 Token length:', token.length);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('🔐 Token decoded, userId:', decoded.userId);
     
