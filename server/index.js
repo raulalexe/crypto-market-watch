@@ -263,9 +263,14 @@ app.get('/api/stripe/config', async (req, res) => {
 // Get app configuration
 app.get('/api/config', async (req, res) => {
   try {
+    const websocketUrl = process.env.NODE_ENV === 'production' 
+      ? (process.env.BASE_URL || 'https://www.crypto-market-watch.xyz')
+      : 'http://localhost:3001';
+    
     res.json({
       adminEmail: process.env.ADMIN_EMAIL || 'admin@crypto-market-watch.xyz',
-      environment: process.env.NODE_ENV || 'development'
+      environment: process.env.NODE_ENV || 'development',
+      websocketUrl: websocketUrl
     });
   } catch (error) {
     console.error('Error getting app config:', error);

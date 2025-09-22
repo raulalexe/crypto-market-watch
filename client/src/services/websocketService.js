@@ -10,15 +10,26 @@ class WebSocketService {
     this.listeners = new Map();
   }
 
-  connect(token) {
+  async connect(token) {
     if (this.socket && this.isConnected) {
       return Promise.resolve();
     }
 
-    return new Promise((resolve, reject) => {
-      const serverUrl = process.env.NODE_ENV === 'production' 
-        ? (process.env.REACT_APP_API_URL || 'https://www.crypto-market-watch.xyz')
-        : 'http://localhost:3001';
+    return new Promise(async (resolve, reject) => {
+      let serverUrl;
+      
+      try {
+        // Fetch the WebSocket URL from the server config
+        const response = await fetch('/api/config');
+        const config = await response.json();
+        serverUrl = config.websocketUrl;
+      } catch (error) {
+        console.warn('Failed to fetch WebSocket URL from config, using fallback:', error);
+        // Fallback to environment variable or window.location.origin
+        serverUrl = process.env.NODE_ENV === 'production' 
+          ? (process.env.REACT_APP_API_URL || window.location.origin)
+          : 'http://localhost:3001';
+      }
 
       this.socket = io(serverUrl, {
         transports: ['websocket', 'polling'],
@@ -114,7 +125,7 @@ class WebSocketService {
     
     // Debug logging removed for production
     
-    setTimeout(() => {
+    setTimeout(async () => {
       const token = localStorage.getItem('authToken');
       if (token) {
         this.connect(token).catch(error => {
