@@ -253,24 +253,10 @@ class AdvancedDataCollector {
             });
           } catch (apiError) {
             // If new endpoint fails, try alternative approach
-            console.warn(`CryptoCompare sentiment API failed for ${crypto}, using fallback:`, apiError.message);
+            console.warn(`CryptoCompare sentiment API failed for ${crypto}:`, apiError.message);
             
-            // Fallback: Use CoinGecko for social sentiment data
-            const fallbackSentiment = await this.getCoinGeckoSocialSentiment(crypto);
-            if (fallbackSentiment) {
-              await insertMarketSentiment(
-                'social_sentiment',
-                fallbackSentiment.score,
-                fallbackSentiment.sentiment,
-                {
-                  crypto: crypto,
-                  source: 'coingecko_fallback',
-                  social_volume: fallbackSentiment.socialVolume || 0
-                },
-                'coingecko_fallback'
-              );
-              console.log(`📱 ${crypto} Social Sentiment (Fallback): ${fallbackSentiment.sentiment}`);
-            }
+            // Skip fallback to avoid additional API calls that might fail
+            console.log(`⚠️ Skipping ${crypto} sentiment data due to API issues`);
             continue;
           }
           
@@ -1113,29 +1099,8 @@ class AdvancedDataCollector {
   // CoinGecko Exchange Flows
   async getCoinGeckoExchangeFlows() {
     try {
-      const response = await axios.get('https://api.coingecko.com/api/v3/exchanges?per_page=10&page=1', {
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; CryptoMarketWatch/1.0)'
-        }
-      });
-      
-      if (response.data && Array.isArray(response.data)) {
-        let totalVolume = 0;
-        let totalTrustScore = 0;
-        
-        response.data.forEach(exchange => {
-          if (exchange.total_volume) totalVolume += exchange.total_volume;
-          if (exchange.trust_score) totalTrustScore += exchange.trust_score;
-        });
-        
-        // Calculate flow score based on exchange activity
-        const avgTrustScore = totalTrustScore / response.data.length;
-        const volumeScore = Math.min(1, totalVolume / 100000000000); // Normalize to 0-1
-        
-        return (avgTrustScore / 10 + volumeScore) / 2; // Combine metrics
-      }
-      
+      // Skip CoinGecko exchange flows to avoid 429 errors
+      console.log('⚠️ Skipping CoinGecko exchange flows to avoid rate limits');
       return null;
     } catch (error) {
       console.error('Error getting CoinGecko exchange flows:', error.message);

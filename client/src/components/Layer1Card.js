@@ -15,7 +15,7 @@ const Layer1Card = () => {
     refresh
   } = useLayer1Data({
     autoFetch: true,
-    refreshInterval: 300000, // 5 minutes fallback
+    refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Layer1 data error:', err),
     onSuccess: (data) => console.log('Layer1 data updated:', data)
   });

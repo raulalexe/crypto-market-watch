@@ -103,23 +103,23 @@ function App() {
     // Initialize push notifications
     initializePushNotifications();
     
-    // Initialize PPI notification service
-    const unsubscribePPI = ppiNotificationService.addListener((notification) => {
-      if (notification.type === 'PPI_RELEASE') {
-        setPpiData(notification.data);
-        setPpiExpectations(notification.expectations);
-        setPpiPopupOpen(true);
-      }
-    });
+    // PPI notification service disabled - using WebSocket for real-time updates
+    // const unsubscribePPI = ppiNotificationService.addListener((notification) => {
+    //   if (notification.type === 'PPI_RELEASE') {
+    //     setPpiData(notification.data);
+    //     setPpiExpectations(notification.expectations);
+    //     setPpiPopupOpen(true);
+    //   }
+    // });
     
     // Start monitoring for PPI releases
-    ppiNotificationService.startMonitoring();
+    // ppiNotificationService.startMonitoring();
     
     // WebSocket will handle real-time updates, no need for polling
     
     return () => {
-      unsubscribePPI();
-      ppiNotificationService.stopMonitoring();
+      // unsubscribePPI();
+      // ppiNotificationService.stopMonitoring();
     };
   }, []);
 

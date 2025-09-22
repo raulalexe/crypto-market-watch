@@ -20,55 +20,15 @@ const InflationDataCard = ({ userData }) => {
     refresh
   } = useInflationData({
     autoFetch: true,
-    refreshInterval: 300000, // 5 minutes fallback
+    refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Inflation data error:', err),
     onSuccess: (data) => console.log('Inflation data updated:', data)
   });
 
-  // Fetch additional data that's not in the main dashboard update
-  const fetchAdditionalData = async () => {
-    try {
-      setAdditionalLoading(true);
-      setAdditionalError(null);
-
-      const [releasesRes, forecastsRes, expectationsRes, sentimentRes] = await Promise.all([
-        fetch('/api/inflation/releases?days=7'),
-        fetch('/api/inflation/forecasts'),
-        fetch('/api/inflation/expectations'),
-        fetch('/api/inflation/sentiment')
-      ]);
-
-      if (releasesRes.ok) {
-        const releasesData = await releasesRes.json();
-        setReleases(releasesData.releases || []);
-      }
-
-      if (forecastsRes.ok) {
-        const forecastsData = await forecastsRes.json();
-        setForecasts(forecastsData);
-      }
-
-      if (expectationsRes.ok) {
-        const expectationsData = await expectationsRes.json();
-        setExpectations(expectationsData);
-      }
-
-      if (sentimentRes.ok) {
-        const sentimentData = await sentimentRes.json();
-        setSentiment(sentimentData.data);
-      }
-    } catch (err) {
-      console.error('Error fetching additional inflation data:', err);
-      setAdditionalError('Failed to fetch additional data');
-    } finally {
-      setAdditionalLoading(false);
-    }
-  };
-
-  // Fetch additional data once on mount
-  useEffect(() => {
-    fetchAdditionalData();
-  }, []);
+  // Skip additional API calls - using WebSocket for all data
+  // const fetchAdditionalData = async () => {
+  //   // Disabled to avoid API calls - all data comes via WebSocket
+  // };
 
   const getSentimentIcon = (sentiment) => {
     switch (sentiment) {

@@ -13,7 +13,7 @@ const AdvancedMetricsCard = () => {
     refresh
   } = useAdvancedMetrics({
     autoFetch: true,
-    refreshInterval: 300000, // 5 minutes fallback
+    refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Advanced metrics error:', err),
     onSuccess: (data) => console.log('Advanced metrics updated:', data)
   });

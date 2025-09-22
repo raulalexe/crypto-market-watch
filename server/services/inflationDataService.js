@@ -277,25 +277,49 @@ class InflationDataService {
   // Parse FRED data for CPI
   async parseFREDCPIData() {
     try {
+      console.log('🔄 Fetching CPI data from FRED API...');
+      console.log('📊 FRED API Key configured:', !!this.fredApiKey);
+      console.log('📊 FRED Series codes:', { cpi: this.fredSeries.cpi, coreCPI: this.fredSeries.coreCPI });
+      
       // Fetch data sequentially to avoid overwhelming FRED API
       const cpiData = await this.fetchFREDData(this.fredSeries.cpi);
+      console.log('📊 CPI data response:', cpiData ? `${cpiData.length} records` : 'null');
+      
       await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between requests
       const coreCPIData = await this.fetchFREDData(this.fredSeries.coreCPI);
+      console.log('📊 Core CPI data response:', coreCPIData ? `${coreCPIData.length} records` : 'null');
 
       if (!cpiData || !coreCPIData) {
+        console.error('❌ Failed to fetch CPI data from FRED - one or both datasets are null');
+        console.error('❌ CPI data:', cpiData);
+        console.error('❌ Core CPI data:', coreCPIData);
         throw new Error('Failed to fetch CPI data from FRED');
       }
 
       const latestCPI = cpiData[0];
       const latestCoreCPI = coreCPIData[0];
 
+      console.log('📊 Latest CPI record:', latestCPI);
+      console.log('📊 Latest Core CPI record:', latestCoreCPI);
+
       if (!latestCPI || !latestCoreCPI || latestCPI.value === '.' || latestCoreCPI.value === '.') {
+        console.error('❌ Invalid CPI data from FRED - missing or invalid values');
+        console.error('❌ Latest CPI value:', latestCPI?.value);
+        console.error('❌ Latest Core CPI value:', latestCoreCPI?.value);
         throw new Error('Invalid CPI data from FRED');
       }
 
       // Calculate YoY change
       const cpiYoY = this.calculateYoYChange(cpiData);
       const coreCPIYoY = this.calculateYoYChange(coreCPIData);
+
+      console.log('✅ CPI data parsed successfully:', {
+        date: latestCPI.date,
+        cpi: parseFloat(latestCPI.value),
+        coreCPI: parseFloat(latestCoreCPI.value),
+        cpiYoY: cpiYoY,
+        coreCPIYoY: coreCPIYoY
+      });
 
       return {
         date: latestCPI.date,
@@ -306,6 +330,7 @@ class InflationDataService {
       };
     } catch (error) {
       console.error('❌ Error parsing FRED CPI data:', error.message);
+      console.error('❌ Full error details:', error);
       return null;
     }
   }
@@ -313,18 +338,34 @@ class InflationDataService {
   // Parse FRED data for PPI
   async parseFREDPPIData() {
     try {
+      console.log('🔄 Fetching PPI data from FRED API...');
+      console.log('📊 FRED API Key configured:', !!this.fredApiKey);
+      console.log('📊 FRED Series codes:', { ppi: this.fredSeries.ppi, corePPI: this.fredSeries.corePPI });
+      
       const ppiData = await this.fetchFREDData(this.fredSeries.ppi);
+      console.log('📊 PPI data response:', ppiData ? `${ppiData.length} records` : 'null');
+      
       await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between requests
       const corePPIData = await this.fetchFREDData(this.fredSeries.corePPI);
+      console.log('📊 Core PPI data response:', corePPIData ? `${corePPIData.length} records` : 'null');
 
       if (!ppiData || !corePPIData) {
+        console.error('❌ Failed to fetch PPI data from FRED - one or both datasets are null');
+        console.error('❌ PPI data:', ppiData);
+        console.error('❌ Core PPI data:', corePPIData);
         throw new Error('Failed to fetch PPI data from FRED');
       }
 
       const latestPPI = ppiData[0];
       const latestCorePPI = corePPIData[0];
 
+      console.log('📊 Latest PPI record:', latestPPI);
+      console.log('📊 Latest Core PPI record:', latestCorePPI);
+
       if (!latestPPI || !latestCorePPI || latestPPI.value === '.' || latestCorePPI.value === '.') {
+        console.error('❌ Invalid PPI data from FRED - missing or invalid values');
+        console.error('❌ Latest PPI value:', latestPPI?.value);
+        console.error('❌ Latest Core PPI value:', latestCorePPI?.value);
         throw new Error('Invalid PPI data from FRED');
       }
 
@@ -333,6 +374,16 @@ class InflationDataService {
       const corePPIYoY = this.calculateYoYChange(corePPIData);
       const ppiMoM = this.calculateMoMChange(ppiData);
       const corePPIMoM = this.calculateMoMChange(corePPIData);
+
+      console.log('✅ PPI data parsed successfully:', {
+        date: latestPPI.date,
+        ppi: parseFloat(latestPPI.value),
+        corePPI: parseFloat(latestCorePPI.value),
+        ppiYoY: ppiYoY,
+        corePPIYoY: corePPIYoY,
+        ppiMoM: ppiMoM,
+        corePPIMoM: corePPIMoM
+      });
 
       return {
         date: latestPPI.date,
@@ -1548,12 +1599,17 @@ class InflationDataService {
       
       // Fetch CPI data from FRED API (replacing BLS)
       try {
-        console.log('🔄 Using FRED API for CPI data (replacing BLS)');
-        results.cpi = await this.parseFREDCPIData();
-        if (results.cpi) {
-          console.log('✅ CPI data fetched successfully from FRED');
+        if (this.fredApiKey) {
+          console.log('🔄 Using FRED API for CPI data (replacing BLS)');
+          results.cpi = await this.parseFREDCPIData();
+          if (results.cpi) {
+            console.log('✅ CPI data fetched successfully from FRED');
+          } else {
+            console.log('❌ CPI data fetch failed from FRED');
+          }
         } else {
-          console.log('❌ CPI data fetch failed from FRED');
+          console.log('⚠️ FRED API key not configured, skipping CPI data');
+          results.cpi = null;
         }
       } catch (error) {
         console.error('❌ CPI data fetch failed:', error.message);
@@ -1570,12 +1626,17 @@ class InflationDataService {
       
       // Fetch PPI data from FRED API (replacing BLS)
       try {
-        console.log('🔄 Using FRED API for PPI data (replacing BLS)');
-        results.ppi = await this.parseFREDPPIData();
-        if (results.ppi) {
-          console.log('✅ PPI data fetched successfully from FRED');
+        if (this.fredApiKey) {
+          console.log('🔄 Using FRED API for PPI data (replacing BLS)');
+          results.ppi = await this.parseFREDPPIData();
+          if (results.ppi) {
+            console.log('✅ PPI data fetched successfully from FRED');
+          } else {
+            console.log('❌ PPI data fetch failed from FRED');
+          }
         } else {
-          console.log('❌ PPI data fetch failed from FRED');
+          console.log('⚠️ FRED API key not configured, skipping PPI data');
+          results.ppi = null;
         }
       } catch (error) {
         console.error('❌ PPI data fetch failed:', error.message);

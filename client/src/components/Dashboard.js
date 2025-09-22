@@ -23,12 +23,14 @@ const Dashboard = ({ isAuthenticated, userData }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchDashboardData();
-    fetchAlerts();
+    // Skip initial API calls - rely entirely on WebSocket updates
+    // fetchDashboardData();
+    // fetchAlerts();
 
     // Set up WebSocket listeners for real-time updates
     const handleDashboardUpdate = (data) => {
       setDashboardData(data.data);
+      setLoading(false); // Stop loading when we get WebSocket data
     };
 
     const handleAlertsUpdate = (data) => {
@@ -38,7 +40,13 @@ const Dashboard = ({ isAuthenticated, userData }) => {
     websocketService.on('dashboard_update', handleDashboardUpdate);
     websocketService.on('alerts_update', handleAlertsUpdate);
 
+    // Set a timeout to stop loading if no WebSocket data arrives
+    const loadingTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 10000); // 10 second timeout
+
     return () => {
+      clearTimeout(loadingTimeout);
       websocketService.off('dashboard_update', handleDashboardUpdate);
       websocketService.off('alerts_update', handleAlertsUpdate);
     };
@@ -222,7 +230,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         
         <AIAnalysisCard 
           autoFetch={true}
-          refreshInterval={300000} // 5 minutes fallback
+          refreshInterval={null} // No polling - WebSocket handles updates
           showRefreshButton={false} // WebSocket handles real-time updates
         />
         
@@ -244,7 +252,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         <NarrativesCard data={dashboardData?.trendingNarratives} />
         <AdvancedMetricsCard data={dashboardData?.advancedMetrics} />
         <BacktestCard data={dashboardData?.backtestResults} />
-        <Layer1Card data={dashboardData?.layer1Data} />
+        <Layer1Card />
 
       </div>
     </div>

@@ -1623,7 +1623,19 @@ app.get('/api/errors', authenticateToken, requireAdmin, async (req, res) => {
 
 // Helper function to get data for different types
 const getDataForType = async (type, limit) => {
-  const { getMarketData, getCryptoPrices, getLatestFearGreedIndex, getTrendingNarratives, getLatestAIAnalysis } = require('./database');
+  const { 
+    getMarketData, 
+    getLatestFearGreedIndex, 
+    getTrendingNarratives, 
+    getLatestAIAnalysis,
+    getInflationDataHistory,
+    getLayer1Data,
+    getDerivativesData,
+    getCorrelationData,
+    getBitcoinDominanceHistory,
+    getLatestStablecoinMetrics,
+    getLatestExchangeFlows
+  } = require('./database');
   
   switch (type) {
     case 'market_data':
@@ -1672,22 +1684,105 @@ const getDataForType = async (type, limit) => {
         factors_analyzed: analysis.factors_analyzed
       }] : [];
       
-    case 'crypto_prices':
-      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-      const cryptoData = [];
-      for (const symbol of cryptoSymbols) {
-        const prices = await getCryptoPrices(symbol, limit);
-        if (prices && prices.length > 0) {
-          cryptoData.push(...prices.map(price => ({
-            timestamp: price.timestamp,
-            symbol: price.symbol,
-            price: price.price,
-            change_24h: price.change_24h,
-            source: price.source
+      
+    case 'inflation_data':
+      const inflationTypes = ['CPI', 'PCE', 'PPI'];
+      const inflationData = [];
+      for (const inflationType of inflationTypes) {
+        const inflationItems = await getInflationDataHistory(inflationType, 12); // Get last 12 months
+        if (inflationItems && inflationItems.length > 0) {
+          inflationData.push(...inflationItems.map(item => ({
+            timestamp: item.timestamp,
+            type: item.type,
+            value: item.value,
+            mom_change: item.mom_change,
+            yoy_change: item.yoy_change,
+            source: item.source
           })));
         }
       }
-      return cryptoData;
+      return inflationData;
+      
+    case 'money_supply':
+      const moneySupplyTypes = ['M1', 'M2', 'M3', 'BANK_RESERVES'];
+      const moneySupplyData = [];
+      for (const moneyType of moneySupplyTypes) {
+        const moneyItems = await getMarketData('MONEY_SUPPLY', moneyType, Math.ceil(limit / moneySupplyTypes.length));
+        if (moneyItems && moneyItems.length > 0) {
+          moneySupplyData.push(...moneyItems.map(item => ({
+            timestamp: item.timestamp,
+            type: moneyType,
+            value: item.value,
+            source: item.source
+          })));
+        }
+      }
+      return moneySupplyData;
+      
+    case 'layer1_data':
+      const layer1Data = await getLayer1Data();
+      return layer1Data ? layer1Data.map(item => ({
+        timestamp: item.timestamp,
+        blockchain: item.blockchain,
+        symbol: item.symbol,
+        market_cap: item.market_cap,
+        volume_24h: item.volume_24h,
+        change_24h: item.change_24h,
+        source: item.source
+      })) : [];
+      
+    case 'derivatives_data':
+      const derivativesData = await getDerivativesData();
+      return derivativesData ? derivativesData.map(item => ({
+        timestamp: item.timestamp,
+        asset: item.asset,
+        derivative_type: item.derivative_type,
+        open_interest: item.open_interest,
+        volume_24h: item.volume_24h,
+        funding_rate: item.funding_rate,
+        source: item.source
+      })) : [];
+      
+    case 'correlation_data':
+      const correlationData = await getCorrelationData(limit);
+      return correlationData ? correlationData.map(item => ({
+        timestamp: item.timestamp,
+        symbol1: item.symbol1,
+        symbol2: item.symbol2,
+        correlation: item.correlation,
+        period_days: item.period_days,
+        calculation_method: item.calculation_method,
+        source: item.source
+      })) : [];
+      
+    case 'bitcoin_dominance':
+      const dominanceData = await getBitcoinDominanceHistory(30); // Get last 30 days
+      return dominanceData ? dominanceData.map(item => ({
+        timestamp: item.timestamp,
+        dominance_percentage: item.dominance_percentage,
+        source: item.source
+      })) : [];
+      
+    case 'stablecoin_metrics':
+      const stablecoinData = await getLatestStablecoinMetrics();
+      return stablecoinData ? stablecoinData.map(item => ({
+        timestamp: item.timestamp,
+        metric_type: item.metric_type,
+        value: item.value,
+        metadata: item.metadata,
+        source: item.source
+      })) : [];
+      
+    case 'exchange_flows':
+      const exchangeFlowsData = await getLatestExchangeFlows();
+      return exchangeFlowsData ? exchangeFlowsData.map(item => ({
+        timestamp: item.timestamp,
+        asset: item.asset,
+        inflow: item.inflow,
+        outflow: item.outflow,
+        net_flow: item.net_flow,
+        source: item.source
+      })) : [];
       
     case 'alerts':
       // Get alerts data - this would need to be implemented in database.js
@@ -1720,7 +1815,7 @@ app.post('/api/exports/create', authenticateToken, requireSubscription('pro'), a
     console.log('📊 Export request:', { dataTypes, dateRange, format });
     
     // Get actual data based on types and date range
-    const { getMarketData, getCryptoPrices, getLatestFearGreedIndex, getTrendingNarratives, getLatestAIAnalysis } = require('./database');
+    const { getMarketData, getLatestFearGreedIndex, getTrendingNarratives, getLatestAIAnalysis } = require('./database');
     let data = [];
     
     // Determine limit based on date range
