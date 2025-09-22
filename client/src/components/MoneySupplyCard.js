@@ -15,7 +15,7 @@ const MoneySupplyCard = () => {
     autoFetch: true,
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Money supply error:', err),
-    onSuccess: (data) => console.log('Money supply updated:', data)
+    onSuccess: (data) => {} // WebSocket data received
   });
 
   const formatCurrency = (value) => {

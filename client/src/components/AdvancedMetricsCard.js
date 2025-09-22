@@ -15,7 +15,7 @@ const AdvancedMetricsCard = () => {
     autoFetch: true,
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Advanced metrics error:', err),
-    onSuccess: (data) => console.log('Advanced metrics updated:', data)
+    onSuccess: (data) => {} // WebSocket data received
   });
 
   // Extract data from the hook response

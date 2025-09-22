@@ -45,7 +45,7 @@ const AdvancedAnalytics = ({ userData }) => {
     autoFetch: true,
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => logger.error('Analytics data error:', err),
-    onSuccess: (data) => logger.log('Analytics data updated:', data)
+    onSuccess: (data) => {} // WebSocket data received
   });
 
   const timeframes = [

@@ -23,9 +23,9 @@ const Dashboard = ({ isAuthenticated, userData }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Skip initial API calls - rely entirely on WebSocket updates
-    // fetchDashboardData();
-    // fetchAlerts();
+    // Make initial API call to get data immediately, then rely on WebSocket for updates
+    fetchDashboardData();
+    fetchAlerts();
 
     // Set up WebSocket listeners for real-time updates
     const handleDashboardUpdate = (data) => {
@@ -40,13 +40,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
     websocketService.on('dashboard_update', handleDashboardUpdate);
     websocketService.on('alerts_update', handleAlertsUpdate);
 
-    // Set a timeout to stop loading if no WebSocket data arrives
-    const loadingTimeout = setTimeout(() => {
-      setLoading(false);
-    }, 10000); // 10 second timeout
-
     return () => {
-      clearTimeout(loadingTimeout);
       websocketService.off('dashboard_update', handleDashboardUpdate);
       websocketService.off('alerts_update', handleAlertsUpdate);
     };

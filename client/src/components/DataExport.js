@@ -84,6 +84,62 @@ const DataExport = () => {
       available: true
     },
     { 
+      id: 'inflation_data', 
+      label: 'Inflation Data', 
+      description: 'CPI, PCE, PPI inflation metrics',
+      icon: Activity,
+      available: true
+    },
+    { 
+      id: 'money_supply', 
+      label: 'Money Supply', 
+      description: 'M1, M2, M3, Bank Reserves data',
+      icon: Database,
+      available: true
+    },
+    { 
+      id: 'layer1_data', 
+      label: 'Layer 1 Blockchains', 
+      description: 'Bitcoin, Ethereum, Solana blockchain data',
+      icon: Activity,
+      available: true
+    },
+    { 
+      id: 'derivatives_data', 
+      label: 'Derivatives Data', 
+      description: 'Futures, options, funding rates',
+      icon: Activity,
+      available: true
+    },
+    { 
+      id: 'correlation_data', 
+      label: 'Correlation Data', 
+      description: 'Cryptocurrency correlation matrices',
+      icon: Activity,
+      available: true
+    },
+    { 
+      id: 'bitcoin_dominance', 
+      label: 'Bitcoin Dominance', 
+      description: 'BTC market share over time',
+      icon: Activity,
+      available: true
+    },
+    { 
+      id: 'stablecoin_metrics', 
+      label: 'Stablecoin Metrics', 
+      description: 'USDT, USDC, DAI supply and metrics',
+      icon: Activity,
+      available: true
+    },
+    { 
+      id: 'exchange_flows', 
+      label: 'Exchange Flows', 
+      description: 'Exchange inflow/outflow data',
+      icon: Activity,
+      available: true
+    },
+    { 
       id: 'alerts', 
       label: 'Market Alerts', 
       description: 'Historical alert data and triggers',

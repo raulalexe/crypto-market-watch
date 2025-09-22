@@ -17,7 +17,7 @@ const Layer1Card = () => {
     autoFetch: true,
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Layer1 data error:', err),
-    onSuccess: (data) => console.log('Layer1 data updated:', data)
+    onSuccess: (data) => {} // WebSocket data received
   });
 
   const toggleChain = (chainId) => {

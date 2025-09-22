@@ -108,12 +108,12 @@ const useAdvancedAnalytics = (options = {}) => {
     }
   }, [onSuccess]);
 
-  // Auto-fetch on mount if enabled
-  useEffect(() => {
-    if (autoFetch) {
-      fetchAnalyticsData();
-    }
-  }, [autoFetch, fetchAnalyticsData]);
+  // Skip auto-fetch - rely on WebSocket updates only
+  // useEffect(() => {
+  //   if (autoFetch) {
+  //     fetchAnalyticsData();
+  //   }
+  // }, [autoFetch, fetchAnalyticsData]);
 
   // Set up WebSocket listener for dashboard updates
   useEffect(() => {

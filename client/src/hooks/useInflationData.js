@@ -72,12 +72,12 @@ const useInflationData = (options = {}) => {
     }
   }, [onSuccess]);
 
-  // Auto-fetch on mount if enabled
-  useEffect(() => {
-    if (autoFetch) {
-      fetchInflationData();
-    }
-  }, [autoFetch, fetchInflationData]);
+  // Skip auto-fetch - rely on WebSocket updates only
+  // useEffect(() => {
+  //   if (autoFetch) {
+  //     fetchInflationData();
+  //   }
+  // }, [autoFetch, fetchInflationData]);
 
   // Set up WebSocket listener for dashboard updates
   useEffect(() => {

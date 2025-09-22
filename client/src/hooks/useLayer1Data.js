@@ -78,12 +78,12 @@ const useLayer1Data = (options = {}) => {
     }
   }, [onSuccess]);
 
-  // Auto-fetch on mount if enabled
-  useEffect(() => {
-    if (autoFetch) {
-      fetchLayer1Data();
-    }
-  }, [autoFetch, fetchLayer1Data]);
+  // Skip auto-fetch - rely on WebSocket updates only
+  // useEffect(() => {
+  //   if (autoFetch) {
+  //     fetchLayer1Data();
+  //   }
+  // }, [autoFetch, fetchLayer1Data]);
 
   // Set up WebSocket listener for dashboard updates
   useEffect(() => {

@@ -84,12 +84,12 @@ const useAdvancedMetrics = (options = {}) => {
     }
   }, [onSuccess]);
 
-  // Auto-fetch on mount if enabled
-  useEffect(() => {
-    if (autoFetch) {
-      fetchAdvancedMetrics();
-    }
-  }, [autoFetch, fetchAdvancedMetrics]);
+  // Skip auto-fetch - rely on WebSocket updates only
+  // useEffect(() => {
+  //   if (autoFetch) {
+  //     fetchAdvancedMetrics();
+  //   }
+  // }, [autoFetch, fetchAdvancedMetrics]);
 
   // Set up WebSocket listener for dashboard updates
   useEffect(() => {

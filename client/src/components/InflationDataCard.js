@@ -22,7 +22,7 @@ const InflationDataCard = ({ userData }) => {
     autoFetch: true,
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Inflation data error:', err),
-    onSuccess: (data) => console.log('Inflation data updated:', data)
+    onSuccess: (data) => {} // WebSocket data received
   });
 
   // Skip additional API calls - using WebSocket for all data
