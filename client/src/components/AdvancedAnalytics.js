@@ -11,11 +11,13 @@ import {
   ScatterChart,
   Zap,
   Shield,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import logger from '../utils/logger';
-import axios from 'axios';
+import useAdvancedAnalytics from '../hooks/useAdvancedAnalytics';
 import { isAdmin } from '../utils/authUtils';
+import AIAnalysisCard from './AIAnalysisCard';
 
 // Helper function to safely convert values to numbers and format them
 const safeToFixed = (value, decimals = 2) => {
@@ -26,16 +28,25 @@ const safeToFixed = (value, decimals = 2) => {
 };
 
 const AdvancedAnalytics = ({ userData }) => {
-  const [loading, setLoading] = useState(true);
-  const [analyticsData, setAnalyticsData] = useState(null);
   const [selectedTimeframe, setSelectedTimeframe] = useState('60');
   const [selectedAsset, setSelectedAsset] = useState('BTC');
   const [chartType, setChartType] = useState('candlestick');
   const [marketMetrics, setMarketMetrics] = useState(null);
-  const [advancedMetrics, setAdvancedMetrics] = useState(null);
-  const [marketSentiment, setMarketSentiment] = useState(null);
-  const [derivativesData, setDerivativesData] = useState(null);
-  const [onchainData, setOnchainData] = useState(null);
+
+  // Use the custom hook for all analytics data
+  const {
+    data: analyticsData,
+    loading,
+    error,
+    lastFetch,
+    isStale,
+    refresh
+  } = useAdvancedAnalytics({
+    autoFetch: true,
+    refreshInterval: 300000, // 5 minutes fallback
+    onError: (err) => logger.error('Analytics data error:', err),
+    onSuccess: (data) => logger.log('Analytics data updated:', data)
+  });
 
   const timeframes = [
     { value: '1', label: '1 Minute' },
@@ -64,144 +75,32 @@ const AdvancedAnalytics = ({ userData }) => {
     { value: 'area', label: 'Area Chart', icon: LineChart }
   ];
 
+  // Process analytics data when it updates from WebSocket
   useEffect(() => {
-    fetchAnalyticsData();
-  }, [selectedTimeframe, selectedAsset]);
-
-  const fetchAnalyticsData = async () => {
-    try {
-      setLoading(true);
-      const [marketData, backtestData, correlationData, advancedMetricsData, sentimentData, derivatives, onchain] = await Promise.all([
-        fetchMarketData(),
-        fetchBacktestData(),
-        fetchCorrelationData(),
-        fetchAdvancedMetrics(),
-        fetchMarketSentiment(),
-        fetchDerivativesData(),
-        fetchOnchainData()
-      ]);
-
-      setAnalyticsData({
-        marketData,
-        backtestData,
-        correlationData: correlationData?.error ? null : correlationData,
-        correlationError: correlationData?.error || null
-      });
-
-      // Calculate market metrics
-      const metrics = calculateMarketMetrics(marketData);
+    if (analyticsData) {
+      // Calculate market metrics from the received data
+      const metrics = calculateMarketMetrics(analyticsData.marketData);
       setMarketMetrics(metrics);
-      setAdvancedMetrics(advancedMetricsData);
-      setMarketSentiment(sentimentData);
-      setDerivativesData(derivatives);
-      setOnchainData(onchain);
-
-    } catch (error) {
-      logger.error('Error fetching analytics data:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [analyticsData]);
 
-  const fetchMarketData = async () => {
-    try {
-      const response = await axios.get('/api/dashboard');
-      return response.data;
-    } catch (error) {
-      logger.error('Error fetching market data:', error);
-      return null;
-    }
-  };
-
-  const fetchBacktestData = async () => {
-    try {
-      const response = await axios.get('/api/backtest');
-      return response.data;
-    } catch (error) {
-      logger.error('Error fetching backtest data:', error);
-      return null;
-    }
-  };
-
-  const fetchCorrelationData = async () => {
-    try {
-      const response = await axios.get('/api/correlation');
-      return response.data;
-    } catch (error) {
-      logger.error('Error fetching correlation data:', error);
-      // Return error information instead of null
-      if (error.response && error.response.status === 503) {
-        return { error: error.response.data };
-      }
-      return { error: { message: 'Failed to fetch correlation data. Please try again later.' } };
-    }
-  };
-
-  const fetchAdvancedMetrics = async () => {
-    try {
-      const response = await axios.get('/api/advanced-metrics');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching advanced metrics:', error);
-      return null;
-    }
-  };
-
-  const fetchMarketSentiment = async () => {
-    try {
-      const response = await axios.get('/api/market-sentiment');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching market sentiment:', error);
-      return null;
-    }
-  };
-
-  const fetchDerivativesData = async () => {
-    try {
-      const response = await axios.get('/api/derivatives');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching derivatives data:', error);
-      return null;
-    }
-  };
-
-  const fetchOnchainData = async () => {
-    try {
-      const response = await axios.get('/api/onchain');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching on-chain data:', error);
-      return null;
-    }
-  };
 
   const calculateMarketMetrics = (marketData) => {
-    if (!marketData?.cryptoPrices) return null;
-
-    const prices = Object.values(marketData.cryptoPrices);
-    const avgChange = prices.reduce((sum, price) => sum + (price.change_24h || 0), 0) / prices.length;
+    // Note: Individual crypto prices are not collected to avoid API limits
+    // The system uses external widgets for real-time crypto price display
+    // Only global crypto metrics are available
     
-    // Calculate total volume
-    const totalVolume = prices.reduce((sum, price) => sum + (price.volume_24h || 0), 0);
+    if (!marketData) return null;
+
+    // Use global metrics if available
+    const globalMetrics = marketData.globalMetrics || {};
     
-    // Calculate market volatility (standard deviation of returns)
-    const returns = prices.map(price => (price.change_24h || 0) / 100);
-    const avgReturn = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
-    const variance = returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0) / returns.length;
-    const volatility = Math.sqrt(variance) * 100;
-
-    // Calculate market risk-adjusted return (assuming risk-free rate of 2%)
-    const riskFreeRate = 0.02;
-    const riskAdjustedReturn = (avgReturn - riskFreeRate) / (volatility / 100);
-
     return {
-      avgChange: safeToFixed(avgChange, 2),
-      totalVolume: totalVolume,
-      volatility: safeToFixed(volatility, 2),
-      riskAdjustedReturn: safeToFixed(riskAdjustedReturn, 2),
-      assetCount: prices.length
+      avgChange: 'N/A', // Not available without individual crypto prices
+      totalVolume: globalMetrics.totalVolume24h || 0,
+      volatility: 'N/A', // Not available without individual crypto prices
+      riskAdjustedReturn: 'N/A', // Not available without individual crypto prices
+      assetCount: globalMetrics.activeCryptocurrencies || 0
     };
   };
 
@@ -226,16 +125,21 @@ const AdvancedAnalytics = ({ userData }) => {
 
   const exportAnalyticsReport = async (format = 'pdf') => {
     try {
-      const response = await axios.post('/api/analytics/export', {
-        timeframe: selectedTimeframe,
-        asset: selectedAsset,
-        chartType,
-        format
-      }, {
-        responseType: 'blob'
+      const response = await fetch('/api/analytics/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          timeframe: selectedTimeframe,
+          asset: selectedAsset,
+          chartType,
+          format
+        })
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `market_analytics_report_${selectedTimeframe}_${selectedAsset}.${format}`);
@@ -297,6 +201,24 @@ const AdvancedAnalytics = ({ userData }) => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Failed to Load Analytics</h2>
+          <p className="text-slate-400 mb-4">{error.message}</p>
+          <button
+            onClick={refresh}
+            className="px-4 py-2 bg-crypto-blue hover:bg-blue-600 text-white rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 text-white p-2 sm:p-6">
       <div className="max-w-7xl mx-auto">
@@ -305,8 +227,23 @@ const AdvancedAnalytics = ({ userData }) => {
           <div>
             <h1 className="text-3xl font-bold mb-2">Advanced Analytics</h1>
             <p className="text-slate-400">Professional-grade market analysis and insights</p>
+            {lastFetch && (
+              <p className="text-xs text-slate-500 mt-1">
+                Last updated: {lastFetch.toLocaleTimeString()}
+                {isStale && <span className="text-yellow-400 ml-2">• Stale</span>}
+              </p>
+            )}
           </div>
           <div className="flex items-center space-x-4">
+            <button
+              onClick={refresh}
+              disabled={loading}
+              className="px-3 py-2 bg-crypto-blue text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2 disabled:opacity-50"
+              title="Refresh analytics data"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => exportAnalyticsReport('json')}
@@ -458,7 +395,7 @@ const AdvancedAnalytics = ({ userData }) => {
                   <p className="text-red-400 mb-2">Correlation data unavailable</p>
                   <p className="text-sm text-slate-500">{analyticsData.correlationError.message}</p>
                   <button 
-                    onClick={() => fetchAnalyticsData()}
+                    onClick={refresh}
                     className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
                   >
                     Retry
@@ -486,7 +423,7 @@ const AdvancedAnalytics = ({ userData }) => {
                 <TrendingUp className="w-6 h-6 text-crypto-green" />
               </div>
               <div className="text-3xl font-bold text-crypto-green">
-                {advancedMetrics?.bitcoinDominance?.value ? `${parseFloat(advancedMetrics.bitcoinDominance.value).toFixed(2)}%` : 'N/A'}
+                {analyticsData?.advancedMetrics?.bitcoinDominance?.value ? `${parseFloat(analyticsData.advancedMetrics.bitcoinDominance.value).toFixed(2)}%` : 'N/A'}
               </div>
               <p className="text-sm text-slate-400 mt-2">BTC market share</p>
             </div>
@@ -499,7 +436,7 @@ const AdvancedAnalytics = ({ userData }) => {
               <div className="text-3xl font-bold text-crypto-blue">
                 {formatVolume(marketMetrics.totalVolume)}
               </div>
-              <p className="text-sm text-slate-400 mt-2">24h trading volume</p>
+              <p className="text-sm text-slate-400 mt-2">Global crypto volume</p>
             </div>
 
             <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
@@ -507,8 +444,12 @@ const AdvancedAnalytics = ({ userData }) => {
                 <h3 className="text-lg font-semibold text-white">Market Volatility</h3>
                 <Zap className="w-6 h-6 text-crypto-yellow" />
               </div>
-              <div className="text-3xl font-bold text-crypto-yellow">{marketMetrics.volatility}%</div>
-              <p className="text-sm text-slate-400 mt-2">Price volatility</p>
+              <div className="text-3xl font-bold text-crypto-yellow">
+                {marketMetrics.volatility === 'N/A' ? 'N/A' : `${marketMetrics.volatility}%`}
+              </div>
+              <p className="text-sm text-slate-400 mt-2">
+                {marketMetrics.volatility === 'N/A' ? 'Requires individual crypto prices' : 'Price volatility'}
+              </p>
             </div>
 
             <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
@@ -516,10 +457,15 @@ const AdvancedAnalytics = ({ userData }) => {
                 <h3 className="text-lg font-semibold text-white">Risk-Adjusted Return</h3>
                 <Target className="w-6 h-6 text-crypto-blue" />
               </div>
-              <div className={`text-3xl font-bold ${parseFloat(marketMetrics.riskAdjustedReturn) >= 1 ? 'text-crypto-green' : 'text-crypto-yellow'}`}>
+              <div className={`text-3xl font-bold ${
+                marketMetrics.riskAdjustedReturn === 'N/A' ? 'text-slate-400' :
+                parseFloat(marketMetrics.riskAdjustedReturn) >= 1 ? 'text-crypto-green' : 'text-crypto-yellow'
+              }`}>
                 {marketMetrics.riskAdjustedReturn}
               </div>
-              <p className="text-sm text-slate-400 mt-2">Return per unit of risk</p>
+              <p className="text-sm text-slate-400 mt-2">
+                {marketMetrics.riskAdjustedReturn === 'N/A' ? 'Requires individual crypto prices' : 'Return per unit of risk'}
+              </p>
             </div>
 
             <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
@@ -527,10 +473,15 @@ const AdvancedAnalytics = ({ userData }) => {
                 <h3 className="text-lg font-semibold text-white">Avg Change</h3>
                 <Activity className="w-6 h-6 text-crypto-blue" />
               </div>
-              <div className={`text-3xl font-bold ${parseFloat(marketMetrics.avgChange) >= 0 ? 'text-crypto-green' : 'text-crypto-red'}`}>
-                {marketMetrics.avgChange}%
+              <div className={`text-3xl font-bold ${
+                marketMetrics.avgChange === 'N/A' ? 'text-slate-400' :
+                parseFloat(marketMetrics.avgChange) >= 0 ? 'text-crypto-green' : 'text-crypto-red'
+              }`}>
+                {marketMetrics.avgChange === 'N/A' ? 'N/A' : `${marketMetrics.avgChange}%`}
               </div>
-              <p className="text-sm text-slate-400 mt-2">Average 24h change</p>
+              <p className="text-sm text-slate-400 mt-2">
+                {marketMetrics.avgChange === 'N/A' ? 'Requires individual crypto prices' : 'Average 24h change'}
+              </p>
             </div>
           </div>
         )}
@@ -543,19 +494,19 @@ const AdvancedAnalytics = ({ userData }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="text-3xl font-bold text-crypto-blue mb-2">
-                  {analyticsData.backtestData.overall_accuracy || 0}%
+                  {analyticsData?.backtestData?.overall_accuracy || 0}%
                 </div>
                 <p className="text-slate-400">Prediction Accuracy</p>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-crypto-green mb-2">
-                  {analyticsData.backtestData.average_correlation || 0}%
+                  {analyticsData?.backtestData?.average_correlation || 0}%
                 </div>
                 <p className="text-slate-400">Avg Correlation</p>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-crypto-yellow mb-2">
-                  {analyticsData.backtestData.total_predictions || 0}
+                  {analyticsData?.backtestData?.total_predictions || 0}
                 </div>
                 <p className="text-slate-400">Total Predictions</p>
               </div>
@@ -577,7 +528,7 @@ const AdvancedAnalytics = ({ userData }) => {
                   <div className="flex justify-between">
                     <span className="text-slate-400">BTC Dominance</span>
                     <span className="text-white font-medium">
-                      {advancedMetrics?.bitcoinDominance?.value ? `${safeToFixed(advancedMetrics.bitcoinDominance.value, 1)}%` : 'N/A'}
+                      {analyticsData?.advancedMetrics?.bitcoinDominance?.value ? `${safeToFixed(analyticsData.advancedMetrics.bitcoinDominance.value, 1)}%` : 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -613,7 +564,7 @@ const AdvancedAnalytics = ({ userData }) => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">AI Analysis</span>
-                  <span className="text-white font-medium">Venice AI</span>
+                  <span className="text-white font-medium">Venice AI & Groq</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Backtesting</span>
@@ -624,6 +575,15 @@ const AdvancedAnalytics = ({ userData }) => {
           </div>
         </div>
 
+        {/* AI Analysis Section */}
+        <div className="mb-8">
+          <AIAnalysisCard 
+            autoFetch={true}
+            refreshInterval={300000} // 5 minutes fallback
+            showRefreshButton={false} // WebSocket handles real-time updates
+          />
+        </div>
+
         {/* New Advanced Data Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           {/* Market Sentiment Section */}
@@ -632,34 +592,34 @@ const AdvancedAnalytics = ({ userData }) => {
               <Activity className="w-6 h-6 text-crypto-blue mr-2" />
               Market Sentiment
             </h3>
-            {marketSentiment ? (
+            {analyticsData?.marketSentiment ? (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Fear & Greed Index</span>
                   <span className={`font-bold text-lg ${
-                    marketSentiment.value > 75 ? 'text-crypto-red' :
-                    marketSentiment.value > 55 ? 'text-crypto-yellow' :
-                    marketSentiment.value > 25 ? 'text-crypto-green' : 'text-crypto-blue'
+                    analyticsData?.marketSentiment?.value > 75 ? 'text-crypto-red' :
+                    analyticsData?.marketSentiment?.value > 55 ? 'text-crypto-yellow' :
+                    analyticsData?.marketSentiment?.value > 25 ? 'text-crypto-green' : 'text-crypto-blue'
                   }`}>
-                    {marketSentiment.value ? Math.round(marketSentiment.value) : 'N/A'}
+                    {analyticsData?.marketSentiment?.value ? Math.round(analyticsData.marketSentiment.value) : 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Classification</span>
                   <span className="text-white font-medium">
-                    {marketSentiment.classification || 'N/A'}
+                    {analyticsData?.marketSentiment?.classification || 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Source</span>
                   <span className="text-slate-300 text-sm">
-                    {marketSentiment.source || 'N/A'}
+                    {analyticsData?.marketSentiment?.source || 'N/A'}
                   </span>
                 </div>
-                {marketSentiment.metadata && (
+                {analyticsData?.marketSentiment?.metadata && (
                   <div className="pt-2 border-t border-slate-700">
                     <p className="text-xs text-slate-400">
-                      Last updated: {new Date(marketSentiment.timestamp).toLocaleString()}
+                      Last updated: {new Date(analyticsData.marketSentiment.timestamp).toLocaleString()}
                     </p>
                   </div>
                 )}
@@ -679,46 +639,83 @@ const AdvancedAnalytics = ({ userData }) => {
               <BarChart3 className="w-6 h-6 text-crypto-green mr-2" />
               Derivatives
             </h3>
-            {derivativesData ? (
+            {analyticsData?.derivativesData && analyticsData.derivativesData.summary ? (
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Asset</span>
-                  <span className="text-white font-medium">
-                    {derivativesData.asset || 'N/A'}
-                  </span>
+                {/* Summary Stats */}
+                <div className="bg-slate-700 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-slate-300 mb-3">Market Overview</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-400">Total Open Interest</p>
+                      <p className="text-lg font-bold text-white">
+                        ${(analyticsData.derivativesData.summary.totalOpenInterest / 1000000000).toFixed(2)}B
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Total Volume 24h</p>
+                      <p className="text-lg font-bold text-white">
+                        ${(analyticsData.derivativesData.summary.totalVolume24h / 1000000000).toFixed(2)}B
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Avg Funding Rate</p>
+                      <p className={`text-lg font-bold ${
+                        analyticsData.derivativesData.summary.averageFundingRate > 0 ? 'text-crypto-red' : 'text-crypto-green'
+                      }`}>
+                        {(analyticsData.derivativesData.summary.averageFundingRate * 100).toFixed(4)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Assets Tracked</p>
+                      <p className="text-lg font-bold text-white">
+                        {analyticsData.derivativesData.summary.assetCount}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Type</span>
-                  <span className="text-white font-medium">
-                    {derivativesData.derivative_type || 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Open Interest</span>
-                  <span className="text-white font-medium">
-                    {derivativesData.open_interest ? 
-                      `$${(derivativesData.open_interest / 1000000).toFixed(2)}M` : 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Funding Rate</span>
-                  <span className={`font-medium ${
-                    parseFloat(derivativesData.funding_rate || 0) > 0 ? 'text-crypto-red' : 'text-crypto-green'
-                  }`}>
-                    {derivativesData.funding_rate ? 
-                      `${(derivativesData.funding_rate * 100).toFixed(4)}%` : 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">24h Volume</span>
-                  <span className="text-white font-medium">
-                    {derivativesData.volume_24h ? 
-                      `$${(derivativesData.volume_24h / 1000000).toFixed(2)}M` : 'N/A'}
-                  </span>
-                </div>
+
+                {/* Individual Assets */}
+                {analyticsData.derivativesData.assets && Object.keys(analyticsData.derivativesData.assets).length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-300 mb-3">Asset Details</h4>
+                    <div className="space-y-3">
+                      {Object.values(analyticsData.derivativesData.assets).map((asset, index) => (
+                        <div key={index} className="bg-slate-700 rounded-lg p-3">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium text-white">{asset.asset}</span>
+                            <span className="text-xs text-slate-400">{asset.derivative_type}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <p className="text-slate-400">Open Interest</p>
+                              <p className="text-white font-medium">
+                                ${(asset.open_interest / 1000000).toFixed(1)}M
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Volume 24h</p>
+                              <p className="text-white font-medium">
+                                ${(asset.volume_24h / 1000000).toFixed(1)}M
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400">Funding Rate</p>
+                              <p className={`font-medium ${
+                                asset.funding_rate > 0 ? 'text-crypto-red' : 'text-crypto-green'
+                              }`}>
+                                {(asset.funding_rate * 100).toFixed(4)}%
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="pt-2 border-t border-slate-700">
                   <p className="text-xs text-slate-400">
-                    Source: {derivativesData.source || 'N/A'}
+                    Source: Binance Futures • Last updated: {analyticsData.derivativesData.timestamp ? new Date(analyticsData.derivativesData.timestamp).toLocaleTimeString() : 'N/A'}
                   </p>
                 </div>
               </div>
@@ -737,19 +734,19 @@ const AdvancedAnalytics = ({ userData }) => {
               <Zap className="w-6 h-6 text-crypto-yellow mr-2" />
               On-Chain Metrics
             </h3>
-            {onchainData ? (
+            {analyticsData?.onchainData ? (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Network</span>
                   <span className="text-white font-medium">
-                    {onchainData.blockchain || 'N/A'}
+                    {analyticsData.onchainData.blockchain || 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Metric</span>
                   <span className="text-white font-medium">
-                    {onchainData.metric_type ? 
-                      onchainData.metric_type.split('_').map(word => 
+                    {analyticsData.onchainData.metric_type ? 
+                      analyticsData.onchainData.metric_type.split('_').map(word => 
                         word.charAt(0).toUpperCase() + word.slice(1)
                       ).join(' ') : 'N/A'}
                   </span>
@@ -757,24 +754,24 @@ const AdvancedAnalytics = ({ userData }) => {
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Value</span>
                   <span className="text-white font-medium">
-                    {onchainData.value ? 
-                      (onchainData.metric_type === 'hash_rate' ? 
-                        `${(onchainData.value / 1e18).toFixed(2)} EH/s` :
-                        onchainData.metric_type === 'total_supply' ?
-                        `${onchainData.value.toFixed(2)} ETH` :
-                        onchainData.metric_type === 'gas_price' ?
-                        `${onchainData.value} Gwei` :
-                        onchainData.metric_type === 'exchange_flows' ?
-                        `${(onchainData.value * 100).toFixed(1)}%` :
-                        onchainData.metric_type === 'network_health' ?
-                        `${(onchainData.value * 100).toFixed(1)}%` :
-                        onchainData.metric_type === 'whale_activity' ?
-                        `${(onchainData.value * 100).toFixed(1)}%` :
-                        onchainData.metric_type === 'fear_greed_index' ?
-                        Math.round(onchainData.value) :
-                        typeof onchainData.value === 'number' && onchainData.value < 1 ?
-                        `${(onchainData.value * 100).toFixed(1)}%` :
-                        onchainData.value.toLocaleString()
+                    {analyticsData.onchainData.value ? 
+                      (analyticsData.onchainData.metric_type === 'hash_rate' ? 
+                        `${(analyticsData.onchainData.value / 1e18).toFixed(2)} EH/s` :
+                        analyticsData.onchainData.metric_type === 'total_supply' ?
+                        `${analyticsData.onchainData.value.toFixed(2)} ETH` :
+                        analyticsData.onchainData.metric_type === 'gas_price' ?
+                        `${analyticsData.onchainData.value} Gwei` :
+                        analyticsData.onchainData.metric_type === 'exchange_flows' ?
+                        `${(analyticsData.onchainData.value * 100).toFixed(1)}%` :
+                        analyticsData.onchainData.metric_type === 'network_health' ?
+                        `${(analyticsData.onchainData.value * 100).toFixed(1)}%` :
+                        analyticsData.onchainData.metric_type === 'whale_activity' ?
+                        `${(analyticsData.onchainData.value * 100).toFixed(1)}%` :
+                        analyticsData.onchainData.metric_type === 'fear_greed_index' ?
+                        Math.round(analyticsData.onchainData.value) :
+                        typeof analyticsData.onchainData.value === 'number' && analyticsData.onchainData.value < 1 ?
+                        `${(analyticsData.onchainData.value * 100).toFixed(1)}%` :
+                        analyticsData.onchainData.value.toLocaleString()
                       ) : 'N/A'}
                   </span>
                 </div>
@@ -784,22 +781,22 @@ const AdvancedAnalytics = ({ userData }) => {
                     <strong>What this means:</strong>
                   </p>
                   <p className="text-xs text-slate-400 mb-2">
-                    {onchainData.metric_type === 'exchange_flows' ? 
+                    {analyticsData.onchainData.metric_type === 'exchange_flows' ? 
                       'Exchange Flows: Shows money movement direction. Above 50% = money leaving exchanges (bullish), below 50% = money entering exchanges (bearish)' :
-                      onchainData.metric_type === 'network_health' ?
+                      analyticsData.onchainData.metric_type === 'network_health' ?
                       'Network Health: Overall blockchain health score. Higher percentage = healthier network with better performance' :
-                      onchainData.metric_type === 'whale_activity' ?
+                      analyticsData.onchainData.metric_type === 'whale_activity' ?
                       'Whale Activity: Large transaction volume. Higher percentage = more large transactions happening' :
                       'Metric from multiple blockchain sources combined for overall market insight'
                     }
                   </p>
-                  {onchainData.metadata && (
+                  {analyticsData.onchainData.metadata && (
                     <>
                       <p className="text-xs text-slate-400">
-                        Source: {onchainData.source || 'N/A'}
+                        Source: {analyticsData.onchainData.source || 'N/A'}
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
-                        Last updated: {new Date(onchainData.timestamp).toLocaleString()}
+                        Last updated: {new Date(analyticsData.onchainData.timestamp).toLocaleString()}
                       </p>
                     </>
                   )}
@@ -836,13 +833,10 @@ const AdvancedAnalytics = ({ userData }) => {
               <button
                 onClick={async () => {
                   try {
-                    setLoading(true);
-                    await axios.post('/api/collect-advanced-data');
-                    await fetchAnalyticsData(); // Refresh data
+                    await fetch('/api/collect-advanced-data', { method: 'POST' });
+                    refresh(); // Refresh data
                   } catch (error) {
                     console.error('Error triggering data collection:', error);
-                  } finally {
-                    setLoading(false);
                   }
                 }}
                 disabled={loading}

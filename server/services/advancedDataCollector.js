@@ -81,9 +81,9 @@ class AdvancedDataCollector {
             timeout: 10000,
             headers: { 'User-Agent': 'CryptoMarketWatch/1.0' }
           }).then(response => {
-            return { data: response.data.hash_rate || '0' };
+            return { data: response.data.hash_rate || null };
           }).catch(() => {
-            return { data: '0' }; // Final fallback
+            return { data: null }; // No fallback - let it fail properly
           });
         })
       );
@@ -95,7 +95,7 @@ class AdvancedDataCollector {
           headers: { 'User-Agent': 'CryptoMarketWatch/1.0' }
         }).catch(err => {
           console.warn('⚠️ Transaction count endpoint failed:', err.message);
-          return { data: '250000' }; // Fallback value (typical daily tx count)
+          return { data: null }; // No fallback - let it fail properly
         })
       );
       
@@ -106,15 +106,27 @@ class AdvancedDataCollector {
           headers: { 'User-Agent': 'CryptoMarketWatch/1.0' }
         }).catch(err => {
           console.warn('⚠️ Stats endpoint failed:', err.message);
-          return { data: { difficulty: 0, n_blocks_mined_24h: 144 } }; // Fallback values
+          return { data: null }; // No fallback - let it fail properly
         })
       );
       
       const [hashRateResponse, txCountResponse, statsResponse] = await Promise.all(promises);
       
+      // Validate responses - no fallback values
+      if (!hashRateResponse.data || !txCountResponse.data || !statsResponse.data) {
+        console.error('❌ Bitcoin metrics collection failed - missing data from blockchain.info');
+        return;
+      }
+      
       const hashRate = parseFloat(hashRateResponse.data) / 1e9; // Convert GH/s to EH/s
       const txCount24h = parseInt(txCountResponse.data);
       const stats = statsResponse.data;
+      
+      // Validate parsed values
+      if (isNaN(hashRate) || isNaN(txCount24h) || txCount24h <= 0) {
+        console.error('❌ Bitcoin metrics collection failed - invalid data values');
+        return;
+      }
       
       // Calculate derived metrics
       const tps = txCount24h / (24 * 60 * 60); // transactions per second
@@ -629,7 +641,7 @@ class AdvancedDataCollector {
         
         // Hash Rate
         await insertOnchainData(
-          'bitcoin',
+          'Bitcoin',
           'hash_rate',
           data.hash_rate,
           {
@@ -641,7 +653,7 @@ class AdvancedDataCollector {
         
         // Transaction Count
         await insertOnchainData(
-          'bitcoin',
+          'Bitcoin',
           'transaction_count',
           data.tx_count || 0,
           {
@@ -650,18 +662,31 @@ class AdvancedDataCollector {
           'blockchain.info'
         );
         
-        // Active Addresses (estimated)
-        await insertOnchainData(
-          'bitcoin',
-          'active_addresses',
-          data.n_btc_mined * 1000, // Rough estimate
-          {
-            timestamp: new Date().toISOString()
-          },
-          'blockchain.info'
-        );
+        // Active Addresses (estimated from transaction count)
+        let txCount24h = 'N/A';
+        let activeAddresses = 'N/A';
         
-        console.log(`⛓️ Bitcoin - Hash Rate: ${(data.hash_rate / 1e18).toFixed(2)} EH/s, TX Count: ${data.tx_count || 'N/A'}`);
+        if (data.tx_count && data.tx_count > 0) {
+          txCount24h = data.tx_count;
+          const estimatedActiveAddresses = Math.round(txCount24h * 0.6); // Conservative estimate
+          activeAddresses = `${(estimatedActiveAddresses/1000).toFixed(1)}K`;
+          
+          await insertOnchainData(
+            'Bitcoin',
+            'active_addresses',
+            estimatedActiveAddresses,
+            {
+              transaction_count_24h: txCount24h,
+              estimation_method: 'transaction_count_based',
+              timestamp: new Date().toISOString()
+            },
+            'blockchain.info'
+          );
+        } else {
+          console.warn('⚠️ Bitcoin transaction count is missing or 0, skipping active addresses calculation');
+        }
+        
+        console.log(`⛓️ Bitcoin - Hash Rate: ${(data.hash_rate / 1e18).toFixed(2)} EH/s, TX Count: ${txCount24h}, Active Addresses: ${activeAddresses}`);
       }
     } catch (error) {
       console.error('Error collecting Bitcoin on-chain data:', error.message);

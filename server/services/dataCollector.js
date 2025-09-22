@@ -1401,19 +1401,10 @@ class DataCollector {
       // Get Bitcoin dominance
       const bitcoinDominance = await getLatestBitcoinDominance();
       
-      // Get latest crypto prices with 24h changes
+      // Note: Individual crypto prices are not collected to avoid API limits
+      // The system uses external widgets for real-time crypto price display
+      // Only global crypto metrics are collected from CoinGecko
       const cryptoPrices = {};
-      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-      for (const symbol of cryptoSymbols) {
-        const price = await this.getLatestCryptoPrice(symbol);
-        if (price) {
-          cryptoPrices[symbol] = {
-            price: price.price,
-            change_24h: price.change_24h || 0,
-            volume_24h: price.volume_24h || 0
-          };
-        }
-      }
       
       // Determine the most recent timestamp
       const timestamps = [
@@ -1469,6 +1460,7 @@ class DataCollector {
       return null;
     }
   }
+
 
   // Get advanced metrics summary for AI analysis
   async getAdvancedMetricsSummary() {
@@ -1739,7 +1731,8 @@ class DataCollector {
         this.collectExchangeFlows(), // Collect exchange flows from Binance
         this.collectInflationData(), // Collect and store inflation data
         this.collectEconomicCalendarData(), // Collect and analyze economic calendar data
-        this.collectMoneySupplyData() // Collect money supply data
+        this.collectMoneySupplyData(), // Collect money supply data
+        this.collectCorrelationData() // Collect and store correlation data
       ]);
       
       // Clean up duplicate events before collecting new ones
@@ -2078,33 +2071,12 @@ class DataCollector {
         hashRate: 0
       };
       
-      // Add some basic metrics based on symbol
-      switch (symbol) {
-        case 'BTC':
-          basicMetrics.tps = 7; // Bitcoin TPS
-          basicMetrics.activeAddresses = 1000000; // Estimated
-          basicMetrics.hashRate = 500000000000000000; // 500 EH/s
-          break;
-        case 'ETH':
-          basicMetrics.tps = 15; // Ethereum TPS
-          basicMetrics.activeAddresses = 2000000; // Estimated
-          basicMetrics.hashRate = 0; // ETH uses PoS
-          break;
-        case 'SOL':
-          basicMetrics.tps = 2000; // Solana TPS
-          basicMetrics.activeAddresses = 500000; // Estimated
-          basicMetrics.hashRate = 0; // Solana uses PoS
-          break;
-        default:
-          basicMetrics.tps = 10;
-          basicMetrics.activeAddresses = 100000;
-          basicMetrics.hashRate = 0;
-      }
-      
-      return basicMetrics;
+      // No hardcoded fallback values - return null if no real data available
+      console.warn(`⚠️ No real blockchain metrics available for ${symbol} - returning null`);
+      return null;
     } catch (error) {
       console.error(`Error getting basic metrics for ${symbol}:`, error.message);
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     }
   }
 
@@ -2112,61 +2084,75 @@ class DataCollector {
   async getRealBlockchainMetrics(symbol) {
     try {
       const metrics = {
-        tps: 0,
-        activeAddresses: 0,
-        hashRate: 0
+        tps: null,
+        activeAddresses: null,
+        hashRate: null
       };
 
       switch (symbol) {
         case 'BTC':
           // Bitcoin metrics from blockchain.info
           const btcMetrics = await this.getBitcoinMetrics();
-          metrics.tps = btcMetrics.tps;
-          metrics.activeAddresses = btcMetrics.activeAddresses;
-          metrics.hashRate = btcMetrics.hashRate;
+          if (btcMetrics) {
+            metrics.tps = btcMetrics.tps;
+            metrics.activeAddresses = btcMetrics.activeAddresses;
+            metrics.hashRate = btcMetrics.hashRate;
+          }
           break;
 
         case 'ETH':
           // Ethereum metrics from Etherscan
           const ethMetrics = await this.getEthereumMetrics();
-          metrics.tps = ethMetrics.tps;
-          metrics.activeAddresses = ethMetrics.activeAddresses;
-          metrics.hashRate = ethMetrics.hashRate;
+          if (ethMetrics) {
+            metrics.tps = ethMetrics.tps;
+            metrics.activeAddresses = ethMetrics.activeAddresses;
+            metrics.hashRate = ethMetrics.hashRate;
+          }
           break;
 
         case 'SOL':
           // Solana metrics from Solana RPC
           const solMetrics = await this.getSolanaMetrics();
-          metrics.tps = solMetrics.tps;
-          metrics.activeAddresses = solMetrics.activeAddresses;
+          if (solMetrics) {
+            metrics.tps = solMetrics.tps;
+            metrics.activeAddresses = solMetrics.activeAddresses;
+          }
           break;
 
         case 'ADA':
           // Cardano metrics from Cardano API
           const adaMetrics = await this.getCardanoMetrics();
-          metrics.tps = adaMetrics.tps;
-          metrics.activeAddresses = adaMetrics.activeAddresses;
+          if (adaMetrics) {
+            metrics.tps = adaMetrics.tps;
+            metrics.activeAddresses = adaMetrics.activeAddresses;
+          }
           break;
 
         case 'DOT':
           // Polkadot metrics from Polkadot API
           const dotMetrics = await this.getPolkadotMetrics();
-          metrics.tps = dotMetrics.tps;
-          metrics.activeAddresses = dotMetrics.activeAddresses;
+          if (dotMetrics) {
+            metrics.tps = dotMetrics.tps;
+            metrics.activeAddresses = dotMetrics.activeAddresses;
+          }
           break;
 
         case 'AVAX':
           // Avalanche metrics from Avalanche API
           const avaxMetrics = await this.getAvalancheMetrics();
-          metrics.tps = avaxMetrics.tps;
-          metrics.activeAddresses = avaxMetrics.activeAddresses;
+          if (avaxMetrics) {
+            metrics.tps = avaxMetrics.tps;
+            metrics.activeAddresses = avaxMetrics.activeAddresses;
+          }
           break;
 
         case 'MATIC':
           // Polygon metrics from Polygon API
           const maticMetrics = await this.getPolygonMetrics();
-          metrics.tps = maticMetrics.tps;
-          metrics.activeAddresses = maticMetrics.activeAddresses;
+          if (maticMetrics) {
+            metrics.tps = maticMetrics.tps;
+            metrics.activeAddresses = maticMetrics.activeAddresses;
+          }
           break;
 
         default:
@@ -2176,7 +2162,7 @@ class DataCollector {
       return metrics;
     } catch (error) {
       console.error(`Error getting blockchain metrics for ${symbol}:`, error.message);
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     }
   }
 
@@ -2200,9 +2186,9 @@ class DataCollector {
             timeout: 10000,
             headers: { 'User-Agent': 'CryptoMarketWatch/1.0' }
           }).then(response => {
-            return { data: response.data.hash_rate || '0' };
+            return { data: response.data.hash_rate || null };
           }).catch(() => {
-            return { data: '0' }; // Final fallback
+            return { data: null }; // No fallback - let it fail properly
           });
         })
       );
@@ -2214,7 +2200,7 @@ class DataCollector {
           headers: { 'User-Agent': 'CryptoMarketWatch/1.0' }
         }).catch(err => {
           console.warn('⚠️ Transaction count endpoint failed:', err.message);
-          return { data: '250000' }; // Fallback value (typical daily tx count)
+          return { data: null }; // No fallback - let it fail properly
         })
       );
       
@@ -2225,15 +2211,27 @@ class DataCollector {
           headers: { 'User-Agent': 'CryptoMarketWatch/1.0' }
         }).catch(err => {
           console.warn('⚠️ Stats endpoint failed:', err.message);
-          return { data: { difficulty: 0, n_blocks_mined_24h: 144 } }; // Fallback values
+          return { data: null }; // No fallback - let it fail properly
         })
       );
       
       const [hashRateResponse, txCountResponse, statsResponse] = await Promise.all(promises);
       
+      // Validate responses - no fallback values
+      if (!hashRateResponse.data || !txCountResponse.data || !statsResponse.data) {
+        console.error('❌ Bitcoin metrics collection failed - missing data from blockchain.info');
+        return null;
+      }
+      
       const hashRate = parseFloat(hashRateResponse.data) / 1e9; // Convert GH/s to EH/s
       const txCount24h = parseInt(txCountResponse.data);
       const stats = statsResponse.data;
+      
+      // Validate parsed values
+      if (isNaN(hashRate) || isNaN(txCount24h) || txCount24h <= 0) {
+        console.error('❌ Bitcoin metrics collection failed - invalid data values');
+        return null;
+      }
       
       // Calculate TPS from 24h transaction count
       const tps = txCount24h / (24 * 60 * 60); // transactions per second
@@ -2253,15 +2251,7 @@ class DataCollector {
       };
     } catch (error) {
       console.error('Error fetching Bitcoin metrics:', error.message);
-      // Return reasonable fallback values instead of zeros
-      return { 
-        tps: 3, 
-        activeAddresses: 150000, 
-        hashRate: 500, 
-        whaleTransactions: 5000,
-        totalTransactions24h: 250000,
-        networkDifficulty: 0
-      };
+      return null; // No fallback - let it fail properly
     }
   }
 
@@ -2299,7 +2289,7 @@ class DataCollector {
       };
     } catch (error) {
       console.error('Error fetching Ethereum metrics:', error.message);
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     }
   }
 
@@ -2328,10 +2318,10 @@ class DataCollector {
         };
       }
       
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     } catch (error) {
       console.error('Error fetching Solana metrics:', error.message);
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     }
   }
 
@@ -2370,10 +2360,10 @@ class DataCollector {
         };
       }
       
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     } catch (error) {
       console.error('Error fetching Cardano metrics:', error.message);
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     }
   }
 
@@ -2400,10 +2390,10 @@ class DataCollector {
         };
       }
       
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     } catch (error) {
       console.error('Error fetching Polkadot metrics:', error.message);
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     }
   }
 
@@ -2430,10 +2420,10 @@ class DataCollector {
         };
       }
       
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     } catch (error) {
       console.error('Error fetching Avalanche metrics:', error.message);
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     }
   }
 
@@ -2460,10 +2450,10 @@ class DataCollector {
         };
       }
       
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     } catch (error) {
       console.error('Error fetching Polygon metrics:', error.message);
-      return { tps: 0, activeAddresses: 0, hashRate: 0 };
+      return null; // No fallback - let it fail properly
     }
   }
 
@@ -2826,6 +2816,99 @@ class DataCollector {
     } catch (error) {
       console.error('❌ Error storing calculated metrics:', error.message);
     }
+  }
+
+  // Collect and store correlation data
+  async collectCorrelationData() {
+    try {
+      console.log('📊 Collecting correlation data...');
+      
+      // Calculate correlations from existing price data
+      const { getCryptoPrices, insertCorrelationData } = require('../database');
+      const targetSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
+      const correlationData = {};
+      
+      // Get price data for each symbol from the database
+      const priceData = {};
+      for (const symbol of targetSymbols) {
+        try {
+          const prices = await getCryptoPrices(symbol, 30); // Get last 30 days
+          if (prices && prices.length > 0) {
+            // Extract just the price values
+            const priceValues = prices.map(p => parseFloat(p.price)).filter(p => !isNaN(p));
+            if (priceValues.length > 1) {
+              priceData[symbol] = priceValues;
+              console.log(`📊 Retrieved ${priceValues.length} price points for ${symbol} from database`);
+            }
+          }
+        } catch (error) {
+          console.log(`⚠️ Could not get price data for ${symbol}:`, error.message);
+        }
+      }
+      
+      // Calculate correlations between all pairs
+      for (let i = 0; i < targetSymbols.length; i++) {
+        for (let j = i + 1; j < targetSymbols.length; j++) {
+          const symbol1 = targetSymbols[i];
+          const symbol2 = targetSymbols[j];
+          
+          if (priceData[symbol1] && priceData[symbol2]) {
+            const correlation = this.calculateCorrelation(priceData[symbol1], priceData[symbol2]);
+            if (!isNaN(correlation)) {
+              correlationData[`${symbol1}_${symbol2}`] = correlation;
+              console.log(`📊 Calculated ${symbol1}_${symbol2} correlation: ${correlation.toFixed(3)}`);
+            }
+          }
+        }
+      }
+      
+      // Store each correlation pair in the database
+      for (const [pair, correlation] of Object.entries(correlationData)) {
+        const [symbol1, symbol2] = pair.split('_');
+        await insertCorrelationData(symbol1, symbol2, correlation, 30, 'pearson', 'calculated');
+      }
+      
+      console.log(`✅ Stored ${Object.keys(correlationData).length} correlation pairs in database`);
+      
+    } catch (error) {
+      console.error('❌ Error collecting correlation data:', error.message);
+    }
+  }
+
+  // Helper function to calculate correlation between two price series
+  calculateCorrelation(prices1, prices2) {
+    const minLength = Math.min(prices1.length, prices2.length);
+    if (minLength < 2) return 0;
+    
+    const returns1 = [];
+    const returns2 = [];
+
+    for (let i = 1; i < minLength; i++) {
+      const return1 = (prices1[i] - prices1[i-1]) / prices1[i-1];
+      const return2 = (prices2[i] - prices2[i-1]) / prices2[i-1];
+      returns1.push(return1);
+      returns2.push(return2);
+    }
+
+    if (returns1.length < 2) return 0;
+
+    const mean1 = returns1.reduce((sum, val) => sum + val, 0) / returns1.length;
+    const mean2 = returns2.reduce((sum, val) => sum + val, 0) / returns2.length;
+
+    let numerator = 0;
+    let denominator1 = 0;
+    let denominator2 = 0;
+
+    for (let i = 0; i < returns1.length; i++) {
+      const diff1 = returns1[i] - mean1;
+      const diff2 = returns2[i] - mean2;
+      numerator += diff1 * diff2;
+      denominator1 += diff1 * diff1;
+      denominator2 += diff2 * diff2;
+    }
+
+    const correlation = numerator / Math.sqrt(denominator1 * denominator2);
+    return isNaN(correlation) ? 0 : correlation;
   }
 
 }

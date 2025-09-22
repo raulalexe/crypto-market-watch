@@ -1,9 +1,32 @@
 import React, { useState } from 'react';
-import { Brain, TrendingUp, TrendingDown, Minus, Target, ChevronDown, ChevronRight, Clock, Calendar, CalendarDays, Users, Zap } from 'lucide-react';
+import { Brain, TrendingUp, TrendingDown, Minus, Target, ChevronDown, ChevronRight, Clock, Calendar, CalendarDays, Users, Zap, RefreshCw, AlertCircle } from 'lucide-react';
 import ExpandableText from './ExpandableText';
+import useAIAnalysis from '../hooks/useAIAnalysis';
 
-const AIAnalysisCard = ({ data }) => {
+const AIAnalysisCard = ({ 
+  autoFetch = true, 
+  refreshInterval = 300000, // 5 minutes fallback
+  showRefreshButton = false, // Disabled by default since WebSocket handles updates
+  onError = null,
+  onSuccess = null,
+  className = ''
+}) => {
   const [expandedTimeframes, setExpandedTimeframes] = useState({});
+  
+  // Use the custom hook for data fetching
+  const { 
+    data, 
+    loading, 
+    error, 
+    lastFetch, 
+    isStale, 
+    refresh 
+  } = useAIAnalysis({
+    autoFetch,
+    refreshInterval,
+    onError,
+    onSuccess
+  });
 
   const toggleTimeframe = (timeframe) => {
     setExpandedTimeframes(prev => ({
@@ -93,26 +116,118 @@ const AIAnalysisCard = ({ data }) => {
 
   // Debug logging (removed for production)
 
+  // Handle loading state
+  if (loading && !data) {
+    return (
+      <div className={`bg-slate-800 rounded-lg p-6 border border-slate-600 ${className}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Brain className="w-6 h-6 text-crypto-blue" />
+            <h3 className="text-lg font-semibold text-white">AI Market Analysis</h3>
+          </div>
+          {showRefreshButton && (
+            <button
+              onClick={refresh}
+              disabled={loading}
+              className="p-2 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          )}
+        </div>
+        <div className="text-slate-400 text-center py-8">
+          <RefreshCw className="w-8 h-8 mx-auto mb-4 animate-spin" />
+          <p>Loading AI analysis...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error && !data) {
+    return (
+      <div className={`bg-slate-800 rounded-lg p-6 border border-red-500/30 ${className}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <AlertCircle className="w-6 h-6 text-red-400" />
+            <h3 className="text-lg font-semibold text-white">AI Market Analysis</h3>
+          </div>
+          {showRefreshButton && (
+            <button
+              onClick={refresh}
+              className="p-2 text-slate-400 hover:text-white transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="text-center py-8">
+          <AlertCircle className="w-8 h-8 mx-auto mb-4 text-red-400" />
+          <p className="text-red-400 mb-2">Failed to load AI analysis</p>
+          <p className="text-slate-400 text-sm mb-4">{error.message}</p>
+          <button
+            onClick={refresh}
+            className="px-4 py-2 bg-crypto-blue hover:bg-blue-600 text-white rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Early return if no analysis data
   if (!data) {
     return (
-      <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
-        <div className="flex items-center space-x-3 mb-4">
-          <Brain className="w-6 h-6 text-crypto-blue" />
-          <h3 className="text-lg font-semibold text-white">AI Market Analysis</h3>
+      <div className={`bg-slate-800 rounded-lg p-6 border border-slate-600 ${className}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Brain className="w-6 h-6 text-crypto-blue" />
+            <h3 className="text-lg font-semibold text-white">AI Market Analysis</h3>
+          </div>
+          {showRefreshButton && (
+            <button
+              onClick={refresh}
+              className="p-2 text-slate-400 hover:text-white transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <div className="text-slate-400 text-center py-8">
-          No analysis data available
+          <Brain className="w-8 h-8 mx-auto mb-4 opacity-50" />
+          <p>No analysis data available</p>
+          <p className="text-sm mt-2">AI analysis will appear here once data is collected</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`bg-slate-800 rounded-lg p-6 border ${getDirectionBg(data.overall_direction || data.market_direction)}`}>
-      <div className="flex items-center space-x-3 mb-4">
-        <Brain className="w-6 h-6 text-crypto-blue" />
-        <h3 className="text-lg font-semibold text-white">AI Market Analysis</h3>
+    <div className={`bg-slate-800 rounded-lg p-6 border ${getDirectionBg(data.overall_direction || data.market_direction)} ${className}`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <Brain className="w-6 h-6 text-crypto-blue" />
+          <div>
+            <h3 className="text-lg font-semibold text-white">AI Market Analysis</h3>
+            {lastFetch && (
+              <p className="text-xs text-slate-400">
+                Last updated: {lastFetch.toLocaleTimeString()}
+                {isStale && <span className="text-yellow-400 ml-2">• Stale</span>}
+              </p>
+            )}
+          </div>
+        </div>
+        {showRefreshButton && (
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+            title="Refresh AI analysis"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        )}
       </div>
 
       <div className="space-y-4">

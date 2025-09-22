@@ -1,41 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Calendar, BarChart3, DollarSign, Activity, RefreshCw } from 'lucide-react';
+import useInflationData from '../hooks/useInflationData';
 
 const InflationDataCard = ({ userData }) => {
-  const [inflationData, setInflationData] = useState(null);
   const [releases, setReleases] = useState([]);
   const [forecasts, setForecasts] = useState(null);
   const [expectations, setExpectations] = useState(null);
   const [sentiment, setSentiment] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const hasFetched = useRef(false);
+  const [additionalLoading, setAdditionalLoading] = useState(false);
+  const [additionalError, setAdditionalError] = useState(null);
 
-  useEffect(() => {
-    // Only fetch once per component instance
-    if (!hasFetched.current) {
-      hasFetched.current = true;
-      fetchInflationData();
-    }
-  }, []);
+  // Use the custom hook for main inflation data (CPI, PCE, PPI)
+  const {
+    data: inflationData,
+    loading,
+    error,
+    lastFetch,
+    isStale,
+    refresh
+  } = useInflationData({
+    autoFetch: true,
+    refreshInterval: 300000, // 5 minutes fallback
+    onError: (err) => console.error('Inflation data error:', err),
+    onSuccess: (data) => console.log('Inflation data updated:', data)
+  });
 
-  const fetchInflationData = async () => {
+  // Fetch additional data that's not in the main dashboard update
+  const fetchAdditionalData = async () => {
     try {
-      setLoading(true);
-      setError(null);
+      setAdditionalLoading(true);
+      setAdditionalError(null);
 
-      const [dataRes, releasesRes, forecastsRes, expectationsRes, sentimentRes] = await Promise.all([
-        fetch('/api/inflation/latest'),
+      const [releasesRes, forecastsRes, expectationsRes, sentimentRes] = await Promise.all([
         fetch('/api/inflation/releases?days=7'),
         fetch('/api/inflation/forecasts'),
         fetch('/api/inflation/expectations'),
         fetch('/api/inflation/sentiment')
       ]);
-
-      if (dataRes.ok) {
-        const data = await dataRes.json();
-        setInflationData(data);
-      }
 
       if (releasesRes.ok) {
         const releasesData = await releasesRes.json();
@@ -57,12 +58,17 @@ const InflationDataCard = ({ userData }) => {
         setSentiment(sentimentData.data);
       }
     } catch (err) {
-      console.error('Error fetching inflation data:', err);
-      setError('Failed to fetch inflation data');
+      console.error('Error fetching additional inflation data:', err);
+      setAdditionalError('Failed to fetch additional data');
     } finally {
-      setLoading(false);
+      setAdditionalLoading(false);
     }
   };
+
+  // Fetch additional data once on mount
+  useEffect(() => {
+    fetchAdditionalData();
+  }, []);
 
   const getSentimentIcon = (sentiment) => {
     switch (sentiment) {
@@ -172,7 +178,7 @@ const InflationDataCard = ({ userData }) => {
           <BarChart3 className="w-6 h-6 text-crypto-blue" />
           <h3 className="text-lg font-semibold text-white">Inflation Data</h3>
           <button
-            onClick={fetchInflationData}
+            onClick={refresh}
             className="text-crypto-blue hover:text-crypto-blue-light text-sm"
           >
             Retry

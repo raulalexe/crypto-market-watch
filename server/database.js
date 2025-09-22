@@ -180,6 +180,20 @@ const initDatabase = async () => {
     `);
     
     await client.query(`
+      CREATE TABLE IF NOT EXISTS correlation_data (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        symbol1 VARCHAR(10) NOT NULL,
+        symbol2 VARCHAR(10) NOT NULL,
+        correlation DECIMAL(10,6) NOT NULL,
+        period_days INTEGER DEFAULT 30,
+        calculation_method VARCHAR(20) DEFAULT 'pearson',
+        source VARCHAR(100),
+        UNIQUE(symbol1, symbol2, timestamp)
+      )
+    `);
+    
+    await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -835,6 +849,15 @@ const insertTrendingNarrative = (narrative, sentiment, relevanceScore, source) =
     return new Promise((resolve, reject) => {
       dbAdapter.all(
         'SELECT * FROM layer1_data ORDER BY market_cap DESC'
+      ).then(resolve).catch(reject);
+    });
+  };
+
+  const getLatestLayer1Data = (symbol) => {
+    return new Promise((resolve, reject) => {
+      dbAdapter.get(
+        'SELECT * FROM layer1_data WHERE symbol = $1 ORDER BY timestamp DESC LIMIT 1',
+        [symbol.toUpperCase()]
       ).then(resolve).catch(reject);
     });
   };
@@ -2389,6 +2412,60 @@ const getLatestOnchainData = (blockchain = null, metricType = null) => {
   });
 };
 
+// Correlation data functions
+const insertCorrelationData = (symbol1, symbol2, correlation, periodDays = 30, method = 'pearson', source = 'calculated') => {
+  return new Promise((resolve, reject) => {
+    const query = `
+      INSERT INTO correlation_data (symbol1, symbol2, correlation, period_days, calculation_method, source)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (symbol1, symbol2, timestamp) 
+      DO UPDATE SET 
+        correlation = EXCLUDED.correlation,
+        period_days = EXCLUDED.period_days,
+        calculation_method = EXCLUDED.calculation_method,
+        source = EXCLUDED.source
+    `;
+    const params = [symbol1, symbol2, correlation, periodDays, method, source];
+    
+    dbAdapter.run(query, params)
+      .then(() => resolve())
+      .catch(reject);
+  });
+};
+
+const getLatestCorrelationData = () => {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT DISTINCT ON (symbol1, symbol2) 
+        symbol1, symbol2, correlation, period_days, calculation_method, source, timestamp
+      FROM correlation_data 
+      ORDER BY symbol1, symbol2, timestamp DESC
+    `;
+    
+    dbAdapter.all(query, [])
+      .then(rows => {
+        // Convert to object format for easier use
+        const correlationData = {};
+        rows.forEach(row => {
+          const pair = [row.symbol1, row.symbol2].sort().join('_');
+          correlationData[pair] = parseFloat(row.correlation);
+        });
+        resolve(correlationData);
+      })
+      .catch(reject);
+  });
+};
+
+const getCorrelationData = (limit = 100) => {
+  return new Promise((resolve, reject) => {
+    const query = 'SELECT * FROM correlation_data ORDER BY timestamp DESC LIMIT $1';
+    dbAdapter.all(query, [limit])
+      .then(resolve)
+      .catch(reject);
+  });
+};
+
+
 module.exports = {
   db,
   dbAdapter,
@@ -2415,7 +2492,11 @@ module.exports = {
   getDerivativesData,
   getOnchainData,
   getLayer1Data,
+  getLatestLayer1Data,
   insertLayer1Data,
+  insertCorrelationData,
+  getLatestCorrelationData,
+  getCorrelationData,
   insertBacktestResult,
   getBacktestResults,
   // Error logging

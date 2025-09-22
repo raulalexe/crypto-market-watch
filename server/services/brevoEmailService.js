@@ -40,6 +40,191 @@ class BrevoEmailService {
     }
   }
 
+  /**
+   * Generate HTML template for alert emails
+   */
+  generateAlertEmailHTML(alert, userEmail) {
+    try {
+      return alertTemplate.generateHTML(alert, userEmail);
+    } catch (error) {
+      console.error('❌ Error generating alert email HTML:', error);
+      return this.getDefaultAlertTemplate(alert, userEmail);
+    }
+  }
+
+  /**
+   * Generate HTML template for event reminder emails
+   */
+  generateEventReminderEmailHTML(event, userEmail, daysUntil) {
+    try {
+      return eventTemplate.generateHTML(event, userEmail, daysUntil);
+    } catch (error) {
+      console.error('❌ Error generating event reminder email HTML:', error);
+      return this.getDefaultEventTemplate(event, userEmail, daysUntil);
+    }
+  }
+
+  /**
+   * Generate HTML template for inflation update emails
+   */
+  generateInflationUpdateEmailHTML(inflationData, userEmail) {
+    try {
+      return inflation.generateHTML(inflationData, userEmail);
+    } catch (error) {
+      console.error('❌ Error generating inflation update email HTML:', error);
+      return this.getDefaultInflationTemplate(inflationData, userEmail);
+    }
+  }
+
+  /**
+   * Default alert email template
+   */
+  getDefaultAlertTemplate(alert, userEmail) {
+    const severityEmoji = this.getSeverityEmoji(alert.severity);
+    const alertType = alert.type ? alert.type.replace(/_/g, ' ') : 'Market Alert';
+    
+    // Handle invalid timestamps
+    let timeDisplay = 'Time unavailable';
+    if (alert.timestamp && alert.timestamp !== 'invalid-date') {
+      try {
+        timeDisplay = new Date(alert.timestamp).toLocaleString();
+      } catch (e) {
+        timeDisplay = 'Time unavailable';
+      }
+    }
+    
+    // Handle event time remaining
+    let eventTimeDisplay = '';
+    if (alert.type === 'UPCOMING_EVENT' && alert.eventDate) {
+      try {
+        const eventDate = new Date(alert.eventDate);
+        const now = new Date();
+        const diffTime = eventDate - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays > 0) {
+          eventTimeDisplay = `Event in ${diffDays} days`;
+        }
+      } catch (e) {
+        // Ignore date parsing errors
+      }
+    }
+    
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Alert</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #0f172a; color: #ffffff; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #1e293b; }
+        .header { background-color: #1e293b; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .footer { background-color: #1e293b; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; }
+        .unsubscribe { color: #94a3b8; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Crypto Market Watch</h1>
+            <p>Real-time market intelligence & alerts</p>
+        </div>
+        <div class="content">
+            <h2>${severityEmoji} Market Alert</h2>
+            <p><strong>Alert Type:</strong> ${alertType}</p>
+            <p><strong>Message:</strong> ${alert.message || 'Market alert triggered'}</p>
+            <p><strong>Time:</strong> ${timeDisplay}</p>
+            ${eventTimeDisplay ? `<p><strong>Event Time:</strong> ${eventTimeDisplay}</p>` : ''}
+        </div>
+        <div class="footer">
+            <p>Crypto Market Watch - Professional Market Intelligence</p>
+            <p><a href="#" class="unsubscribe">unsubscribe</a></p>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
+  /**
+   * Default event reminder email template
+   */
+  getDefaultEventTemplate(event, userEmail, daysUntil) {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Reminder</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #0f172a; color: #ffffff; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #1e293b; }
+        .header { background-color: #1e293b; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .footer { background-color: #1e293b; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Crypto Market Watch</h1>
+            <p>Upcoming Economic Events</p>
+        </div>
+        <div class="content">
+            <h2>📅 ${event.event_name || 'FOMC Meeting'}</h2>
+            <p><strong>Date:</strong> ${event.event_date || 'TBD'}</p>
+            <p><strong>Time Until:</strong> Event in ${daysUntil} days</p>
+            <p><strong>Impact:</strong> ${event.impact || 'High'}</p>
+        </div>
+        <div class="footer">
+            <p>Crypto Market Watch - Professional Market Intelligence</p>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
+  /**
+   * Default inflation update email template
+   */
+  getDefaultInflationTemplate(inflationData, userEmail) {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inflation Update</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #0f172a; color: #ffffff; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #1e293b; }
+        .header { background-color: #1e293b; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .footer { background-color: #1e293b; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Crypto Market Watch</h1>
+            <p>Inflation Data Update</p>
+        </div>
+        <div class="content">
+            <h2>📊 Latest Inflation Data</h2>
+            <p><strong>CPI:</strong> ${inflationData.cpi || '3.2%'}</p>
+            <p><strong>Core CPI:</strong> ${inflationData.core_cpi || '2.8%'}</p>
+            <p><strong>PCE:</strong> ${inflationData.pce || 'N/A'}</p>
+        </div>
+        <div class="footer">
+            <p>Crypto Market Watch - Professional Market Intelligence</p>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
   async sendAlertEmail(userEmail, alert, userPreferences = {}) {
     if (!this.isConfigured) {
       console.log('⚠️ Brevo email service not configured, skipping email send');

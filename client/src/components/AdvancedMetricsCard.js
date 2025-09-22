@@ -1,33 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, ArrowUpRight, ArrowDownRight, Activity, Users, Zap } from 'lucide-react';
-import axios from 'axios';
+import { TrendingUp, TrendingDown, DollarSign, BarChart3, ArrowUpRight, ArrowDownRight, Activity, Users, Zap, RefreshCw } from 'lucide-react';
+import useAdvancedMetrics from '../hooks/useAdvancedMetrics';
 
 const AdvancedMetricsCard = () => {
-  const [metrics, setMetrics] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [trendingNarratives, setTrendingNarratives] = useState([]);
+  // Use the custom hook for advanced metrics data
+  const {
+    data,
+    loading,
+    error,
+    lastFetch,
+    isStale,
+    refresh
+  } = useAdvancedMetrics({
+    autoFetch: true,
+    refreshInterval: 300000, // 5 minutes fallback
+    onError: (err) => console.error('Advanced metrics error:', err),
+    onSuccess: (data) => console.log('Advanced metrics updated:', data)
+  });
 
-  useEffect(() => {
-    fetchAdvancedMetrics();
-  }, []);
-
-  const fetchAdvancedMetrics = async () => {
-    try {
-      setLoading(true);
-      const [metricsResponse, narrativesResponse] = await Promise.all([
-        axios.get('/api/advanced-metrics'),
-        axios.get('/api/trending-narratives')
-      ]);
-      setMetrics(metricsResponse.data);
-      setTrendingNarratives(narrativesResponse.data.narratives || []);
-    } catch (error) {
-      console.error('Error fetching advanced metrics:', error);
-      setError('Failed to load advanced metrics');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Extract data from the hook response
+  const metrics = data?.metrics;
+  const trendingNarratives = data?.trendingNarratives || [];
 
   const formatNumber = (num, decimals = 2) => {
     if (num === null || num === undefined) return 'N/A';
@@ -104,9 +97,27 @@ const AdvancedMetricsCard = () => {
 
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-      <div className="flex items-center space-x-3 mb-6">
-        <BarChart3 className="w-6 h-6 text-crypto-blue" />
-        <h2 className="text-xl font-semibold text-white">Advanced Metrics</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <BarChart3 className="w-6 h-6 text-crypto-blue" />
+          <h2 className="text-xl font-semibold text-white">Advanced Metrics</h2>
+        </div>
+        <div className="flex items-center space-x-2">
+          {lastFetch && (
+            <span className="text-xs text-slate-500">
+              {lastFetch.toLocaleTimeString()}
+              {isStale && <span className="text-yellow-400 ml-1">•</span>}
+            </span>
+          )}
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+            title="Refresh advanced metrics"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">

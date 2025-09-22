@@ -1,35 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Minus, DollarSign, Building2, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, Building2, Activity, RefreshCw } from 'lucide-react';
+import useMoneySupply from '../hooks/useMoneySupply';
 
 const MoneySupplyCard = () => {
-  const [moneySupplyData, setMoneySupplyData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetchMoneySupplyData();
-  }, []);
-
-  const fetchMoneySupplyData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch('/api/money-supply');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch money supply data');
-      }
-
-      const data = await response.json();
-      setMoneySupplyData(data);
-    } catch (err) {
-      console.error('Error fetching money supply data:', err);
-      setError('Failed to fetch money supply data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use the custom hook for money supply data
+  const {
+    data: moneySupplyData,
+    loading,
+    error,
+    lastFetch,
+    isStale,
+    refresh
+  } = useMoneySupply({
+    autoFetch: true,
+    refreshInterval: 300000, // 5 minutes fallback
+    onError: (err) => console.error('Money supply error:', err),
+    onSuccess: (data) => console.log('Money supply updated:', data)
+  });
 
   const formatCurrency = (value) => {
     if (value === null || value === undefined) return 'N/A';
@@ -101,11 +88,29 @@ const MoneySupplyCard = () => {
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
       {/* Header */}
-      <div className="flex items-center space-x-3 mb-6">
-        <h3 className="text-lg font-semibold text-white">Money Supply & Bank Reserves</h3>
-        <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
-          FRED Data
-        </span>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <h3 className="text-lg font-semibold text-white">Money Supply & Bank Reserves</h3>
+          <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+            FRED Data
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          {lastFetch && (
+            <span className="text-xs text-slate-500">
+              {lastFetch.toLocaleTimeString()}
+              {isStale && <span className="text-yellow-400 ml-1">•</span>}
+            </span>
+          )}
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+            title="Refresh money supply data"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Money Supply Grid */}

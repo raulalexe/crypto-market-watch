@@ -1,29 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, TrendingUp, TrendingDown, DollarSign, BarChart3, ChevronDown, ChevronRight, Activity, Users } from 'lucide-react';
-import axios from 'axios';
+import { Layers, TrendingUp, TrendingDown, DollarSign, BarChart3, ChevronDown, ChevronRight, Activity, Users, RefreshCw } from 'lucide-react';
+import useLayer1Data from '../hooks/useLayer1Data';
 
 const Layer1Card = () => {
-  const [layer1Data, setLayer1Data] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [expandedChains, setExpandedChains] = useState({});
 
-  useEffect(() => {
-    fetchLayer1Data();
-  }, []);
-
-  const fetchLayer1Data = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/layer1-data');
-      setLayer1Data(response.data);
-    } catch (error) {
-      console.error('Error fetching Layer 1 data:', error);
-      setError('Failed to load Layer 1 data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use the custom hook for layer1 data
+  const {
+    data: layer1Data,
+    loading,
+    error,
+    lastFetch,
+    isStale,
+    refresh
+  } = useLayer1Data({
+    autoFetch: true,
+    refreshInterval: 300000, // 5 minutes fallback
+    onError: (err) => console.error('Layer1 data error:', err),
+    onSuccess: (data) => console.log('Layer1 data updated:', data)
+  });
 
   const toggleChain = (chainId) => {
     setExpandedChains(prev => ({
@@ -133,9 +128,27 @@ const Layer1Card = () => {
 
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-      <div className="flex items-center space-x-3 mb-6">
-        <Layers className="w-6 h-6 text-crypto-blue" />
-        <h3 className="text-lg font-semibold text-white">Layer 1 Blockchains</h3>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <Layers className="w-6 h-6 text-crypto-blue" />
+          <h3 className="text-lg font-semibold text-white">Layer 1 Blockchains</h3>
+        </div>
+        <div className="flex items-center space-x-2">
+          {lastFetch && (
+            <span className="text-xs text-slate-500">
+              {lastFetch.toLocaleTimeString()}
+              {isStale && <span className="text-yellow-400 ml-1">•</span>}
+            </span>
+          )}
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+            title="Refresh layer1 data"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Summary Stats */}

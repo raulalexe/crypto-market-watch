@@ -702,19 +702,68 @@ app.get('/api/market-sentiment', async (req, res) => {
 // Get derivatives data
 app.get('/api/derivatives', async (req, res) => {
   try {
-    const { getLatestDerivativesData } = require('./database');
-    const derivatives = await getLatestDerivativesData();
+    const { getDerivativesData } = require('./database');
+    const allDerivatives = await getDerivativesData();
     
-    if (!derivatives) {
+    if (!allDerivatives || allDerivatives.length === 0) {
       return res.json({
-        btc_futures: null,
-        eth_futures: null,
-        sol_futures: null,
+        summary: {
+          totalOpenInterest: 0,
+          totalVolume24h: 0,
+          averageFundingRate: 0,
+          assetCount: 0
+        },
+        assets: {},
         message: 'No derivatives data available yet'
       });
     }
     
-    res.json(derivatives);
+    // Group data by asset
+    const assetsData = {};
+    let totalOpenInterest = 0;
+    let totalVolume24h = 0;
+    let totalFundingRate = 0;
+    let assetCount = 0;
+    
+    allDerivatives.forEach(derivative => {
+      const asset = derivative.asset;
+      
+      if (!assetsData[asset]) {
+        assetsData[asset] = {
+          asset: asset,
+          derivative_type: derivative.derivative_type,
+          open_interest: 0,
+          volume_24h: 0,
+          funding_rate: 0,
+          source: derivative.source,
+          timestamp: derivative.timestamp
+        };
+      }
+      
+      // Sum up the values (in case there are multiple records per asset)
+      assetsData[asset].open_interest += parseFloat(derivative.open_interest || 0);
+      assetsData[asset].volume_24h += parseFloat(derivative.volume_24h || 0);
+      assetsData[asset].funding_rate = parseFloat(derivative.funding_rate || 0); // Use latest funding rate
+      
+      // Add to totals
+      totalOpenInterest += parseFloat(derivative.open_interest || 0);
+      totalVolume24h += parseFloat(derivative.volume_24h || 0);
+      totalFundingRate += parseFloat(derivative.funding_rate || 0);
+      assetCount++;
+    });
+    
+    const averageFundingRate = assetCount > 0 ? totalFundingRate / assetCount : 0;
+    
+    res.json({
+      summary: {
+        totalOpenInterest,
+        totalVolume24h,
+        averageFundingRate,
+        assetCount: Object.keys(assetsData).length
+      },
+      assets: assetsData,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Error fetching derivatives data:', error);
     res.status(500).json({ error: 'Failed to fetch derivatives data' });
@@ -2522,41 +2571,21 @@ app.get('/api/correlation', async (req, res) => {
   try {
     console.log('📊 Fetching crypto correlation data...');
     
-    // Try to get crypto correlations from external API first
-    try {
-      const externalCorrelations = await fetchCryptoCorrelationsFromAPI();
-      if (externalCorrelations && Object.keys(externalCorrelations).length > 0) {
-        console.log('✅ Using external crypto correlation data');
-        return res.json(externalCorrelations);
-      }
-    } catch (externalError) {
-      console.log('⚠️ External API failed, falling back to local calculation:', externalError.message);
+    // Get correlation data from database (cached)
+    const { getLatestCorrelationData } = require('./database');
+    const correlationData = await getLatestCorrelationData();
+    
+    if (correlationData && Object.keys(correlationData).length > 0) {
+      console.log(`✅ Retrieved ${Object.keys(correlationData).length} correlation pairs from database`);
+      return res.json(correlationData);
     }
     
-    // Fallback: Calculate correlations locally using stored price data
-    console.log('📊 Calculating correlations from local price data...');
-    const localCorrelations = await calculateLocalCorrelations();
-    if (localCorrelations && Object.keys(localCorrelations).length > 0) {
-      console.log('✅ Using locally calculated correlation data');
-      return res.json(localCorrelations);
-    }
-    
-    // If both methods fail, provide realistic fallback correlations
-    console.log('❌ Both external API and local calculation failed, using fallback correlations');
-    const fallbackCorrelations = {
-      'BTC_ETH': 0.75,
-      'BTC_SOL': 0.65,
-      'BTC_SUI': 0.60,
-      'BTC_XRP': 0.70,
-      'ETH_SOL': 0.80,
-      'ETH_SUI': 0.70,
-      'ETH_XRP': 0.75,
-      'SOL_SUI': 0.85,
-      'SOL_XRP': 0.65,
-      'SUI_XRP': 0.60
-    };
-    console.log('✅ Using fallback correlation data');
-    return res.json(fallbackCorrelations);
+    // If no cached data available, return error
+    console.log('❌ No correlation data available in database');
+    return res.status(503).json({ 
+      error: 'Correlation data unavailable',
+      message: 'No correlation data available. Data collection may be needed.'
+    });
     
   } catch (error) {
     console.error('Error fetching correlation data:', error);
@@ -2568,104 +2597,139 @@ app.get('/api/correlation', async (req, res) => {
   }
 });
 
-// Function to fetch crypto correlations from external API
-async function fetchCryptoCorrelationsFromAPI() {
-  try {
-    // Use CryptoQuote's Correlation Matrix API
-    const symbols = 'BTCUSD,ETHUSD,SOLUSD,SUIUSD,XRPUSD';
-    const endDate = new Date().toISOString().split('T')[0]; // Today
-    const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days ago
-    
-    const apiUrl = `https://www.cryptoquote.io/analytics/v1/?api=correlation_matrix&symbols=${symbols}&start_date=${startDate}&end_date=${endDate}&key=${process.env.CRYPTOQUOTE_API_KEY || 'demo'}`;
-    
-    console.log(`🔗 Fetching correlations from: ${apiUrl.replace(process.env.CRYPTOQUOTE_API_KEY || 'demo', '***')}`);
-    
-    const axios = require('axios');
-    const response = await axios.get(apiUrl, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'CryptoMarketWatch/1.0'
-      }
-    });
-
-    const data = response.data;
-    console.log('📊 API Response:', JSON.stringify(data, null, 2));
-    
-    if (data && data.correlation_matrix) {
-      // Convert the correlation matrix to our expected format
-    const correlationData = {};
-      const matrix = data.correlation_matrix;
-      const symbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
-      
-      console.log('📊 Correlation matrix:', matrix);
-      
-      // Extract correlations from the matrix
-      for (let i = 0; i < symbols.length; i++) {
-        for (let j = i + 1; j < symbols.length; j++) {
-          const symbol1 = symbols[i];
-          const symbol2 = symbols[j];
-          const correlation = matrix[i] && matrix[i][j] ? matrix[i][j] : null;
-          
-          if (correlation !== null && !isNaN(correlation)) {
-            correlationData[`${symbol1}_${symbol2}`] = parseFloat(correlation);
-          }
-        }
-      }
-      
-      console.log(`✅ Retrieved ${Object.keys(correlationData).length} correlation pairs from external API`);
-      return correlationData;
-    }
-    
-    console.log('❌ Invalid response format - missing correlation_matrix:', data);
-    throw new Error('Invalid response format from correlation API');
-    
-  } catch (error) {
-    console.log('⚠️ External correlation API failed:', error.message);
-    throw error;
-  }
-}
 
 // Note: Fallback correlation values removed - crypto correlations are highly dynamic
 // and static values would be misleading. System now fails gracefully when API is unavailable.
 
-// Function to calculate correlations locally using real-time price data from CoinGecko
-async function calculateLocalCorrelations() {
+// Function to collect and store correlation data (called during data collection)
+async function collectCorrelationData() {
   try {
-    const cryptoSymbols = ['bitcoin', 'ethereum', 'solana', 'sui', 'xrp'];
-    const symbolMap = {
-      'bitcoin': 'BTC',
-      'ethereum': 'ETH', 
-      'solana': 'SOL',
-      'sui': 'SUI',
-      'xrp': 'XRP'
-    };
+    console.log('📊 Collecting correlation data for storage...');
+    
+    const { insertCorrelationData } = require('./database');
+    const correlationData = await calculateCorrelationsFromPriceData();
+    
+    if (correlationData && Object.keys(correlationData).length > 0) {
+      // Store each correlation pair in the database
+      for (const [pair, correlation] of Object.entries(correlationData)) {
+        const [symbol1, symbol2] = pair.split('_');
+        await insertCorrelationData(symbol1, symbol2, correlation, 30, 'pearson', 'calculated');
+      }
+      
+      console.log(`✅ Stored ${Object.keys(correlationData).length} correlation pairs in database`);
+      return correlationData;
+    }
+    
+    console.log('⚠️ No correlation data calculated');
+    return {};
+    
+  } catch (error) {
+    console.error('❌ Error collecting correlation data:', error.message);
+    return {};
+  }
+}
+
+// Function to calculate correlations from price data (used for collection)
+async function calculateCorrelationsFromPriceData() {
+  try {
+    console.log('📊 Calculating correlations from existing price data...');
+    
+    // Use existing price data from the database instead of making new API calls
+    const { getCryptoPrices } = require('./database');
+    const targetSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
     const correlationData = {};
     
-    // Fetch price data directly from CoinGecko API for correlation calculation
+    // Get price data for each symbol from the database
     const priceData = {};
-    const axios = require('axios');
-    
-    // Add rate limiting to avoid 429 errors
-    for (let i = 0; i < cryptoSymbols.length; i++) {
-      const coinId = cryptoSymbols[i];
+    for (const symbol of targetSymbols) {
       try {
-        // Add delay between requests to avoid rate limiting
-        if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
-        }
-        
-        const response = await axios.get(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=30&interval=daily`);
-        if (response.data && response.data.prices && response.data.prices.length > 0) {
-          // Extract daily closing prices
-          const prices = response.data.prices.map(pricePoint => pricePoint[1]).filter(price => price && !isNaN(price));
-          if (prices.length > 1) {
-            priceData[symbolMap[coinId]] = prices;
-            console.log(`📊 Fetched ${prices.length} price points for ${symbolMap[coinId]}`);
+        const prices = await getCryptoPrices(symbol, 30); // Get last 30 days
+        if (prices && prices.length > 0) {
+          // Extract just the price values
+          const priceValues = prices.map(p => parseFloat(p.price)).filter(p => !isNaN(p));
+          if (priceValues.length > 1) {
+            priceData[symbol] = priceValues;
+            console.log(`📊 Retrieved ${priceValues.length} price points for ${symbol} from database`);
           }
         }
       } catch (error) {
-        console.log(`⚠️ Could not fetch price data for ${coinId}:`, error.message);
-        // If we get rate limited, break out of the loop
+        console.log(`⚠️ Could not get price data for ${symbol}:`, error.message);
+      }
+    }
+    
+    // Calculate correlations between all pairs
+    for (let i = 0; i < targetSymbols.length; i++) {
+      for (let j = i + 1; j < targetSymbols.length; j++) {
+        const symbol1 = targetSymbols[i];
+        const symbol2 = targetSymbols[j];
+        
+        if (priceData[symbol1] && priceData[symbol2]) {
+          const correlation = calculateCorrelation(priceData[symbol1], priceData[symbol2]);
+          if (!isNaN(correlation)) {
+            correlationData[`${symbol1}_${symbol2}`] = correlation;
+            console.log(`📊 Calculated ${symbol1}_${symbol2} correlation: ${correlation.toFixed(3)}`);
+          }
+        }
+      }
+    }
+    
+    console.log(`✅ Calculated ${Object.keys(correlationData).length} correlation pairs from database price data`);
+    return correlationData;
+    
+  } catch (error) {
+    console.error('❌ Error calculating correlations from price data:', error.message);
+    return {};
+  }
+}
+
+// Fallback function to calculate correlations using free price data
+async function calculateFallbackCorrelations() {
+  try {
+    console.log('📊 FALLBACK: Calculating correlations using free price data sources...');
+    
+    const axios = require('axios');
+    const correlationData = {};
+    const targetSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
+    const priceData = {};
+    
+    // Use CoinGecko's free API with rate limiting
+    const coinGeckoIds = {
+      'BTC': 'bitcoin',
+      'ETH': 'ethereum', 
+      'SOL': 'solana',
+      'SUI': 'sui',
+      'XRP': 'ripple'
+    };
+    
+    // Fetch price data with delays to avoid rate limiting
+    for (const [symbol, coinId] of Object.entries(coinGeckoIds)) {
+      try {
+        console.log(`📊 Fetching price data for ${symbol}...`);
+        
+        const response = await axios.get(
+          `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=30&interval=daily`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'CryptoMarketWatch/1.0'
+            },
+            timeout: 10000
+          }
+        );
+        
+        if (response.data && response.data.prices && response.data.prices.length > 0) {
+          const prices = response.data.prices.map(pricePoint => pricePoint[1]).filter(price => price && !isNaN(price));
+          if (prices.length > 1) {
+            priceData[symbol] = prices;
+            console.log(`✅ Fetched ${prices.length} price points for ${symbol}`);
+          }
+        }
+        
+        // Add delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.log(`⚠️ Could not fetch price data for ${symbol}:`, error.message);
         if (error.response && error.response.status === 429) {
           console.log('⚠️ Rate limited by CoinGecko API, stopping requests');
           break;
@@ -2673,31 +2737,27 @@ async function calculateLocalCorrelations() {
       }
     }
     
-    console.log(`📊 Total symbols with price data: ${Object.keys(priceData).length}`);
-    
     // Calculate correlations between all pairs
-    for (let i = 0; i < cryptoSymbols.length; i++) {
-      for (let j = i + 1; j < cryptoSymbols.length; j++) {
-        const symbol1 = symbolMap[cryptoSymbols[i]];
-        const symbol2 = symbolMap[cryptoSymbols[j]];
+    for (let i = 0; i < targetSymbols.length; i++) {
+      for (let j = i + 1; j < targetSymbols.length; j++) {
+        const symbol1 = targetSymbols[i];
+        const symbol2 = targetSymbols[j];
         
         if (priceData[symbol1] && priceData[symbol2]) {
           const correlation = calculateCorrelation(priceData[symbol1], priceData[symbol2]);
-          console.log(`📊 Correlation ${symbol1}_${symbol2}: ${correlation}`);
           if (!isNaN(correlation)) {
-          correlationData[`${symbol1}_${symbol2}`] = correlation;
+            correlationData[`${symbol1}_${symbol2}`] = correlation;
+            console.log(`📊 Calculated ${symbol1}_${symbol2} correlation: ${correlation.toFixed(3)}`);
           }
-        } else {
-          console.log(`⚠️ Missing price data for ${symbol1} or ${symbol2}`);
         }
       }
     }
-
-    console.log(`✅ Calculated ${Object.keys(correlationData).length} correlation pairs from CoinGecko API`);
+    
+    console.log(`✅ Calculated ${Object.keys(correlationData).length} correlation pairs from price data`);
     return correlationData;
     
   } catch (error) {
-    console.error('❌ Error calculating local correlations:', error.message);
+    console.error('❌ Error in fallback correlation calculation:', error.message);
     return {};
   }
 }
@@ -2705,15 +2765,19 @@ async function calculateLocalCorrelations() {
 // Helper function to calculate correlation between two price series
 function calculateCorrelation(prices1, prices2) {
   const minLength = Math.min(prices1.length, prices2.length);
+  if (minLength < 2) return 0;
+  
   const returns1 = [];
   const returns2 = [];
 
   for (let i = 1; i < minLength; i++) {
-    const return1 = (prices1[i].price - prices1[i-1].price) / prices1[i-1].price;
-    const return2 = (prices2[i].price - prices2[i-1].price) / prices2[i-1].price;
+    const return1 = (prices1[i] - prices1[i-1]) / prices1[i-1];
+    const return2 = (prices2[i] - prices2[i-1]) / prices2[i-1];
     returns1.push(return1);
     returns2.push(return2);
   }
+
+  if (returns1.length < 2) return 0;
 
   const mean1 = returns1.reduce((sum, val) => sum + val, 0) / returns1.length;
   const mean2 = returns2.reduce((sum, val) => sum + val, 0) / returns2.length;
@@ -2733,6 +2797,14 @@ function calculateCorrelation(prices1, prices2) {
   const correlation = numerator / Math.sqrt(denominator1 * denominator2);
   return isNaN(correlation) ? 0 : correlation;
 }
+
+// Function to supplement correlation data if API doesn't provide enough
+async function supplementWithCalculatedCorrelations(correlationData, targetSymbols) {
+  // This function would be called if the API doesn't provide enough correlation pairs
+  // For now, we'll just log that we need more data
+  console.log('📊 API provided limited data, would supplement with calculated correlations if needed');
+}
+
 
 // Get historical data
 app.get('/api/history/:dataType', async (req, res) => {
@@ -3054,7 +3126,15 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
       fearGreed,
       narratives,
       backtestMetrics,
-      upcomingEvents
+      upcomingEvents,
+      inflationData,
+      correlationData,
+      advancedMetrics,
+      marketSentiment,
+      derivativesData,
+      onchainData,
+      moneySupplyData,
+      layer1Data
     ] = await Promise.all([
       dataCollector.getMarketDataSummary(),
       aiAnalyzer.getAnalysisSummary(),
@@ -3067,7 +3147,128 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
         return await getProcessedTrendingNarratives(5);
       })(),
       aiAnalyzer.getBacktestMetrics(),
-      eventCollector.getUpcomingEvents(10)
+      eventCollector.getUpcomingEvents(10),
+      (async () => {
+        const { getLatestInflationData } = require('./database');
+        const [cpiData, pceData, ppiData] = await Promise.all([
+          getLatestInflationData('CPI'),
+          getLatestInflationData('PCE'),
+          getLatestInflationData('PPI')
+        ]);
+        return { cpi: cpiData, pce: pceData, ppi: ppiData };
+      })(),
+      (async () => {
+        try {
+          const { getLatestCorrelationData } = require('./database');
+          return await getLatestCorrelationData();
+        } catch (error) {
+          console.log('⚠️ Could not fetch correlation data:', error.message);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getLatestBitcoinDominance, getLatestStablecoinMetrics, getLatestExchangeFlows } = require('./database');
+          const [bitcoinDominance, stablecoinMetrics, exchangeFlows] = await Promise.all([
+            getLatestBitcoinDominance(),
+            getLatestStablecoinMetrics(),
+            getLatestExchangeFlows()
+          ]);
+          return { bitcoinDominance, stablecoinMetrics, exchangeFlows };
+        } catch (error) {
+          console.log('⚠️ Could not fetch advanced metrics:', error.message);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          // Market sentiment would be derived from fear/greed and other indicators
+          return { sentiment: 'neutral', confidence: 0.5 };
+        } catch (error) {
+          console.log('⚠️ Could not fetch market sentiment:', error.message);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getDerivativesData } = require('./database');
+          const allDerivatives = await getDerivativesData();
+          if (!allDerivatives || allDerivatives.length === 0) {
+            return null;
+          }
+          // Group and aggregate derivatives data
+          const assetsData = {};
+          let totalOpenInterest = 0;
+          let totalVolume24h = 0;
+          let totalFundingRate = 0;
+          let assetCount = 0;
+
+          allDerivatives.forEach(derivative => {
+            const asset = derivative.asset;
+            if (!assetsData[asset]) {
+              assetsData[asset] = {
+                asset: asset,
+                derivative_type: derivative.derivative_type,
+                open_interest: 0,
+                volume_24h: 0,
+                funding_rate: 0,
+                source: derivative.source,
+                timestamp: derivative.timestamp
+              };
+            }
+            assetsData[asset].open_interest += parseFloat(derivative.open_interest || 0);
+            assetsData[asset].volume_24h += parseFloat(derivative.volume_24h || 0);
+            assetsData[asset].funding_rate = parseFloat(derivative.funding_rate || 0);
+            totalOpenInterest += parseFloat(derivative.open_interest || 0);
+            totalVolume24h += parseFloat(derivative.volume_24h || 0);
+            totalFundingRate += parseFloat(derivative.funding_rate || 0);
+            assetCount++;
+          });
+
+          const averageFundingRate = assetCount > 0 ? totalFundingRate / assetCount : 0;
+          return {
+            summary: { totalOpenInterest, totalVolume24h, averageFundingRate, assetCount: Object.keys(assetsData).length },
+            assets: assetsData,
+            timestamp: new Date().toISOString()
+          };
+        } catch (error) {
+          console.log('⚠️ Could not fetch derivatives data:', error.message);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getOnchainData } = require('./database');
+          return await getOnchainData();
+        } catch (error) {
+          console.log('⚠️ Could not fetch onchain data:', error.message);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getLatestMoneySupplyData } = require('./database');
+          const [m1Data, m2Data, m3Data, bankReservesData] = await Promise.all([
+            getLatestMoneySupplyData('M1'),
+            getLatestMoneySupplyData('M2'),
+            getLatestMoneySupplyData('M3'),
+            getLatestMoneySupplyData('BANK_RESERVES')
+          ]);
+          return { m1: m1Data, m2: m2Data, m3: m3Data, bankReserves: bankReservesData };
+        } catch (error) {
+          console.log('⚠️ Could not fetch money supply data:', error.message);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getLayer1Data } = require('./database');
+          return await getLayer1Data();
+        } catch (error) {
+          console.log('⚠️ Could not fetch layer1 data:', error.message);
+          return null;
+        }
+      })()
     ]);
 
     // Add subscription status if user is authenticated
@@ -3094,6 +3295,14 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
       trendingNarratives: narratives,
       backtestResults: backtestMetrics,
       upcomingEvents,
+      inflationData,
+      correlationData,
+      advancedMetrics,
+      marketSentiment,
+      derivativesData,
+      onchainData,
+      moneySupplyData,
+      layer1Data,
       subscriptionStatus,
       lastCollectionTime,
       timestamp: lastCollectionTime || new Date().toISOString()
@@ -3348,12 +3557,9 @@ app.get('/api/inflation/latest', async (req, res) => {
     // Check if we have cached data that's still fresh
     if (inflationDataCache && inflationDataCacheTime && 
         (now - inflationDataCacheTime) < INFLATION_CACHE_DURATION) {
-      console.log('📊 INFLATION LATEST ENDPOINT CALLED - USING CACHED DATA');
       return res.json(inflationDataCache);
     }
     
-    console.log('📊 INFLATION LATEST ENDPOINT CALLED - USING DATABASE DATA');
-    // Get data from database only
     const { getLatestInflationDataAll } = require('./database');
     const dbData = await getLatestInflationDataAll();
     
@@ -5556,4 +5762,5 @@ process.on('SIGTERM', () => {
   });
 });
 
-module.exports = app;
+// Export correlation collection function for use by dataCollector
+module.exports = { app, collectCorrelationData };

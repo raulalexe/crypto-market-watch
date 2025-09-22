@@ -220,7 +220,11 @@ const Dashboard = ({ isAuthenticated, userData }) => {
           />
         )}
         
-        <AIAnalysisCard data={dashboardData?.aiAnalysis} />
+        <AIAnalysisCard 
+          autoFetch={true}
+          refreshInterval={300000} // 5 minutes fallback
+          showRefreshButton={false} // WebSocket handles real-time updates
+        />
         
         {/* Inflation Data Card */}
         <InflationDataCard userData={userData} />
