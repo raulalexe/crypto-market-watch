@@ -36,7 +36,7 @@ console.log('📝 Payload:', JSON.stringify(testPayload, null, 2));
 console.log('🔐 Signature:', stripeSignature);
 
 // Test the webhook
-fetch('https://crypto-market-watch.xyz/api/webhooks/stripe', {
+fetch('https://www.crypto-market-watch.xyz/api/webhooks/stripe', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',

@@ -26,10 +26,8 @@ class WebSocketService {
         console.log('🔌 WebSocket URL from config:', serverUrl);
       } catch (error) {
         console.warn('Failed to fetch WebSocket URL from config, using fallback:', error);
-        // Fallback to environment variable or window.location.origin
-        serverUrl = process.env.NODE_ENV === 'production' 
-          ? (process.env.REACT_APP_API_URL || window.location.origin)
-          : 'http://localhost:3001';
+        // Fallback to window.location.origin
+        serverUrl = window.location.origin;
       }
 
       this.socket = io(serverUrl, {

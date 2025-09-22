@@ -2,13 +2,9 @@
 // This service provides the correct backend API URL based on the environment
 
 const getApiBaseUrl = () => {
-  // In development, use the proxy (localhost:3001)
-  if (process.env.NODE_ENV === 'development') {
-    return '';
-  }
-  
-  // In production, use the environment variable or fallback to relative URLs
-  return process.env.REACT_APP_API_URL || '';
+  // Always use relative URLs (same domain)
+  // This works for both development (proxy) and production (same domain)
+  return '';
 };
 
 // Helper function to build full API URLs

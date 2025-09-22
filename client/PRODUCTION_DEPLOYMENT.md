@@ -11,7 +11,6 @@ The compiled JavaScript contains hardcoded `http://localhost` URLs which Chrome 
 Create a `.env.production` file in the client directory:
 
 ```bash
-REACT_APP_API_URL=https://your-production-domain.com
 REACT_APP_ENVIRONMENT=production
 ```
 
@@ -39,12 +38,12 @@ npm run vercel-build
 ### 4. API URL Resolution
 
 - **Development**: Uses proxy (`http://localhost:3001`)
-- **Production**: Uses `REACT_APP_API_URL` environment variable
+- **Production**: Uses relative URLs (same domain)
 - **Fallback**: Uses relative URLs if no environment variable set
 
 ### 5. Deployment Steps
 
-1. Set `REACT_APP_API_URL` to your production backend URL
+1. Ensure `BASE_URL` is set to your production domain
 2. Run `npm run build:prod`
 3. Deploy the `build/` folder
 4. Ensure your backend is accessible at the configured URL
@@ -53,7 +52,7 @@ npm run vercel-build
 
 ```bash
 # .env.production
-REACT_APP_API_URL=https://api.yourdomain.com
+BASE_URL=https://yourdomain.com
 REACT_APP_ENVIRONMENT=production
 ```
 
