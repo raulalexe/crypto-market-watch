@@ -216,6 +216,14 @@ initDatabase().then(async () => {
       console.log('⚠️  Admin creation failed:', error.message);
     }
   }
+  
+  // Fix existing subscriptions (migrate from subscriptions table to users table)
+  try {
+    const { fixExistingSubscriptions } = require('../scripts/fix-existing-subscriptions');
+    await fixExistingSubscriptions();
+  } catch (error) {
+    console.log('⚠️  Subscription fix failed:', error.message);
+  }
 }).catch(err => {
   console.error('Database initialization failed:', err);
 });

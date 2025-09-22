@@ -31,31 +31,30 @@ async function createUser(client, email, password, planType, isAdmin) {
     if (isAdmin && !user.is_admin) {
       console.log('🔄 Updating user to admin...');
       await client.query(
-        'UPDATE users SET is_admin = true, email_verified = true, updated_at = NOW() WHERE id = $1',
-        [user.id]
-      );
-      
-      // Update subscription to admin
-      await client.query(
-        'UPDATE subscriptions SET plan_type = $1, status = $2 WHERE user_id = $3',
-        ['admin', 'active', user.id]
+        'UPDATE users SET is_admin = true, email_verified = true, subscription_plan = $1, subscription_expires_at = NULL, updated_at = NOW() WHERE id = $2',
+        ['admin', user.id]
       );
       console.log('✅ User updated to admin');
     } else if (!isAdmin && user.is_admin) {
       console.log('🔄 Updating admin to regular user...');
       await client.query(
-        'UPDATE users SET is_admin = false, updated_at = NOW() WHERE id = $1',
-        [user.id]
-      );
-      
-      // Update subscription to pro
-      await client.query(
-        'UPDATE subscriptions SET plan_type = $1, status = $2 WHERE user_id = $3',
-        ['pro', 'active', user.id]
+        'UPDATE users SET is_admin = false, subscription_plan = $1, subscription_expires_at = NULL, updated_at = NOW() WHERE id = $2',
+        ['pro', user.id]
       );
       console.log('✅ User updated to pro');
     } else {
-      console.log(`✅ User is already configured as ${planType} - no action needed`);
+      // Check if subscription_plan needs to be updated
+      const currentPlan = user.subscription_plan || 'free';
+      if (currentPlan !== planType) {
+        console.log(`🔄 Updating subscription plan from ${currentPlan} to ${planType}...`);
+        await client.query(
+          'UPDATE users SET subscription_plan = $1, subscription_expires_at = NULL, updated_at = NOW() WHERE id = $2',
+          [planType, user.id]
+        );
+        console.log(`✅ Subscription plan updated to ${planType}`);
+      } else {
+        console.log(`✅ User is already configured as ${planType} - no action needed`);
+      }
     }
     
   } else {
@@ -66,25 +65,16 @@ async function createUser(client, email, password, planType, isAdmin) {
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
     
-    // Create user
+    // Create user with subscription plan
     const userResult = await client.query(
-      `INSERT INTO users (email, password_hash, is_admin, email_verified, created_at, updated_at) 
-       VALUES ($1, $2, $3, true, NOW(), NOW()) 
+      `INSERT INTO users (email, password_hash, is_admin, email_verified, subscription_plan, subscription_expires_at, created_at, updated_at) 
+       VALUES ($1, $2, $3, true, $4, NULL, NOW(), NOW()) 
        RETURNING id`,
-      [email, passwordHash, isAdmin]
+      [email, passwordHash, isAdmin, planType]
     );
     
     const userId = userResult.rows[0].id;
-    console.log(`✅ ${planType.toUpperCase()} user created`);
-    
-    // Create subscription
-    console.log(`💳 Creating ${planType} subscription...`);
-    await client.query(
-      `INSERT INTO subscriptions (user_id, plan_type, status, created_at) 
-       VALUES ($1, $2, 'active', NOW())`,
-      [userId, planType]
-    );
-    console.log(`✅ ${planType.toUpperCase()} subscription created`);
+    console.log(`✅ ${planType.toUpperCase()} user created with ${planType} subscription`);
   }
 }
 

@@ -1,18 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { WifiOff, AlertTriangle, RefreshCw } from 'lucide-react';
 import websocketService from '../services/websocketService';
+import authService from '../services/authService';
 
 const WebSocketMaintenanceScreen = ({ children }) => {
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [disconnectedTime, setDisconnectedTime] = useState(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [lastConnectedTime, setLastConnectedTime] = useState(Date.now());
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    // Check if disconnected page is enabled via environment variable
+    const isDisconnectedPageEnabled = process.env.REACT_APP_DISCONNECTED_PAGE_ENABLED === 'true';
+    if (!isDisconnectedPageEnabled) {
+      setIsMaintenanceMode(false);
+      return;
+    }
+
+    // Check if user is authenticated
+    const checkAuth = () => {
+      const authenticated = authService.isAuthenticated();
+      setIsAuthenticated(authenticated);
+      return authenticated;
+    };
+
+    // Only monitor WebSocket connection for authenticated users
+    if (!checkAuth()) {
+      setIsMaintenanceMode(false);
+      return;
+    }
+
     let maintenanceTimer;
     let reconnectCheckInterval;
 
     const checkConnectionStatus = () => {
+      // Only check connection if user is authenticated
+      if (!authService.isAuthenticated()) {
+        setIsMaintenanceMode(false);
+        return;
+      }
+
       const isConnected = websocketService.isConnectedToServer();
       const connectionState = websocketService.getConnectionState();
       
@@ -71,11 +99,21 @@ const WebSocketMaintenanceScreen = ({ children }) => {
         websocketService.socket.off('disconnect', handleDisconnect);
       }
     };
-  }, [disconnectedTime]);
+  }, [disconnectedTime, process.env.REACT_APP_DISCONNECTED_PAGE_ENABLED]);
 
   const handleRetryConnection = () => {
+    // Only retry if user is authenticated
+    if (!authService.isAuthenticated()) {
+      return;
+    }
+
     // Force a reconnection attempt
-    if (websocketService.socket) {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      websocketService.connect(token).catch(error => {
+        console.error('Manual retry connection failed:', error);
+      });
+    } else if (websocketService.socket) {
       websocketService.socket.connect();
     }
   };
@@ -95,7 +133,9 @@ const WebSocketMaintenanceScreen = ({ children }) => {
     }
   };
 
-  if (!isMaintenanceMode) {
+  // Don't show maintenance screen if disabled via environment variable
+  const isDisconnectedPageEnabled = process.env.REACT_APP_DISCONNECTED_PAGE_ENABLED === 'true';
+  if (!isDisconnectedPageEnabled || !isMaintenanceMode) {
     return children;
   }
 

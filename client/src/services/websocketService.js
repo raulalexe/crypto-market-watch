@@ -17,7 +17,7 @@ class WebSocketService {
 
     return new Promise((resolve, reject) => {
       const serverUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://www.crypto-market-watch.xyz'
+        ? (process.env.REACT_APP_API_URL || 'https://www.crypto-market-watch.xyz')
         : 'http://localhost:3001';
 
       this.socket = io(serverUrl, {

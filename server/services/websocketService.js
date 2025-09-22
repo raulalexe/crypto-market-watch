@@ -8,11 +8,22 @@ class WebSocketService {
   }
 
   initialize(server) {
+    // Build allowed origins for production
+    const allowedOrigins = process.env.NODE_ENV === 'production' 
+      ? ['https://www.crypto-market-watch.xyz']
+      : ['http://localhost:3000', 'http://localhost:3001'];
+    
+    // Add Railway URLs if available
+    if (process.env.RAILWAY_STATIC_URL) {
+      allowedOrigins.push(process.env.RAILWAY_STATIC_URL);
+    }
+    if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+      allowedOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+    }
+
     this.io = new Server(server, {
       cors: {
-        origin: process.env.NODE_ENV === 'production' 
-          ? ['https://www.crypto-market-watch.xyz']
-          : ['http://localhost:3000', 'http://localhost:3001'],
+        origin: allowedOrigins,
         methods: ['GET', 'POST'],
         credentials: true
       },

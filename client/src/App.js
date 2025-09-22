@@ -88,6 +88,14 @@ function App() {
     if (authService.isAuthenticated()) {
       setIsAuthenticated(true);
       fetchUserData();
+      
+      // Initialize WebSocket connection for authenticated users
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        websocketService.connect(token).catch(error => {
+          console.error('WebSocket connection failed:', error);
+        });
+      }
     }
     
     fetchDashboardData();
@@ -133,13 +141,20 @@ function App() {
     setIsAuthenticated(true);
     await fetchUserData();
     
+    // Initialize WebSocket connection after successful authentication
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      websocketService.connect(token).catch(error => {
+        console.error('WebSocket connection failed after auth:', error);
+      });
+    }
+    
     // Clear auth parameters from URL after successful authentication
     const url = new URL(window.location);
     url.searchParams.delete('auth');
     window.history.replaceState({}, '', url.toString());
     
     // Check if user is admin and refresh page to ensure all components update properly
-    const token = localStorage.getItem('authToken');
     if (token) {
       try {
         const response = await axios.get('/api/subscription', {

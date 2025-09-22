@@ -188,6 +188,8 @@ const initDatabase = async () => {
         email_verified BOOLEAN DEFAULT FALSE,
         confirmation_token VARCHAR(500),
         stripe_customer_id VARCHAR(255),
+        subscription_plan VARCHAR(50) DEFAULT 'free',
+        subscription_expires_at TIMESTAMP,
         email_notifications BOOLEAN DEFAULT FALSE,
         push_notifications BOOLEAN DEFAULT FALSE,
         telegram_notifications BOOLEAN DEFAULT FALSE,
@@ -241,6 +243,25 @@ const initDatabase = async () => {
     `);
     
     // Ensure all required columns exist (for existing databases)
+    
+    // Add subscription columns to users table if they don't exist
+    try {
+      await client.query(`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50) DEFAULT 'free'
+      `);
+    } catch (error) {
+      // Column might already exist, ignore error
+    }
+    
+    try {
+      await client.query(`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP
+      `);
+    } catch (error) {
+      // Column might already exist, ignore error
+    }
     
     // Add updated_at column to subscriptions table if it doesn't exist
     await client.query(`
