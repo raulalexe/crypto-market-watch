@@ -23,6 +23,7 @@ class WebSocketService {
         const response = await fetch('/api/config');
         const config = await response.json();
         serverUrl = config.websocketUrl;
+        console.log('🔌 WebSocket URL from config:', serverUrl);
       } catch (error) {
         console.warn('Failed to fetch WebSocket URL from config, using fallback:', error);
         // Fallback to environment variable or window.location.origin
