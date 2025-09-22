@@ -121,6 +121,30 @@ class WalletPaymentService {
         return { success: false, error: 'Transaction failed' };
       }
 
+      // Check if transaction is recent (within 1 hour) to prevent replay attacks
+      const blockNumber = parseInt(receipt.blockNumber, 16);
+      const blockResponse = await axios.post(this.baseRpcUrl, {
+        jsonrpc: '2.0',
+        method: 'eth_getBlockByNumber',
+        params: [`0x${blockNumber.toString(16)}`, false],
+        id: 3
+      });
+
+      if (!blockResponse.data.result) {
+        console.log('❌ Block not found');
+        return { success: false, error: 'Transaction block not found' };
+      }
+
+      const block = blockResponse.data.result;
+      const blockTimestamp = parseInt(block.timestamp, 16);
+      const currentTime = Math.floor(Date.now() / 1000);
+      const maxAge = 60 * 60; // 1 hour in seconds
+
+      if (currentTime - blockTimestamp > maxAge) {
+        console.log('❌ Transaction too old');
+        return { success: false, error: 'Transaction is too old. Must be within 1 hour. Contact support if you need assistance.' };
+      }
+
       // Check if it's a USDC transfer
       if (tx.to.toLowerCase() !== this.baseUsdcAddress.toLowerCase()) {
         console.log('❌ Not a USDC transaction');
@@ -153,11 +177,10 @@ class WalletPaymentService {
         return { success: false, error: 'Transaction sent to wrong address' };
       }
 
-      // Verify amount (allow small tolerance for gas fees)
-      const tolerance = 0.01; // 1 cent tolerance
-      if (Math.abs(amount - expectedAmount) > tolerance) {
-        console.log('❌ Wrong amount');
-        return { success: false, error: `Wrong amount. Expected ${expectedAmount} USDC, got ${amount} USDC` };
+      // Verify amount - accept payments >= expected amount (users might send round numbers)
+      if (amount < expectedAmount) {
+        console.log('❌ Insufficient amount');
+        return { success: false, error: `Insufficient amount. Expected at least ${expectedAmount} USDC, got ${amount} USDC` };
       }
 
       console.log('✅ Transaction verified successfully');
@@ -430,6 +453,15 @@ class WalletPaymentService {
         return { success: false, error: 'Transaction failed' };
       }
 
+      // Check if transaction is recent (within 1 hour) to prevent replay attacks
+      const currentTime = Math.floor(Date.now() / 1000);
+      const maxAge = 60 * 60; // 1 hour in seconds
+
+      if (tx.blockTime && (currentTime - tx.blockTime) > maxAge) {
+        console.log('❌ Transaction too old');
+        return { success: false, error: 'Transaction is too old. Must be within 1 hour. Contact support if you need assistance.' };
+      }
+
       // Check if it's a USDC transfer
       const usdcMint = this.solanaUsdcAddress;
       let transferFound = false;
@@ -475,11 +507,10 @@ class WalletPaymentService {
         return { success: false, error: 'Transaction sent to wrong address' };
       }
 
-      // Verify amount (allow small tolerance for gas fees)
-      const tolerance = 0.01; // 1 cent tolerance
-      if (Math.abs(actualAmount - expectedAmount) > tolerance) {
-        console.log('❌ Wrong amount');
-        return { success: false, error: `Wrong amount. Expected ${expectedAmount} USDC, got ${actualAmount} USDC` };
+      // Verify amount - accept payments >= expected amount (users might send round numbers)
+      if (actualAmount < expectedAmount) {
+        console.log('❌ Insufficient amount');
+        return { success: false, error: `Insufficient amount. Expected at least ${expectedAmount} USDC, got ${actualAmount} USDC` };
       }
 
       console.log('✅ Solana transaction verified successfully');
