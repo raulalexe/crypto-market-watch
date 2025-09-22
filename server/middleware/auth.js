@@ -2,6 +2,13 @@ const jwt = require('jsonwebtoken');
 const { getUserById } = require('../database');
 const { SUBSCRIPTION_TYPES } = require('../constants/subscriptionTypes');
 
+// Ensure JWT_SECRET is set
+if (!process.env.JWT_SECRET) {
+  console.error('❌ CRITICAL ERROR: JWT_SECRET environment variable is required');
+  console.error('   Please set JWT_SECRET in your environment variables');
+  process.exit(1);
+}
+
 // Authentication middleware
 const authenticateToken = async (req, res, next) => {
   console.log('🔐 Authentication middleware called for:', req.path);

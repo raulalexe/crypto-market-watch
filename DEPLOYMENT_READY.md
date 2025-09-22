@@ -62,7 +62,6 @@ VENICE_AI_API_KEY=your_key_here
 
 # JWT Configuration
 JWT_SECRET=your_secure_random_string_here
-JWT_EXPIRES_IN=7d
 
 # Payment Configuration (if using)
 STRIPE_SECRET_KEY=sk_test_...

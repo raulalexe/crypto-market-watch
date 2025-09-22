@@ -44,7 +44,6 @@ VENICE_AI_API_KEY=your_venice_ai_key_here
 
 # JWT Configuration
 JWT_SECRET=your_secure_jwt_secret_here
-JWT_EXPIRES_IN=7d
 
 # Stripe Configuration (if using payments)
 STRIPE_SECRET_KEY=your_stripe_secret_key_here

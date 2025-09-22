@@ -2142,7 +2142,7 @@ const unsubscribeFromEmailNotifications = (email, token) => {
     // For simplicity, we'll use a simple hash-based token
     const crypto = require('crypto');
     const expectedToken = crypto.createHash('sha256')
-      .update(email + process.env.JWT_SECRET || 'default-secret')
+      .update(email + process.env.JWT_SECRET)
       .digest('hex');
     
     if (token !== expectedToken) {

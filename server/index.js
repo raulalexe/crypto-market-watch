@@ -5,6 +5,14 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cron = require('node-cron');
 const multer = require('multer');
+
+// Ensure JWT_SECRET is set - CRITICAL for security
+if (!process.env.JWT_SECRET) {
+  console.error('❌ CRITICAL ERROR: JWT_SECRET environment variable is required');
+  console.error('   Please set JWT_SECRET in your environment variables');
+  console.error('   This is required for secure JWT token generation and verification');
+  process.exit(1);
+}
 // Stripe key selection based on NODE_ENV
 // Production: STRIPE_SECRET_KEY (live keys)
 // Development: STRIPE_TEST_SECRET_KEY (test keys)
@@ -4463,7 +4471,7 @@ app.post('/api/auth/login', validateRequestBody(VALIDATION_RULES.userLogin), asy
     throw createError.authentication('Invalid credentials');
   }
   
-  const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+  const jwtSecret = process.env.JWT_SECRET;
   
   const token = jwt.sign(
     { userId: user.id, email: user.email },
@@ -4510,7 +4518,7 @@ app.post('/api/auth/register', validateRequestBody(VALIDATION_RULES.userRegistra
     // Generate confirmation token
     const confirmationToken = jwt.sign(
       { email, type: 'email_confirmation' },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
     
@@ -4557,7 +4565,7 @@ app.post('/api/auth/resend-confirmation', async (req, res) => {
     // Generate new confirmation token
     const confirmationToken = jwt.sign(
       { email, type: 'email_confirmation' },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
     
@@ -4594,7 +4602,7 @@ app.get('/api/auth/confirm-email', async (req, res) => {
     }
     
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     if (decoded.type !== 'email_confirmation') {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -4632,7 +4640,7 @@ app.get('/api/auth/confirm-email', async (req, res) => {
     // Generate login token
     const loginToken = jwt.sign(
       { userId: user.id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
     
