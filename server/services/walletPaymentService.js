@@ -284,8 +284,41 @@ class WalletPaymentService {
 
       console.log(`✅ Subscription activated for user ${payment.user_id}, plan ${payment.plan_type}`);
       
-      // Send confirmation email
-      // TODO: Implement email confirmation
+      // Send upgrade email (same as Stripe payments)
+      try {
+        const { getUserById } = require('../database');
+        const user = await getUserById(payment.user_id);
+        if (user && user.email) {
+          const EmailService = require('./emailService');
+          const emailService = new EmailService();
+          
+          // Get plan name from plan type
+          const planName = this.getPlanName(payment.plan_type);
+          
+          const subscriptionDetails = {
+            current_period_start: startDate,
+            current_period_end: endDate,
+            payment_method: 'crypto',
+            payment_id: payment.id || 'crypto_payment'
+          };
+
+          const emailSent = await emailService.sendUpgradeEmail(
+            user.email, 
+            user.email.split('@')[0], 
+            planName, 
+            subscriptionDetails
+          );
+          
+          if (emailSent) {
+            console.log(`📧 Upgrade email sent to ${user.email} for ${planName} subscription`);
+          } else {
+            console.log(`⚠️ Failed to send upgrade email to ${user.email}`);
+          }
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending upgrade email:', emailError);
+        // Don't throw the error - subscription activation should still succeed
+      }
       
       return true;
     } catch (error) {
@@ -479,6 +512,17 @@ class WalletPaymentService {
     }
   }
 
+  // Get plan name from plan type
+  getPlanName(planType) {
+    const planNames = {
+      'pro': 'Pro Plan',
+      'premium': 'Premium Plan',
+      'enterprise': 'Enterprise Plan',
+      'free': 'Free Plan'
+    };
+    return planNames[planType] || 'Pro Plan';
+  }
+
   // Activate subscription for a specific user and payment
   async activateSubscription(userId, paymentId) {
     try {
@@ -502,8 +546,41 @@ class WalletPaymentService {
 
       console.log(`✅ Subscription activated for user ${userId}, plan ${planType}, expires ${endDate}`);
       
-      // Send confirmation email
-      // TODO: Implement email confirmation
+      // Send upgrade email (same as Stripe payments)
+      try {
+        const { getUserById } = require('../database');
+        const user = await getUserById(userId);
+        if (user && user.email) {
+          const EmailService = require('./emailService');
+          const emailService = new EmailService();
+          
+          // Get plan name from plan type
+          const planName = this.getPlanName(planType);
+          
+          const subscriptionDetails = {
+            current_period_start: startDate,
+            current_period_end: endDate,
+            payment_method: 'crypto',
+            payment_id: paymentId
+          };
+
+          const emailSent = await emailService.sendUpgradeEmail(
+            user.email, 
+            user.email.split('@')[0], 
+            planName, 
+            subscriptionDetails
+          );
+          
+          if (emailSent) {
+            console.log(`📧 Upgrade email sent to ${user.email} for ${planName} subscription`);
+          } else {
+            console.log(`⚠️ Failed to send upgrade email to ${user.email}`);
+          }
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending upgrade email:', emailError);
+        // Don't throw the error - subscription activation should still succeed
+      }
       
       return true;
     } catch (error) {

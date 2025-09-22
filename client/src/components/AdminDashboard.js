@@ -18,13 +18,96 @@ import {
   Mail,
   Calendar,
   Clock,
-  Filter
+  Filter,
+  CreditCard,
+  X
 } from 'lucide-react';
 import ToastNotification from './ToastNotification';
 import TelegramManagement from './TelegramManagement';
 import AdminEmailInterface from './AdminEmailInterface';
 
 import { Link } from 'react-router-dom';
+
+// Plan Change Form Component
+const PlanChangeForm = ({ user, onSave, onCancel, loading }) => {
+  const [selectedPlan, setSelectedPlan] = useState(user.plan);
+  const [months, setMonths] = useState(1);
+
+  const plans = [
+    { id: 'free', name: 'Free', description: 'Basic features' },
+    { id: 'pro', name: 'Pro', description: 'Advanced features' },
+    { id: 'premium', name: 'Premium', description: 'All features' },
+    { id: 'admin', name: 'Admin', description: 'Full access' }
+  ];
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(user.id, selectedPlan, months);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Select New Plan
+        </label>
+        <select
+          value={selectedPlan}
+          onChange={(e) => setSelectedPlan(e.target.value)}
+          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {plans.map(plan => (
+            <option key={plan.id} value={plan.id}>
+              {plan.name} - {plan.description}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {(selectedPlan === 'pro' || selectedPlan === 'premium') && (
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Duration (months)
+          </label>
+          <select
+            value={months}
+            onChange={(e) => setMonths(parseInt(e.target.value))}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value={1}>1 month</option>
+            <option value={3}>3 months</option>
+            <option value={6}>6 months</option>
+            <option value={12}>12 months</option>
+          </select>
+        </div>
+      )}
+
+      <div className="flex gap-3 pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Changing...
+            </>
+          ) : (
+            'Change Plan'
+          )}
+        </button>
+      </div>
+    </form>
+  );
+};
 
 const AdminDashboard = ({ isAuthenticated, userData }) => {
   const [activeTab, setActiveTab] = useState('collections');
@@ -42,6 +125,9 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
   const [deletingUser, setDeletingUser] = useState(null);
   const [events, setEvents] = useState([]);
   const [eventsFilter, setEventsFilter] = useState('all'); // 'all', 'upcoming', 'past'
+  const [changingPlan, setChangingPlan] = useState(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const tabs = [
     { id: 'collections', name: 'Database Collections', icon: Database },
@@ -55,6 +141,43 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
 
   const showAlert = (message, type = 'success') => {
     setAlert({ message, type });
+  };
+
+  const changeUserPlan = async (userId, newPlan, months = 1) => {
+    try {
+      setChangingPlan(userId);
+      
+      const response = await fetch('/api/admin/change-user-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({ userId, newPlan, months })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        showAlert(`Plan changed to ${newPlan} for user ${result.user.email}`, 'success');
+        // Refresh users list
+        fetchAdminData();
+      } else {
+        showAlert(result.error || 'Failed to change user plan', 'error');
+      }
+    } catch (error) {
+      console.error('Error changing user plan:', error);
+      showAlert('Failed to change user plan', 'error');
+    } finally {
+      setChangingPlan(null);
+      setShowPlanModal(false);
+      setSelectedUser(null);
+    }
+  };
+
+  const openPlanModal = (user) => {
+    setSelectedUser(user);
+    setShowPlanModal(true);
   };
 
   const collections = [
@@ -1017,6 +1140,17 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
                           </button>
                         )}
                         
+                        {/* Change Plan Button */}
+                        <button
+                          onClick={() => openPlanModal(user)}
+                          disabled={changingPlan === user.id}
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+                          title="Change user plan"
+                        >
+                          <CreditCard className="w-3 h-3" />
+                          Change Plan
+                        </button>
+                        
                         {/* Delete Button */}
                         <button
                           onClick={() => deleteUser(user.id, user.email)}
@@ -1127,6 +1261,35 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
         </div>
       </div>
       {alert && <ToastNotification message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
+      
+      {/* Plan Change Modal */}
+      {showPlanModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Change User Plan</h3>
+              <button
+                onClick={() => setShowPlanModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-gray-300 mb-2">User: <span className="text-white font-medium">{selectedUser.email}</span></p>
+              <p className="text-gray-300">Current Plan: <span className="text-white font-medium">{selectedUser.plan}</span></p>
+            </div>
+            
+            <PlanChangeForm 
+              user={selectedUser}
+              onSave={changeUserPlan}
+              onCancel={() => setShowPlanModal(false)}
+              loading={changingPlan === selectedUser.id}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

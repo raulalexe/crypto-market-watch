@@ -895,6 +895,10 @@ const PricingSection = ({
           setCryptoPaymentDetails(null);
           // Refresh subscription status
           fetchSubscriptionStatus();
+          // Trigger a page refresh to update all components with new Pro status
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000); // Small delay to show success message first
         }}
       />
     </div>

@@ -3825,6 +3825,60 @@ app.post('/api/admin/test-email', authenticateToken, requireAdmin, async (req, r
   }
 });
 
+// Admin change user plan endpoint
+app.post('/api/admin/change-user-plan', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, newPlan, months = 1 } = req.body;
+    
+    if (!userId || !newPlan) {
+      return res.status(400).json({ error: 'User ID and new plan are required' });
+    }
+    
+    // Validate plan type
+    const validPlans = ['free', 'pro', 'premium', 'admin'];
+    if (!validPlans.includes(newPlan)) {
+      return res.status(400).json({ error: 'Invalid plan type' });
+    }
+    
+    // Get user to verify they exist
+    const { getUserById, updateUser } = require('./database');
+    const user = await getUserById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Calculate new expiration date
+    let expiresAt = null;
+    if (newPlan !== 'free' && newPlan !== 'admin') {
+      expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + months);
+    }
+    
+    // Update user plan
+    await updateUser(userId, {
+      subscription_plan: newPlan,
+      subscription_expires_at: expiresAt
+    });
+    
+    console.log(`✅ Admin changed user ${userId} plan to ${newPlan} (expires: ${expiresAt})`);
+    
+    res.json({ 
+      success: true, 
+      message: `User plan changed to ${newPlan} successfully`,
+      user: {
+        id: userId,
+        email: user.email,
+        plan: newPlan,
+        expiresAt: expiresAt
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error changing user plan:', error);
+    res.status(500).json({ error: 'Failed to change user plan' });
+  }
+});
+
 // Admin email interface endpoint
 app.post('/api/admin/send-email', authenticateToken, requireAdmin, async (req, res) => {
   try {
