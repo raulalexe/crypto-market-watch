@@ -109,7 +109,8 @@ const Layer1Card = () => {
   }
 
   // Only use real data - no fallback sample data
-  if (!layer1Data || !layer1Data.chains || layer1Data.chains.length === 0) {
+  // layer1Data is an array directly from the database
+  if (!layer1Data || !Array.isArray(layer1Data) || layer1Data.length === 0) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
         <div className="flex items-center space-x-3 mb-6">
@@ -159,10 +160,10 @@ const Layer1Card = () => {
             <DollarSign className="w-4 h-4 text-crypto-green" />
           </div>
           <div className="text-2xl font-bold text-white">
-            {formatCurrency(data.total_market_cap)}
+            {formatCurrency(layer1Data.reduce((sum, chain) => sum + (parseFloat(chain.market_cap) || 0), 0))}
           </div>
           <div className="text-xs text-slate-400">
-            {data.chains.length} chains
+            {layer1Data.length} chains
           </div>
         </div>
 
@@ -172,7 +173,7 @@ const Layer1Card = () => {
             <BarChart3 className="w-4 h-4 text-crypto-blue" />
           </div>
           <div className="text-2xl font-bold text-white">
-            {formatCurrency(data.total_volume_24h)}
+            {formatCurrency(layer1Data.reduce((sum, chain) => sum + (parseFloat(chain.volume_24h) || 0), 0))}
           </div>
           <div className="text-xs text-slate-400">
             Combined volume
@@ -182,10 +183,10 @@ const Layer1Card = () => {
         <div className="bg-slate-700 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium text-slate-300">Avg 24h Change</h4>
-            {getChangeIcon(data.avg_change_24h)}
+            {getChangeIcon(layer1Data.reduce((sum, chain) => sum + (parseFloat(chain.change_24h) || 0), 0) / layer1Data.length)}
           </div>
-          <div className={`text-2xl font-bold ${getChangeColor(data.avg_change_24h)}`}>
-            {formatChange(data.avg_change_24h)}
+          <div className={`text-2xl font-bold ${getChangeColor(layer1Data.reduce((sum, chain) => sum + (parseFloat(chain.change_24h) || 0), 0) / layer1Data.length)}`}>
+            {formatChange(layer1Data.reduce((sum, chain) => sum + (parseFloat(chain.change_24h) || 0), 0) / layer1Data.length)}
           </div>
           <div className="text-xs text-slate-400">
             Market average
@@ -195,7 +196,7 @@ const Layer1Card = () => {
 
       {/* Chains List */}
       <div className="space-y-4">
-        {data.chains.map((chain) => (
+        {layer1Data.map((chain) => (
           <div key={chain.id} className="bg-slate-700 rounded-lg border border-slate-600">
             {/* Chain Header */}
             <div className="p-4">

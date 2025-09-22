@@ -191,16 +191,16 @@ const MoneySupplyCard = () => {
                      <Building2 className="w-4 h-4 text-yellow-400" />
                      <h4 className="text-sm font-medium text-slate-300">Bank Reserves</h4>
                    </div>
-                   {getTrendIcon(moneySupplyData?.bank_reserves?.change_30d)}
+                   {getTrendIcon(moneySupplyData?.bankReserves?.change_30d)}
                  </div>
                  <div className="text-xl font-bold text-white mb-1">
-                   {formatCurrency(moneySupplyData?.bank_reserves?.value)}
+                   {formatCurrency(moneySupplyData?.bankReserves?.value)}
                  </div>
-                 <div className={`text-xs ${getTrendColor(moneySupplyData?.bank_reserves?.change_30d)}`}>
-                   {formatPercentage(moneySupplyData?.bank_reserves?.change_30d)} (30d)
+                 <div className={`text-xs ${getTrendColor(moneySupplyData?.bankReserves?.change_30d)}`}>
+                   {formatPercentage(moneySupplyData?.bankReserves?.change_30d)} (30d)
                  </div>
                  <div className="text-xs text-slate-500 mt-1">
-                   {moneySupplyData?.bank_reserves?.date ? new Date(moneySupplyData.bank_reserves.date).toLocaleDateString() : 'N/A'}
+                   {moneySupplyData?.bankReserves?.date ? new Date(moneySupplyData.bankReserves.date).toLocaleDateString() : 'N/A'}
                  </div>
                  <div className="text-xs text-slate-400 mt-2 leading-relaxed">
                    Cash held by banks at the Federal Reserve. Key indicator of banking system liquidity and lending capacity.

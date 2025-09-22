@@ -157,15 +157,9 @@ const InflationDataCard = ({ userData }) => {
   if (loading) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
-        <div className="flex items-center space-x-3 mb-4">
-          <BarChart3 className="w-6 h-6 text-crypto-blue" />
-          <h3 className="text-lg font-semibold text-white">Inflation Data</h3>
-          <Activity className="w-4 h-4 text-slate-400 animate-spin" />
-        </div>
-        <div className="space-y-4">
-          <div className="h-4 bg-slate-700 rounded animate-pulse"></div>
-          <div className="h-4 bg-slate-700 rounded animate-pulse"></div>
-          <div className="h-4 bg-slate-700 rounded animate-pulse"></div>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-crypto-blue"></div>
+          <span className="ml-2 text-slate-400">Loading inflation data...</span>
         </div>
       </div>
     );

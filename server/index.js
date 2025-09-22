@@ -3247,12 +3247,12 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
       })(),
       (async () => {
         try {
-          const { getLatestMoneySupplyData } = require('./database');
+          const { getLatestMarketData } = require('./database');
           const [m1Data, m2Data, m3Data, bankReservesData] = await Promise.all([
-            getLatestMoneySupplyData('M1'),
-            getLatestMoneySupplyData('M2'),
-            getLatestMoneySupplyData('M3'),
-            getLatestMoneySupplyData('BANK_RESERVES')
+            getLatestMarketData('MONEY_SUPPLY', 'M1'),
+            getLatestMarketData('MONEY_SUPPLY', 'M2'),
+            getLatestMarketData('MONEY_SUPPLY', 'M3'),
+            getLatestMarketData('MONEY_SUPPLY', 'BANK_RESERVES')
           ]);
           return { m1: m1Data, m2: m2Data, m3: m3Data, bankReserves: bankReservesData };
         } catch (error) {
@@ -3418,7 +3418,7 @@ app.get('/api/money-supply', optionalAuth, async (req, res) => {
   try {
     const { getLatestMarketData } = require('./database');
     
-    // Get latest money supply data from database
+    // Get latest money supply data from databasegit
     let m1Data = await getLatestMarketData('MONEY_SUPPLY', 'M1');
     let m2Data = await getLatestMarketData('MONEY_SUPPLY', 'M2');
     let m3Data = await getLatestMarketData('MONEY_SUPPLY', 'M3');

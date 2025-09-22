@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, ArrowUpRight, ArrowDownRight, Activity, Users, Zap, RefreshCw } from 'lucide-react';
+import React from 'react';
+import { TrendingUp, DollarSign, BarChart3, Activity, RefreshCw } from 'lucide-react';
 import useAdvancedMetrics from '../hooks/useAdvancedMetrics';
 
 const AdvancedMetricsCard = () => {
@@ -30,54 +30,24 @@ const AdvancedMetricsCard = () => {
     }).format(num);
   };
 
-  const formatPercentage = (num, decimals = 3) => {
-    if (num === null || num === undefined) return 'N/A';
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals
-    }).format(num);
-  };
-
-  const formatCurrency = (num) => {
-    if (num === null || num === undefined) return 'N/A';
-    const absNum = Math.abs(num);
-    const sign = num < 0 ? '-' : '';
+  const formatCurrency = (value) => {
+    if (!value) return 'N/A';
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numValue)) return 'N/A';
     
-    if (absNum >= 1e12) return `${sign}$${(absNum / 1e12).toFixed(1)}T`;
-    if (absNum >= 1e9) return `${sign}$${(absNum / 1e9).toFixed(1)}B`;
-    if (absNum >= 1e6) return `${sign}$${(absNum / 1e6).toFixed(1)}M`;
-    if (absNum >= 1e3) return `${sign}$${(absNum / 1e3).toFixed(1)}K`;
-    return `${sign}$${absNum.toFixed(1)}`;
-  };
-
-  const getTrendIcon = (value, isPositive = true) => {
-    if (value === null || value === undefined) return null;
-    const isTrendingUp = isPositive ? value > 0 : value < 0;
-    return isTrendingUp ? 
-      <TrendingUp className="w-4 h-4 text-green-400" /> : 
-      <TrendingDown className="w-4 h-4 text-red-400" />;
-  };
-
-  const getSSRInterpretation = (ssr) => {
-    if (ssr === null || ssr === undefined) return { text: 'N/A', color: 'text-slate-400' };
-    if (ssr < 2) return { text: 'Very Bullish - High buying power', color: 'text-green-400' };
-    if (ssr < 4) return { text: 'Bullish - Good buying power', color: 'text-green-300' };
-    if (ssr < 6) return { text: 'Neutral - Balanced', color: 'text-yellow-400' };
-    if (ssr < 8) return { text: 'Bearish - Low buying power', color: 'text-orange-400' };
-    return { text: 'Very Bearish - Very low buying power', color: 'text-red-400' };
+    if (numValue >= 1e12) return `$${(numValue / 1e12).toFixed(2)}T`;
+    if (numValue >= 1e9) return `$${(numValue / 1e9).toFixed(2)}B`;
+    if (numValue >= 1e6) return `$${(numValue / 1e6).toFixed(2)}M`;
+    if (numValue >= 1e3) return `$${(numValue / 1e3).toFixed(2)}K`;
+    return `$${numValue.toFixed(2)}`;
   };
 
   if (loading) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-        <div className="flex items-center space-x-3 mb-4">
-          <BarChart3 className="w-6 h-6 text-crypto-blue" />
-          <h2 className="text-xl font-semibold text-white">Advanced Metrics</h2>
-        </div>
-        <div className="animate-pulse">
-          <div className="h-4 bg-slate-700 rounded mb-2"></div>
-          <div className="h-4 bg-slate-700 rounded mb-2"></div>
-          <div className="h-4 bg-slate-700 rounded"></div>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-crypto-blue"></div>
+          <span className="ml-2 text-slate-400">Loading advanced metrics...</span>
         </div>
       </div>
     );
@@ -85,12 +55,45 @@ const AdvancedMetricsCard = () => {
 
   if (error) {
     return (
+      <div className="bg-slate-800 rounded-lg p-6 border border-red-500/30">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <BarChart3 className="w-6 h-6 text-red-400" />
+            <h3 className="text-lg font-semibold text-white">Advanced Metrics</h3>
+          </div>
+          <button
+            onClick={refresh}
+            className="p-2 text-slate-400 hover:text-white transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-red-400 mb-2">Failed to load advanced metrics</p>
+          <p className="text-slate-400 text-sm mb-4">{error.message}</p>
+          <button
+            onClick={refresh}
+            className="px-4 py-2 bg-crypto-blue hover:bg-blue-600 text-white rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return (
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-        <div className="flex items-center space-x-3 mb-4">
+        <div className="flex items-center space-x-3 mb-6">
           <BarChart3 className="w-6 h-6 text-crypto-blue" />
           <h2 className="text-xl font-semibold text-white">Advanced Metrics</h2>
         </div>
-        <p className="text-red-400">{error}</p>
+        <div className="text-slate-400 text-center py-8">
+          <BarChart3 className="w-8 h-8 mx-auto mb-4 opacity-50" />
+          <p>No advanced metrics data available</p>
+          <p className="text-sm mt-2">Advanced metrics will appear here once data is collected</p>
+        </div>
       </div>
     );
   }
@@ -129,289 +132,77 @@ const AdvancedMetricsCard = () => {
             <div className="bg-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-slate-300">Bitcoin Dominance</h3>
-                {getTrendIcon(metrics?.bitcoinDominance?.change_24h)}
+                <TrendingUp className="w-4 h-4 text-crypto-blue" />
               </div>
               <div className="text-2xl font-bold text-white mb-1">
-                {formatNumber(metrics?.bitcoinDominance?.value)}%
+                {metrics?.bitcoinDominance?.dominance_percentage ? formatNumber(metrics.bitcoinDominance.dominance_percentage) : 'N/A'}%
               </div>
               <div className="text-xs text-slate-400">
-                {metrics?.bitcoinDominance?.change_24h > 0 ? '+' : ''}
-                {formatNumber(metrics?.bitcoinDominance?.change_24h)}% (24h)
+                {metrics?.bitcoinDominance?.timestamp ? new Date(metrics.bitcoinDominance.timestamp).toLocaleDateString() : 'N/A'}
               </div>
             </div>
 
-            {/* Stablecoin Market Cap */}
+            {/* Stablecoin Metrics */}
             <div className="bg-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Stablecoin Market Cap</h3>
-                <DollarSign className="w-4 h-4 text-green-400" />
+                <h3 className="text-sm font-medium text-slate-300">Stablecoin Metrics</h3>
+                <DollarSign className="w-4 h-4 text-crypto-green" />
               </div>
               <div className="text-2xl font-bold text-white mb-1">
-                {formatCurrency(metrics?.stablecoinMetrics?.totalMarketCap)}
+                {metrics?.stablecoinMetrics && Array.isArray(metrics.stablecoinMetrics) && metrics.stablecoinMetrics.length > 0 ? 
+                  formatCurrency(metrics.stablecoinMetrics[0].total_market_cap) : 'N/A'}
               </div>
               <div className="text-xs text-slate-400">
-                {metrics?.stablecoinMetrics?.change_24h > 0 ? '+' : ''}
-                {formatNumber(metrics?.stablecoinMetrics?.change_24h)}% (24h)
+                {metrics?.stablecoinMetrics && Array.isArray(metrics.stablecoinMetrics) && metrics.stablecoinMetrics.length > 0 ? 
+                  `SSR: ${formatNumber(metrics.stablecoinMetrics[0].ssr)}` : 'N/A'}
               </div>
             </div>
 
-            {/* Stablecoin Supply Ratio */}
+            {/* Exchange Flows */}
             <div className="bg-slate-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">SSR</h3>
-                {getTrendIcon(metrics?.stablecoinMetrics?.ssr, false)}
+                <h3 className="text-sm font-medium text-slate-300">Exchange Flows</h3>
+                <Activity className="w-4 h-4 text-crypto-blue" />
               </div>
               <div className="text-2xl font-bold text-white mb-1">
-                {formatNumber(metrics?.stablecoinMetrics?.ssr)}
-              </div>
-              <div className={`text-xs ${getSSRInterpretation(metrics?.stablecoinMetrics?.ssr).color}`}>
-                {getSSRInterpretation(metrics?.stablecoinMetrics?.ssr).text}
-              </div>
-            </div>
-
-            {/* BTC Exchange Flows */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">BTC Exchange Flows</h3>
-                {metrics?.exchangeFlows?.btc?.netFlow > 0 ? 
-                  <ArrowUpRight className="w-4 h-4 text-green-400" /> : 
-                  <ArrowDownRight className="w-4 h-4 text-red-400" />
-                }
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatCurrency(metrics?.exchangeFlows?.btc?.netFlow)}
+                {metrics?.exchangeFlows && Array.isArray(metrics.exchangeFlows) && metrics.exchangeFlows.length > 0 ? 
+                  formatCurrency(metrics.exchangeFlows[0].net_flow) : 'N/A'}
               </div>
               <div className="text-xs text-slate-400">
-                In: {formatCurrency(metrics?.exchangeFlows?.btc?.inflow)} | 
-                Out: {formatCurrency(metrics?.exchangeFlows?.btc?.outflow)}
-              </div>
-              <div className="text-xs text-slate-400">
-                {metrics?.exchangeFlows?.btc?.netFlow > 0 ? '💰 Money entering exchanges' : '🚀 Money leaving exchanges'}
-              </div>
-            </div>
-
-            {/* ETH Exchange Flows */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">ETH Exchange Flows</h3>
-                {metrics?.exchangeFlows?.eth?.netFlow > 0 ? 
-                  <ArrowUpRight className="w-4 h-4 text-green-400" /> : 
-                  <ArrowDownRight className="w-4 h-4 text-red-400" />
-                }
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatCurrency(metrics?.exchangeFlows?.eth?.netFlow)}
-              </div>
-              <div className="text-xs text-slate-400">
-                In: {formatCurrency(metrics?.exchangeFlows?.eth?.inflow)} | 
-                Out: {formatCurrency(metrics?.exchangeFlows?.eth?.outflow)}
-              </div>
-              <div className="text-xs text-slate-400">
-                {metrics?.exchangeFlows?.eth?.netFlow > 0 ? '💰 Money entering exchanges' : '🚀 Money leaving exchanges'}
-              </div>
-            </div>
-
-            {/* Market Sentiment */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Market Sentiment</h3>
-                <BarChart3 className="w-4 h-4 text-crypto-blue" />
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatNumber(metrics?.marketSentiment?.score)}%
-              </div>
-              <div className="text-xs text-slate-400">
-                {metrics?.marketSentiment?.interpretation}
-              </div>
-            </div>
-
-            {/* Total Market Cap */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Total Market Cap</h3>
-                {getTrendIcon(metrics?.totalMarketCap?.change_24h)}
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatCurrency(metrics?.totalMarketCap?.value)}
-              </div>
-              <div className="text-xs text-slate-400">
-                {metrics?.totalMarketCap?.change_24h > 0 ? '+' : ''}
-                {formatNumber(metrics?.totalMarketCap?.change_24h)}% (24h)
-              </div>
-            </div>
-
-            {/* Altcoin Season */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Altcoin Season</h3>
-                <TrendingUp className="w-4 h-4 text-purple-400" />
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatNumber(metrics?.altcoinSeason?.indicator)}%
-              </div>
-              <div className="text-xs text-slate-400">
-                {metrics?.altcoinSeason?.season || 'Unknown'}
+                {metrics?.exchangeFlows && Array.isArray(metrics.exchangeFlows) && metrics.exchangeFlows.length > 0 ? 
+                  `${metrics.exchangeFlows[0].asset} flows` : 'N/A'}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Derivatives & On-chain Metrics */}
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-4">Derivatives & On-chain Data</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Open Interest */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Open Interest</h3>
-                <Activity className="w-4 h-4 text-blue-400" />
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatCurrency(metrics?.derivatives?.openInterest?.value)}
-              </div>
-              <div className="text-xs text-slate-400">
-                BTC: {formatCurrency(metrics?.derivatives?.openInterest?.metadata?.btc_oi || 0)} | ETH: {formatCurrency(metrics?.derivatives?.openInterest?.metadata?.eth_oi || 0)}
-              </div>
-            </div>
-
-            {/* Funding Rate */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Funding Rate</h3>
-                {getTrendIcon(metrics?.derivatives?.fundingRate?.value)}
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatPercentage(metrics?.derivatives?.fundingRate?.value)}%
-              </div>
-              <div className="text-xs text-slate-400">
-                BTC: {formatPercentage(metrics?.derivatives?.fundingRate?.metadata?.btc_funding || 0)}% | ETH: {formatPercentage(metrics?.derivatives?.fundingRate?.metadata?.eth_funding || 0)}%
-              </div>
-            </div>
-
-            {/* Liquidations */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Liquidations</h3>
-                <Zap className="w-4 h-4 text-orange-400" />
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatCurrency(metrics?.derivatives?.liquidations?.value)}
-              </div>
-              <div className="text-xs text-slate-400">
-                Long: {formatCurrency(metrics?.derivatives?.liquidations?.metadata?.long_liquidations || 0)} | Short: {formatCurrency(metrics?.derivatives?.liquidations?.metadata?.short_liquidations || 0)}
-              </div>
-            </div>
-
-            {/* Whale Transactions */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Whale Transactions</h3>
-                <Users className="w-4 h-4 text-green-400" />
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {Math.round(metrics?.onchain?.whaleTransactions?.value || 0)}
-              </div>
-              <div className="text-xs text-slate-400">
-                Large: {Math.round(metrics?.onchain?.whaleTransactions?.metadata?.large_transfers || 0)} | Exchange: {Math.round(metrics?.onchain?.whaleTransactions?.metadata?.exchange_deposits || 0)}
-              </div>
-            </div>
-
-            {/* Hash Rate */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Hash Rate</h3>
-                <Zap className="w-4 h-4 text-yellow-400" />
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatNumber(metrics?.onchain?.hashRate?.value || 0)} EH/s
-              </div>
-              <div className="text-xs text-slate-400">
-                Difficulty: {formatNumber(metrics?.onchain?.hashRate?.metadata?.difficulty / 1e12 || 0)}T | Health: {metrics?.onchain?.hashRate?.metadata?.network_health || 'Unknown'}
-              </div>
-            </div>
-
-            {/* Active Addresses */}
-            <div className="bg-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-300">Active Addresses</h3>
-                <Users className="w-4 h-4 text-cyan-400" />
-              </div>
-              <div className="text-2xl font-bold text-white mb-1">
-                {formatNumber((metrics?.onchain?.activeAddresses?.value || 0) / 1e6)}M
-              </div>
-              <div className="text-xs text-slate-400">
-                New: {formatNumber((metrics?.onchain?.activeAddresses?.metadata?.new_addresses || 0) / 1e6)}M | Returning: {formatNumber((metrics?.onchain?.activeAddresses?.metadata?.returning_addresses || 0) / 1e6)}M
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Trending Narratives */}
-      {trendingNarratives.length > 0 && (
-        <div className="mt-6 p-4 bg-slate-700 rounded-lg">
-          <h4 className="text-sm font-medium text-white mb-3">Trending Narratives (Money Flow)</h4>
-          <div className="space-y-2">
-            {trendingNarratives.slice(0, 5).map((narrative, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-slate-600 rounded">
-                <div>
-                  <div className="text-sm font-medium text-white">{narrative.narrative}</div>
-                  <div className="text-xs text-slate-400">
-                    {narrative.coins && narrative.coins.length > 0 
-                      ? `${narrative.coins.length} coins (${narrative.coins.map(coin => coin.coin_symbol).join(', ')})`
-                      : 'No coins data'
-                    } • ${(narrative.total_volume_24h / 1e6).toFixed(1)}M volume
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${narrative.avg_change_24h > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {narrative.avg_change_24h > 0 ? '+' : ''}{narrative.avg_change_24h.toFixed(2)}%
+        {/* Trending Narratives */}
+        {trendingNarratives && trendingNarratives.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">Trending Narratives</h3>
+            <div className="space-y-3">
+              {trendingNarratives.slice(0, 3).map((narrative, index) => (
+                <div key={index} className="bg-slate-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-white">{narrative.narrative}</h4>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      narrative.sentiment === 'positive' ? 'bg-green-600 text-white' :
+                      narrative.sentiment === 'negative' ? 'bg-red-600 text-white' :
+                      'bg-slate-600 text-white'
+                    }`}>
+                      {narrative.sentiment}
+                    </span>
                   </div>
                   <div className="text-xs text-slate-400">
-                    Avg 24h change
+                    Relevance: {formatNumber(narrative.relevance_score)}% | 
+                    Volume: {formatCurrency(narrative.total_volume_24h || 0)} | 
+                    Change: {formatNumber(narrative.avg_change_24h || 0)}%
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Interpretation Guide */}
-      <div className="mt-6 p-4 bg-slate-700 rounded-lg">
-        <h4 className="text-sm font-medium text-white mb-2">Metric Interpretations</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-300">
-          <div>
-            <strong>Bitcoin Dominance:</strong> 60%+ = strong Bitcoin season, 50-60% = transition zone, 40-50% = neutral, &lt;40% = altcoin season
-          </div>
-          <div>
-            <strong>SSR (Stablecoin Supply Ratio):</strong> Lower = more buying power available
-          </div>
-          <div>
-            <strong>Exchange Flows:</strong> Positive = money moving to exchanges (bearish), Negative = money leaving exchanges (bullish)
-          </div>
-          <div>
-            <strong>Stablecoin Growth:</strong> Expanding = sidelined capital ready to enter
-          </div>
-          <div>
-            <strong>Open Interest:</strong> Higher = more leverage in the market
-          </div>
-          <div>
-            <strong>Funding Rate:</strong> Positive = longs pay shorts, Negative = shorts pay longs
-          </div>
-          <div>
-            <strong>Liquidations:</strong> High liquidations = potential for price volatility
-          </div>
-          <div>
-            <strong>Whale Transactions:</strong> More transactions = increased institutional activity
-          </div>
-          <div>
-            <strong>Hash Rate:</strong> Higher = more network security and miner confidence
-          </div>
-          <div>
-            <strong>Active Addresses:</strong> Higher = more network usage and adoption
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
