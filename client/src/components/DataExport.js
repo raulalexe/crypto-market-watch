@@ -6,7 +6,8 @@ import {
   AlertCircle,
   Settings,
   Database,
-  Activity
+  Activity,
+  RefreshCw
 } from 'lucide-react';
 import axios from 'axios';
 import { shouldShowPremiumUpgradePrompt } from '../utils/authUtils';

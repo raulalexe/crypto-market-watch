@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, Calendar, BarChart3, DollarSign, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Calendar, BarChart3, DollarSign, Activity, RefreshCw } from 'lucide-react';
 
 const InflationDataCard = ({ userData }) => {
   const [inflationData, setInflationData] = useState(null);

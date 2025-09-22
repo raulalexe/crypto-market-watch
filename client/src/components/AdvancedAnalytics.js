@@ -10,7 +10,8 @@ import {
   LineChart,
   ScatterChart,
   Zap,
-  Shield
+  Shield,
+  RefreshCw
 } from 'lucide-react';
 import logger from '../utils/logger';
 import axios from 'axios';
