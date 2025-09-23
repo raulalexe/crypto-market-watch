@@ -906,6 +906,16 @@ const getBacktestResults = (limit = 50) => {
   });
 };
 
+const updateBacktestResult = (id, predictionDate, actualDate, predictedDirection, actualDirection, accuracy, cryptoSymbol, priceAtPrediction, priceAtActual, correlationScore) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.run(
+      'UPDATE backtest_results SET prediction_date = $2, actual_date = $3, predicted_direction = $4, actual_direction = $5, accuracy = $6, crypto_symbol = $7, price_at_prediction = $8, price_at_actual = $9, correlation_score = $10 WHERE id = $1',
+      [id, predictionDate, actualDate, predictedDirection, actualDirection, accuracy, cryptoSymbol, priceAtPrediction, priceAtActual, correlationScore]
+    ).then(result => resolve(result.changes))
+     .catch(reject);
+  });
+};
+
 // Error logging functions
 const insertErrorLog = (errorData) => {
   return new Promise((resolve, reject) => {
@@ -2499,6 +2509,7 @@ module.exports = {
   getCorrelationData,
   insertBacktestResult,
   getBacktestResults,
+  updateBacktestResult,
   // Error logging
   insertErrorLog,
   getErrorLogs,

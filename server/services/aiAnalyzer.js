@@ -662,11 +662,6 @@ ANALYSIS REQUIREMENTS:
         return;
       }
       
-      console.log('🔍 Latest AI Analysis:', {
-        timestamp: latestAnalysis.timestamp,
-        marketDirection: latestAnalysis.market_direction,
-        hasAnalysisData: !!latestAnalysis.analysis_data
-      });
 
       // Parse the analysis data to get overall direction
       let predictedDirection = latestAnalysis.market_direction;
@@ -712,14 +707,42 @@ ANALYSIS REQUIREMENTS:
               }
             }
             
+            // Calculate price change percentage
+            const priceChange = ((currentPrice - predictionPrice) / predictionPrice) * 100;
+            
             // Determine actual direction based on price change since prediction
             const actualDirection = currentPrice > predictionPrice ? 'BULLISH' : 'BEARISH';
             
-            // Calculate accuracy
-            const accuracy = predictedDirection === actualDirection ? 100 : 0;
+            // Calculate accuracy as a percentage based on how close the prediction was
+            let accuracy = 0;
+            if (predictedDirection === actualDirection) {
+              // If direction is correct, give full credit
+              accuracy = 100;
+            } else if (predictedDirection === 'NEUTRAL') {
+              // For neutral predictions, give partial credit based on how close to neutral the movement was
+              const priceChangePercent = Math.abs(priceChange);
+              if (priceChangePercent < 1) {
+                accuracy = 90; // Very close to neutral
+              } else if (priceChangePercent < 3) {
+                accuracy = 70; // Somewhat close to neutral
+              } else if (priceChangePercent < 5) {
+                accuracy = 50; // Moderate movement
+              } else {
+                accuracy = 20; // Strong movement, neutral was wrong
+              }
+            } else {
+              // Wrong direction, but give some credit if the movement was small
+              const priceChangePercent = Math.abs(priceChange);
+              if (priceChangePercent < 1) {
+                accuracy = 30; // Small movement, partial credit
+              } else if (priceChangePercent < 3) {
+                accuracy = 10; // Moderate movement, minimal credit
+              } else {
+                accuracy = 0; // Strong movement, no credit
+              }
+            }
             
             // Calculate correlation score
-            const priceChange = ((currentPrice - predictionPrice) / predictionPrice) * 100;
             const correlationScore = this.calculateCorrelationScore(predictedDirection, priceChange);
           
             const result = {
@@ -767,17 +790,40 @@ ANALYSIS REQUIREMENTS:
   // Calculate correlation score between prediction and actual price movement
   calculateCorrelationScore(predictedDirection, priceChange) {
     let score = 0;
+    const absPriceChange = Math.abs(priceChange);
     
     if (predictedDirection === 'BULLISH' && priceChange > 0) {
-      score = Math.min(Math.abs(priceChange) * 2, 100);
+      // Correct bullish prediction - score based on strength of movement
+      score = Math.min(absPriceChange * 10, 100); // Scale up the movement
     } else if (predictedDirection === 'BEARISH' && priceChange < 0) {
-      score = Math.min(Math.abs(priceChange) * 2, 100);
+      // Correct bearish prediction - score based on strength of movement
+      score = Math.min(absPriceChange * 10, 100); // Scale up the movement
     } else if (predictedDirection === 'NEUTRAL') {
-      score = Math.max(50 - Math.abs(priceChange) * 5, 0);
-    } else if (priceChange === 0) {
-      // If price didn't change, give partial credit based on prediction accuracy
-      // This handles the case where prediction is correct but price is stable
-      score = 25; // Base score for correct direction with no price movement
+      // For neutral predictions, higher score for smaller movements
+      if (absPriceChange < 0.5) {
+        score = 95; // Very close to neutral
+      } else if (absPriceChange < 1) {
+        score = 85; // Close to neutral
+      } else if (absPriceChange < 2) {
+        score = 70; // Somewhat close to neutral
+      } else if (absPriceChange < 3) {
+        score = 50; // Moderate movement
+      } else if (absPriceChange < 5) {
+        score = 30; // Strong movement
+      } else {
+        score = 10; // Very strong movement, neutral was wrong
+      }
+    } else {
+      // Wrong direction prediction
+      if (absPriceChange < 0.5) {
+        score = 40; // Small movement, some correlation
+      } else if (absPriceChange < 1) {
+        score = 20; // Small movement, minimal correlation
+      } else if (absPriceChange < 2) {
+        score = 10; // Moderate movement, very low correlation
+      } else {
+        score = 0; // Strong movement, no correlation
+      }
     }
     
     return Math.round(score);
@@ -833,10 +879,6 @@ ANALYSIS REQUIREMENTS:
       const { getBacktestResults } = require('../database');
       const results = await getBacktestResults(100);
       
-      console.log('🔍 Backtest Metrics Debug:', {
-        totalResults: results?.length || 0,
-        sampleResults: results?.slice(0, 3) || []
-      });
       
       if (!results || results.length === 0) {
         console.log('⚠️ No backtest results found in database');
@@ -852,27 +894,14 @@ ANALYSIS REQUIREMENTS:
         };
       }
 
-      // Calculate overall accuracy
+      // Calculate overall accuracy (now using percentage-based accuracy)
       const totalPredictions = results.length;
-      const correctPredictions = results.filter(r => parseInt(r.accuracy) === 100).length;
-      const overallAccuracy = (correctPredictions / totalPredictions) * 100;
+      const totalAccuracy = results.reduce((sum, r) => sum + parseInt(r.accuracy), 0);
+      const overallAccuracy = totalAccuracy / totalPredictions;
 
       // Calculate average correlation score
       const avgCorrelation = results.reduce((sum, r) => sum + parseInt(r.correlation_score), 0) / totalPredictions;
       
-      console.log('🔍 Backtest Calculations:', {
-        totalPredictions,
-        correctPredictions,
-        overallAccuracy,
-        avgCorrelation,
-        accuracyBreakdown: results.map(r => ({ 
-          symbol: r.crypto_symbol, 
-          accuracy: r.accuracy, 
-          correlation: r.correlation_score,
-          predicted: r.predicted_direction,
-          actual: r.actual_direction
-        }))
-      });
 
       // Group by crypto symbol
       const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];
@@ -881,7 +910,7 @@ ANALYSIS REQUIREMENTS:
         const symbolResults = results.filter(r => r.crypto_symbol === symbol);
         if (symbolResults.length > 0) {
           bySymbol[symbol] = {
-            accuracy: (symbolResults.filter(r => parseInt(r.accuracy) === 100).length / symbolResults.length) * 100,
+            accuracy: symbolResults.reduce((sum, r) => sum + parseInt(r.accuracy), 0) / symbolResults.length,
             avgCorrelation: symbolResults.reduce((sum, r) => sum + parseInt(r.correlation_score), 0) / symbolResults.length,
             totalPredictions: symbolResults.length
           };

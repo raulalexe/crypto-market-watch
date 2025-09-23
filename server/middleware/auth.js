@@ -98,14 +98,6 @@ const requireSubscription = (minPlan = SUBSCRIPTION_TYPES.FREE) => {
       };
       let userPlan = user?.subscription_plan || SUBSCRIPTION_TYPES.FREE;
       
-      // Debug logging for subscription checks
-      console.log(`🔍 Subscription check for user ${req.user.id}:`, {
-        userPlan,
-        minPlan,
-        userPlanLevel: planHierarchy[userPlan],
-        minPlanLevel: planHierarchy[minPlan],
-        hasAccess: planHierarchy[userPlan] >= planHierarchy[minPlan]
-      });
       
       if (planHierarchy[userPlan] < planHierarchy[minPlan]) {
         console.log(`❌ Access denied for user ${req.user.id}: ${userPlan} < ${minPlan}`);

@@ -118,10 +118,6 @@ app.use(cors({
       return callback(null, true);
     }
     
-    // Log the origin for debugging
-    console.log(`🔍 CORS: Checking origin: ${origin}`);
-    console.log(`📋 CORS: Allowed origins:`, allowedOrigins);
-    console.log(`🚂 CORS: Railway domain: ${process.env.RAILWAY_PUBLIC_DOMAIN}`);
     
     if (allowedOrigins.includes(origin)) {
       console.log(`✅ CORS: Origin allowed: ${origin}`);
@@ -156,8 +152,6 @@ const upload = multer({
 // Serve static files from React build (if available)
 const staticPath = path.join(__dirname, '../client/build');
 const publicPath = path.join(__dirname, '../public');
-console.log('🔍 Checking for React frontend at:', staticPath);
-console.log('🔍 Checking for React frontend in public at:', publicPath);
 
 // List directory contents for debugging
 try {
@@ -1494,7 +1488,6 @@ app.post('/api/telegram/add-chat', authenticateToken, requireAdmin, async (req, 
 
 app.get('/api/telegram/admin-status', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    console.log('🔍 Admin requesting Telegram status...');
     const status = await telegramService.testConnection();
     
     // Get both in-memory and database subscriber counts
@@ -3679,37 +3672,6 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
       timestamp: lastCollectionTime || new Date().toISOString()
     };
     
-    // Add comprehensive logging for debugging Advanced Metrics
-    console.log('🔍 Server - Dashboard data being sent:', {
-      hasMarketData: !!marketData,
-      hasAiAnalysis: !!analysis,
-      hasFearGreed: !!fearGreed,
-      hasTrendingNarratives: !!narratives,
-      hasBacktestResults: !!backtestMetrics,
-      hasUpcomingEvents: !!upcomingEvents,
-      hasInflationData: !!inflationData,
-      hasCorrelationData: !!correlationData,
-      hasAdvancedMetrics: !!advancedMetrics,
-      hasMarketSentiment: !!marketSentiment,
-      hasDerivativesData: !!derivativesData,
-      hasOnchainData: !!onchainData,
-      hasMoneySupplyData: !!moneySupplyData,
-      hasLayer1Data: !!layer1Data,
-      hasSubscriptionStatus: !!subscriptionStatus,
-      userId: req.user?.id || 'anonymous',
-      isWebSocketRequest: !!req.headers['x-websocket-request']
-    });
-    
-    // Log specific advanced metrics data
-    if (advancedMetrics) {
-      console.log('🔍 Server - Advanced Metrics data:', {
-        type: typeof advancedMetrics,
-        isArray: Array.isArray(advancedMetrics),
-        length: Array.isArray(advancedMetrics) ? advancedMetrics.length : 'N/A',
-        keys: typeof advancedMetrics === 'object' ? Object.keys(advancedMetrics) : 'N/A',
-        sample: Array.isArray(advancedMetrics) ? advancedMetrics[0] : advancedMetrics
-      });
-    }
     
     // Broadcast dashboard update via WebSocket if user is authenticated
     // Only broadcast if this is not a WebSocket-triggered request
@@ -4712,9 +4674,6 @@ app.get('/api/subscribe/payment-status/:paymentId', authenticateToken, async (re
 // Verify transaction hash
 app.post('/api/verify-transaction', authenticateToken, async (req, res) => {
   try {
-    console.log('🔍 Transaction verification request received');
-    console.log('🔍 Request body:', req.body);
-    console.log('🔍 User:', req.user ? { id: req.user.id, email: req.user.email } : 'No user');
     
     if (process.env.SUPPORT_CRYPTO_PAYMENT !== 'true') {
       console.log('❌ Crypto payments not enabled');

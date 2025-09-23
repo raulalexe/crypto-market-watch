@@ -120,7 +120,6 @@ class SubscriptionManager {
         return cached.data;
       }
       
-      console.log(`🔍 Getting subscription status for user ${userId}`);
       
       // Check if user is admin first
       const { isUserAdmin, getUserById } = require('../database');

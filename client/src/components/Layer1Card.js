@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Layers, TrendingUp, TrendingDown, DollarSign, BarChart3, ChevronDown, ChevronRight, Activity, Users, RefreshCw } from 'lucide-react';
 import useLayer1Data from '../hooks/useLayer1Data';
 
@@ -16,9 +16,13 @@ const Layer1Card = () => {
   } = useLayer1Data({
     autoFetch: true,
     refreshInterval: null, // No polling - WebSocket handles updates
-    onError: (err) => console.error('Layer1 data error:', err),
-    onSuccess: (data) => {} // WebSocket data received
+    onError: (err) => {
+      console.error('🔍 Layer1Card - Layer1 data error:', err);
+    },
+    onSuccess: (data) => {
+    }
   });
+
 
   const toggleChain = (chainId) => {
     setExpandedChains(prev => ({
@@ -87,10 +91,9 @@ const Layer1Card = () => {
           <Layers className="w-6 h-6 text-crypto-blue" />
           <h3 className="text-lg font-semibold text-white">Layer 1 Blockchains</h3>
         </div>
-        <div className="animate-pulse">
-          <div className="h-4 bg-slate-700 rounded mb-2"></div>
-          <div className="h-4 bg-slate-700 rounded mb-2"></div>
-          <div className="h-4 bg-slate-700 rounded"></div>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-crypto-blue"></div>
+          <span className="ml-2 text-slate-400">Loading Layer 1 data...</span>
         </div>
       </div>
     );
@@ -125,7 +128,6 @@ const Layer1Card = () => {
     );
   }
 
-  const data = layer1Data;
 
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">

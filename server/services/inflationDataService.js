@@ -402,6 +402,71 @@ class InflationDataService {
     }
   }
 
+  // Parse FRED data for PCE
+  async parseFREDPCEData() {
+    try {
+      console.log('🔄 Fetching PCE data from FRED API...');
+      console.log('📊 FRED API Key configured:', !!this.fredApiKey);
+      console.log('📊 FRED Series codes:', { pce: this.fredSeries.pce, corePCE: this.fredSeries.corePCE });
+      
+      const pceData = await this.fetchFREDData(this.fredSeries.pce);
+      console.log('📊 PCE data response:', pceData ? `${pceData.length} records` : 'null');
+      
+      await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between requests
+      const corePCEData = await this.fetchFREDData(this.fredSeries.corePCE);
+      console.log('📊 Core PCE data response:', corePCEData ? `${corePCEData.length} records` : 'null');
+
+      if (!pceData || !corePCEData) {
+        console.error('❌ Failed to fetch PCE data from FRED - one or both datasets are null');
+        console.error('❌ PCE data:', pceData);
+        console.error('❌ Core PCE data:', corePCEData);
+        throw new Error('Failed to fetch PCE data from FRED');
+      }
+
+      const latestPCE = pceData[0];
+      const latestCorePCE = corePCEData[0];
+      
+      console.log('📊 Latest PCE record:', latestPCE);
+      console.log('📊 Latest Core PCE record:', latestCorePCE);
+
+      if (!latestPCE || !latestPCE.value || latestPCE.value === '.') {
+        console.error('❌ Invalid PCE data from FRED');
+        throw new Error('Invalid PCE data from FRED');
+      }
+
+      if (!latestCorePCE || !latestCorePCE.value || latestCorePCE.value === '.') {
+        console.error('❌ Invalid Core PCE data from FRED');
+        throw new Error('Invalid Core PCE data from FRED');
+      }
+
+      // Calculate YoY changes
+      const pceYoY = this.calculateYoYChange(pceData);
+      const corePCEYoY = this.calculateYoYChange(corePCEData);
+      
+      // Calculate MoM changes
+      const pceMoM = this.calculateMoMChange(pceData);
+      const corePCEMoM = this.calculateMoMChange(corePCEData);
+
+      const result = {
+        date: latestPCE.date,
+        pce: parseFloat(latestPCE.value),
+        corePCE: parseFloat(latestCorePCE.value),
+        pceYoY: pceYoY,
+        corePCEYoY: corePCEYoY,
+        pceMoM: pceMoM,
+        corePCEMoM: corePCEMoM,
+        pceActual: pceMoM, // Use MoM as actual for consistency
+        corePCEActual: corePCEMoM
+      };
+
+      console.log('✅ PCE data parsed successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Error parsing FRED PCE data:', error.message);
+      return null;
+    }
+  }
+
   // Calculate Year-over-Year change
   calculateYoYChange(data) {
     if (!data || data.length < 12) return null;
@@ -1616,9 +1681,20 @@ class InflationDataService {
         results.cpi = null;
       }
       
-      // Fetch PCE data from BEA API (keep existing)
+      // Fetch PCE data from FRED API (replacing BEA)
       try {
-        results.pce = await this.fetchPCEData();
+        if (this.fredApiKey) {
+          console.log('🔄 Using FRED API for PCE data (replacing BEA)');
+          results.pce = await this.parseFREDPCEData();
+          if (results.pce) {
+            console.log('✅ PCE data fetched successfully from FRED');
+          } else {
+            console.log('❌ PCE data fetch failed from FRED');
+          }
+        } else {
+          console.log('⚠️ FRED API key not configured, skipping PCE data');
+          results.pce = null;
+        }
       } catch (error) {
         console.error('❌ PCE data fetch failed:', error.message);
         results.pce = null;

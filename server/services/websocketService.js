@@ -163,16 +163,6 @@ class WebSocketService {
 
   broadcastDashboardUpdate(userId, data) {
     if (this.io) {
-      // Add logging for debugging
-      console.log('🔍 WebSocket - Broadcasting dashboard update:', {
-        userId,
-        hasMarketData: !!data.marketData,
-        hasAdvancedMetrics: !!data.advancedMetrics,
-        hasInflationData: !!data.inflationData,
-        hasMoneySupplyData: !!data.moneySupplyData,
-        hasLayer1Data: !!data.layer1Data,
-        timestamp: data.timestamp
-      });
       
       // Debounce broadcasts to prevent rapid successive updates
       const timeoutKey = `dashboard_${userId}`;

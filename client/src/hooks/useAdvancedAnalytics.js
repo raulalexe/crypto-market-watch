@@ -45,24 +45,6 @@ const useAdvancedAnalytics = (options = {}) => {
       });
       const dashboardData = response.data;
       
-      // Add comprehensive logging for debugging
-      console.log('🔍 Advanced Analytics - Dashboard data received:', {
-        hasMarketData: !!dashboardData.marketData,
-        hasBacktestData: !!dashboardData.backtestResults,
-        hasCorrelationData: !!dashboardData.correlationData,
-        hasAdvancedMetrics: !!dashboardData.advancedMetrics,
-        hasMarketSentiment: !!dashboardData.marketSentiment,
-        hasDerivativesData: !!dashboardData.derivativesData,
-        hasOnchainData: !!dashboardData.onchainData,
-        hasMoneySupplyData: !!dashboardData.moneySupplyData,
-        hasLayer1Data: !!dashboardData.layer1Data,
-        hasInflationData: !!dashboardData.inflationData,
-        hasFearGreed: !!dashboardData.fearGreed,
-        hasTrendingNarratives: !!dashboardData.trendingNarratives,
-        hasUpcomingEvents: !!dashboardData.upcomingEvents,
-        hasAiAnalysis: !!dashboardData.aiAnalysis,
-        fullData: dashboardData
-      });
 
       if (dashboardData) {
         // Extract all the analytics data from the dashboard response
@@ -113,24 +95,6 @@ const useAdvancedAnalytics = (options = {}) => {
   const handleDashboardUpdate = useCallback((updateData) => {
     const dashboardData = updateData.data;
     
-    // Add comprehensive logging for WebSocket updates
-    console.log('🔍 Advanced Analytics - WebSocket update received:', {
-      hasMarketData: !!dashboardData?.marketData,
-      hasBacktestData: !!dashboardData?.backtestResults,
-      hasCorrelationData: !!dashboardData?.correlationData,
-      hasAdvancedMetrics: !!dashboardData?.advancedMetrics,
-      hasMarketSentiment: !!dashboardData?.marketSentiment,
-      hasDerivativesData: !!dashboardData?.derivativesData,
-      hasOnchainData: !!dashboardData?.onchainData,
-      hasMoneySupplyData: !!dashboardData?.moneySupplyData,
-      hasLayer1Data: !!dashboardData?.layer1Data,
-      hasInflationData: !!dashboardData?.inflationData,
-      hasFearGreed: !!dashboardData?.fearGreed,
-      hasTrendingNarratives: !!dashboardData?.trendingNarratives,
-      hasUpcomingEvents: !!dashboardData?.upcomingEvents,
-      hasAiAnalysis: !!dashboardData?.aiAnalysis,
-      fullData: dashboardData
-    });
     
     if (dashboardData) {
       // Extract all the analytics data from the dashboard response
