@@ -251,7 +251,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         <NarrativesCard data={dashboardData?.trendingNarratives} />
         <AdvancedMetricsCard data={dashboardData?.advancedMetrics} />
         <BacktestCard data={dashboardData?.backtestResults} />
-        <Layer1Card data={dashboardData?.layer1Data} />
+        <Layer1Card data={dashboardData?.layer1Data ? Object.values(dashboardData.layer1Data) : null} />
 
       </div>
     </div>

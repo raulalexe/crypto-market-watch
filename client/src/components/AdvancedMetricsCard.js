@@ -21,8 +21,8 @@ const AdvancedMetricsCard = ({ data: propData }) => {
   // Use prop data if available, otherwise use hook data
   const data = propData || hookData;
 
-  // Extract data from the hook response
-  const metrics = data?.metrics;
+  // Extract data - prop data comes directly from dashboard, hook data might be wrapped
+  const metrics = propData ? propData : data?.metrics;
   const trendingNarratives = data?.trendingNarratives || [];
 
 
