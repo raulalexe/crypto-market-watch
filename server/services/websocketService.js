@@ -6,6 +6,10 @@ class WebSocketService {
     this.io = null;
     this.connectedClients = new Map(); // userId -> socketId mapping
     this.broadcastTimeouts = new Map(); // userId -> timeout mapping for debouncing
+    this.connectionTimestamps = new Map(); // socketId -> timestamp mapping
+    this.idleTimeout = 30 * 60 * 1000; // 30 minutes idle timeout
+    this.cleanupInterval = 5 * 60 * 1000; // Check every 5 minutes
+    this.cleanupTimer = null;
   }
 
   initialize(server) {
@@ -28,19 +32,39 @@ class WebSocketService {
         methods: ['GET', 'POST'],
         credentials: true
       },
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      maxHttpBufferSize: 1e6, // 1MB limit
+      pingTimeout: 60000, // 60 seconds
+      pingInterval: 25000, // 25 seconds
+      upgradeTimeout: 10000, // 10 seconds
+      allowEIO3: true
     });
 
     this.setupEventHandlers();
+    this.startIdleConnectionCleanup();
     console.log('🔌 WebSocket service initialized');
   }
 
   setupEventHandlers() {
     this.io.on('connection', (socket) => {
-      console.log(`🔌 Client connected: ${socket.id}`);
+      console.log(`🔌 Client connected: ${socket.id} (Total connections: ${this.io.engine.clientsCount})`);
+      
+      // Track connection timestamp
+      this.connectionTimestamps.set(socket.id, Date.now());
+      
+      // Monitor connection count
+      if (this.io.engine.clientsCount > 50) {
+        console.warn(`⚠️ High WebSocket connection count: ${this.io.engine.clientsCount}`);
+      }
+
+      // Track activity for all socket events
+      const updateActivity = () => {
+        this.connectionTimestamps.set(socket.id, Date.now());
+      };
 
       // Handle authentication
       socket.on('authenticate', async (data) => {
+        updateActivity(); // Track activity
         try {
           const { token } = data;
           if (!token) {
@@ -72,6 +96,9 @@ class WebSocketService {
 
       // Handle disconnection
       socket.on('disconnect', () => {
+        // Clean up connection timestamp
+        this.connectionTimestamps.delete(socket.id);
+        
         if (socket.userId) {
           this.connectedClients.delete(socket.userId);
           
@@ -82,12 +109,15 @@ class WebSocketService {
             this.broadcastTimeouts.delete(timeoutKey);
           }
           
-          console.log(`🔌 User ${socket.userId} disconnected`);
+          console.log(`🔌 User ${socket.userId} disconnected (Remaining connections: ${this.io.engine.clientsCount - 1})`);
+        } else {
+          console.log(`🔌 Anonymous client disconnected (Remaining connections: ${this.io.engine.clientsCount - 1})`);
         }
       });
 
       // Handle subscription to specific data types
       socket.on('subscribe', (data) => {
+        updateActivity(); // Track activity
         const { dataType } = data;
         if (dataType && socket.userId) {
           socket.join(`data_${dataType}`);
@@ -232,6 +262,94 @@ class WebSocketService {
     if (this.io) {
       this.io.emit(event, data);
     }
+  }
+
+  // Start idle connection cleanup timer
+  startIdleConnectionCleanup() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+    }
+    
+    this.cleanupTimer = setInterval(() => {
+      this.cleanupIdleConnections();
+    }, this.cleanupInterval);
+    
+    console.log(`🕒 Started idle connection cleanup (checking every ${this.cleanupInterval / 1000 / 60} minutes)`);
+  }
+
+  // Clean up idle connections
+  cleanupIdleConnections() {
+    if (!this.io) return;
+    
+    const now = Date.now();
+    const idleConnections = [];
+    
+    // Find idle connections
+    for (const [socketId, timestamp] of this.connectionTimestamps.entries()) {
+      const idleTime = now - timestamp;
+      if (idleTime > this.idleTimeout) {
+        idleConnections.push(socketId);
+      }
+    }
+    
+    // Disconnect idle connections
+    if (idleConnections.length > 0) {
+      console.log(`🧹 Cleaning up ${idleConnections.length} idle WebSocket connections`);
+      
+      for (const socketId of idleConnections) {
+        const socket = this.io.sockets.sockets.get(socketId);
+        if (socket) {
+          console.log(`⏰ Disconnecting idle connection: ${socketId} (idle for ${Math.round((now - this.connectionTimestamps.get(socketId)) / 1000 / 60)} minutes)`);
+          socket.disconnect(true); // Force disconnect
+        }
+        this.connectionTimestamps.delete(socketId);
+      }
+    }
+  }
+
+  // Stop cleanup timer
+  stopIdleConnectionCleanup() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+      console.log('🛑 Stopped idle connection cleanup');
+    }
+  }
+
+  // Get connection statistics
+  getConnectionStats() {
+    const now = Date.now();
+    const stats = {
+      totalConnections: this.connectionTimestamps.size,
+      idleConnections: 0,
+      activeConnections: 0,
+      oldestConnection: null,
+      newestConnection: null
+    };
+    
+    let oldestTime = now;
+    let newestTime = 0;
+    
+    for (const [socketId, timestamp] of this.connectionTimestamps.entries()) {
+      const idleTime = now - timestamp;
+      if (idleTime > this.idleTimeout) {
+        stats.idleConnections++;
+      } else {
+        stats.activeConnections++;
+      }
+      
+      if (timestamp < oldestTime) {
+        oldestTime = timestamp;
+        stats.oldestConnection = Math.round((now - timestamp) / 1000 / 60);
+      }
+      
+      if (timestamp > newestTime) {
+        newestTime = timestamp;
+        stats.newestConnection = Math.round((now - timestamp) / 1000 / 60);
+      }
+    }
+    
+    return stats;
   }
 }
 

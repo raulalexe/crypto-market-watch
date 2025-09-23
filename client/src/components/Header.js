@@ -74,14 +74,7 @@ const Header = ({ onMenuClick, onAuthClick, onLogoutClick, loading, isAuthentica
     if (isAuthenticated) {
       const token = localStorage.getItem('authToken');
       if (token) {
-        // Connect to WebSocket
-        websocketService.connect(token).catch(error => {
-          console.error('WebSocket connection failed:', error);
-          // Fallback to polling if WebSocket fails
-          fetchAlerts();
-          const interval = setInterval(fetchAlerts, 5 * 60 * 1000); // 5 minutes fallback
-          return () => clearInterval(interval);
-        });
+        // WebSocket connection is handled centrally in App.js
 
         // Set up WebSocket event listeners
         const handleAlertsUpdate = (data) => {
@@ -109,7 +102,8 @@ const Header = ({ onMenuClick, onAuthClick, onLogoutClick, loading, isAuthentica
       // Disconnect WebSocket when not authenticated
       websocketService.disconnect();
     }
-  }, [isAuthenticated, lastSeenAlertId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const handleAlertClick = () => {
     setIsAlertPopupOpen(true);

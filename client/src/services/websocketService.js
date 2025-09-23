@@ -4,6 +4,8 @@ class WebSocketService {
   constructor() {
     this.socket = null;
     this.isConnected = false;
+    this.connecting = false;
+    this.connectionAttempts = 0;
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
@@ -11,10 +13,39 @@ class WebSocketService {
   }
 
   async connect(token) {
-    if (this.socket && this.isConnected) {
+    // Prevent multiple simultaneous connection attempts
+    if (this.connecting) {
+      console.log('🔌 WebSocket connection already in progress, waiting...');
+      return new Promise((resolve) => {
+        const checkConnection = () => {
+          if (this.isConnected) {
+            resolve();
+          } else if (!this.connecting) {
+            resolve();
+          } else {
+            setTimeout(checkConnection, 100);
+          }
+        };
+        checkConnection();
+      });
+    }
+
+    // Check if we already have a connected socket
+    if (this.socket && this.socket.connected && this.isConnected) {
+      console.log('🔌 WebSocket already connected, skipping new connection');
       return Promise.resolve();
     }
 
+    // If we have a socket but it's not connected, disconnect it first
+    if (this.socket && !this.socket.connected) {
+      console.log('🔌 Disconnecting old WebSocket connection before creating new one');
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
+    this.connecting = true;
+    this.connectionAttempts++;
+    
     return new Promise(async (resolve, reject) => {
       let serverUrl;
       
@@ -24,6 +55,7 @@ class WebSocketService {
         const config = await response.json();
         serverUrl = config.websocketUrl;
         console.log('🔌 WebSocket URL from config:', serverUrl);
+        console.log('🔌 WebSocket connection attempt #' + this.connectionAttempts);
       } catch (error) {
         console.warn('Failed to fetch WebSocket URL from config, using fallback:', error);
         // Fallback to window.location.origin
@@ -39,6 +71,7 @@ class WebSocketService {
       this.socket.on('connect', () => {
         // Debug logging removed for production
         this.isConnected = true;
+        this.connecting = false;
         this.reconnectAttempts = 0;
         
         // Authenticate with token
@@ -54,24 +87,28 @@ class WebSocketService {
 
       this.socket.on('auth_error', (error) => {
         console.error('❌ WebSocket authentication failed:', error);
+        this.connecting = false;
         reject(new Error(error.message));
       });
 
       this.socket.on('disconnect', (reason) => {
         // Debug logging removed for production
         this.isConnected = false;
+        this.connecting = false;
         this.handleReconnect();
       });
 
       this.socket.on('connect_error', (error) => {
         console.error('❌ WebSocket connection error:', error);
         this.isConnected = false;
+        this.connecting = false;
         reject(error);
       });
 
       // Timeout after 10 seconds
       setTimeout(() => {
-        if (!this.isConnected) {
+        if (!this.isConnected && this.connecting) {
+          this.connecting = false;
           reject(new Error('WebSocket connection timeout'));
         }
       }, 10000);
@@ -194,11 +231,15 @@ class WebSocketService {
   getConnectionState() {
     return {
       connected: this.isConnected,
+      connecting: this.connecting,
+      connectionAttempts: this.connectionAttempts,
       reconnectAttempts: this.reconnectAttempts,
-      maxReconnectAttempts: this.maxReconnectAttempts
+      maxReconnectAttempts: this.maxReconnectAttempts,
+      socketId: this.socket ? this.socket.id : null
     };
   }
 }
 
 // Export singleton instance
-export default new WebSocketService();
+const websocketService = new WebSocketService();
+export default websocketService;

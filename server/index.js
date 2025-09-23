@@ -3620,6 +3620,28 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// WebSocket connection statistics endpoint (admin only)
+app.get('/api/websocket-stats', authenticateToken, requireAdmin, (req, res) => {
+  try {
+    const WebSocketService = require('./services/websocketService');
+    const stats = WebSocketService.getConnectionStats();
+    
+    res.json({
+      success: true,
+      stats: {
+        ...stats,
+        idleTimeoutMinutes: Math.round(WebSocketService.idleTimeout / 1000 / 60),
+        cleanupIntervalMinutes: Math.round(WebSocketService.cleanupInterval / 1000 / 60)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ===== INFLATION DATA ENDPOINTS =====
 
 // Test PPI endpoint
@@ -6018,26 +6040,58 @@ const server = app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('🛑 Shutting down server...');
+  
+  // Close WebSocket connections first
+  if (WebSocketService && WebSocketService.io) {
+    WebSocketService.stopIdleConnectionCleanup();
+    WebSocketService.io.close(() => {
+      console.log('🔌 WebSocket connections closed');
+    });
+  }
+  
   if (cronJobManager) {
     cronJobManager.stopAllJobs();
     console.log('⏹️ Cron jobs stopped');
   }
+  
   server.close(() => {
     console.log('✅ Server closed');
     process.exit(0);
   });
+  
+  // Force exit after 5 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.log('⚠️ Force exiting after timeout');
+    process.exit(1);
+  }, 5000);
 });
 
 process.on('SIGTERM', () => {
   console.log('🛑 Shutting down server...');
+  
+  // Close WebSocket connections first
+  if (WebSocketService && WebSocketService.io) {
+    WebSocketService.stopIdleConnectionCleanup();
+    WebSocketService.io.close(() => {
+      console.log('🔌 WebSocket connections closed');
+    });
+  }
+  
   if (cronJobManager) {
     cronJobManager.stopAllJobs();
     console.log('⏹️ Cron jobs stopped');
   }
+  
   server.close(() => {
     console.log('✅ Server closed');
     process.exit(0);
   });
+  
+  // Force exit after 5 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.log('⚠️ Force exiting after timeout');
+    process.exit(1);
+  }, 5000);
 });
 
 // Export correlation collection function for use by dataCollector
