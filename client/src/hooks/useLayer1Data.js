@@ -114,14 +114,12 @@ const useLayer1Data = (options = {}) => {
     // Only set up listeners if WebSocket is connected
     if (websocketService.isConnectedToServer()) {
       websocketService.on('dashboard_update', handleDashboardUpdate);
-      // Fetch data when WebSocket connects (this is the only time we should fetch)
-      fetchLayer1Data();
+      // NO API calls - only listen for WebSocket updates to reduce egress charges
     } else {
       // Listen for connection event to set up dashboard listener
       const handleConnected = () => {
         websocketService.on('dashboard_update', handleDashboardUpdate);
-        // Fetch data when WebSocket connects (this is the only time we should fetch)
-        fetchLayer1Data();
+        // NO API calls - only listen for WebSocket updates to reduce egress charges
       };
       websocketService.on('connected', handleConnected);
       

@@ -3,13 +3,13 @@ import axios from 'axios';
 import logger from '../utils/logger';
 import websocketService from '../services/websocketService';
 
-const useInflationData = (options = {}) => {
-  const {
-    autoFetch = false, // Changed to false - only fetch on WebSocket connection
-    refreshInterval = null, // Fallback polling interval if WebSocket is not used
-    onError = null,
-    onSuccess = null
-  } = options;
+  const useInflationData = (options = {}) => {
+    const {
+      autoFetch = false, // Disabled to reduce API calls and egress charges
+      refreshInterval = null, // Disabled to reduce API calls and egress charges
+      onError = null,
+      onSuccess = null
+    } = options;
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -98,8 +98,7 @@ const useInflationData = (options = {}) => {
   useEffect(() => {
     const setupWebSocketListener = () => {
       websocketService.on('dashboard_update', handleDashboardUpdate);
-      // Fetch data when WebSocket connects (this is the only time we should fetch)
-      fetchInflationData();
+      // NO API calls - only listen for WebSocket updates to reduce egress charges
     };
 
     // Set up listener immediately if already connected

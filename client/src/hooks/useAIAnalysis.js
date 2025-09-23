@@ -5,8 +5,8 @@ import websocketService from '../services/websocketService';
 
 const useAIAnalysis = (options = {}) => {
   const {
-    autoFetch = true,
-    refreshInterval = null,
+    autoFetch = false, // Disabled to reduce API calls and egress charges
+    refreshInterval = null, // Disabled to reduce API calls and egress charges
     onError = null,
     onSuccess = null
   } = options;

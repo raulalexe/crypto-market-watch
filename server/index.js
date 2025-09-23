@@ -9,6 +9,210 @@ const multer = require('multer');
 // Load environment variables first
 require('dotenv').config({ path: path.join(__dirname, '../.env.local') });
 
+// Server-side caching for dashboard data to reduce API calls and egress
+class DashboardCache {
+  constructor() {
+    this.cache = null;
+    this.lastUpdate = null;
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
+  }
+
+  set(data) {
+    this.cache = data;
+    this.lastUpdate = Date.now();
+  }
+
+  get() {
+    if (!this.cache || !this.lastUpdate) {
+      return null;
+    }
+    
+    // Check if cache is still valid
+    if (Date.now() - this.lastUpdate > this.cacheTimeout) {
+      this.cache = null;
+      this.lastUpdate = null;
+      return null;
+    }
+    
+    return this.cache;
+  }
+
+  isStale() {
+    if (!this.lastUpdate) return true;
+    return Date.now() - this.lastUpdate > this.cacheTimeout;
+  }
+}
+
+const dashboardCache = new DashboardCache();
+
+// Helper function to get dashboard data (reusable for WebSocket broadcasts)
+async function getDashboardData() {
+  try {
+    const [
+      marketData,
+      analysis,
+      fearGreed,
+      narratives,
+      backtestMetrics,
+      upcomingEvents,
+      inflationData,
+      correlationData,
+      advancedMetrics,
+      marketSentiment,
+      derivativesData,
+      onchainData,
+      moneySupplyData,
+      layer1Data
+    ] = await Promise.all([
+      dataCollector.getMarketDataSummary(),
+      aiAnalyzer.getAnalysisSummary(),
+      (async () => {
+        const { getLatestFearGreedIndex } = require('./database');
+        return await getLatestFearGreedIndex();
+      })(),
+      (async () => {
+        const { getProcessedTrendingNarratives } = require('./database');
+        return await getProcessedTrendingNarratives(5);
+      })(),
+      aiAnalyzer.getBacktestMetrics(),
+      eventCollector.getUpcomingEvents(10),
+      (async () => {
+        try {
+          const { getLatestInflationData } = require('./database');
+          const [cpiData, pceData, ppiData] = await Promise.all([
+            getLatestInflationData('CPI'),
+            getLatestInflationData('PCE'),
+            getLatestInflationData('PPI')
+          ]);
+          
+          // Format data like /api/inflation/latest endpoint
+          const inflationData = {
+            cpi: cpiData ? {
+              cpi: cpiData.value?.toString(),
+              coreCPI: cpiData.core_value?.toString(),
+              cpiYoY: cpiData.yoy_change?.toString(),
+              coreCPIYoY: cpiData.core_yoy_change?.toString(),
+              date: cpiData.date
+            } : null,
+            pce: pceData ? {
+              pce: pceData.value?.toString(),
+              corePCE: pceData.core_value?.toString(),
+              pceYoY: pceData.yoy_change?.toString(),
+              corePCEYoY: pceData.core_yoy_change?.toString(),
+              date: pceData.date
+            } : null,
+            ppi: ppiData ? {
+              ppi: ppiData.value?.toString(),
+              corePPI: ppiData.core_value?.toString(),
+              ppiYoY: ppiData.yoy_change?.toString(),
+              corePPIYoY: ppiData.core_yoy_change?.toString(),
+              date: ppiData.date
+            } : null
+          };
+          
+          return inflationData;
+        } catch (error) {
+          console.error('Error fetching inflation data:', error);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getLatestCorrelationData } = require('./database');
+          return await getLatestCorrelationData();
+        } catch (error) {
+          console.error('Error fetching correlation data:', error);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          return await dataCollector.getAdvancedMetricsSummary();
+        } catch (error) {
+          console.error('Error fetching advanced metrics:', error);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getLatestMarketSentiment } = require('./database');
+          return await getLatestMarketSentiment();
+        } catch (error) {
+          console.error('Error fetching market sentiment:', error);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getLatestDerivativesData } = require('./database');
+          return await getLatestDerivativesData();
+        } catch (error) {
+          console.error('Error fetching derivatives data:', error);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getLatestOnchainData } = require('./database');
+          return await getLatestOnchainData();
+        } catch (error) {
+          console.error('Error fetching onchain data:', error);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getLatestMoneySupplyData } = require('./database');
+          return await getLatestMoneySupplyData();
+        } catch (error) {
+          console.error('Error fetching money supply data:', error);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const { getLatestLayer1Data } = require('./database');
+          return await getLatestLayer1Data();
+        } catch (error) {
+          console.error('Error fetching layer1 data:', error);
+          return null;
+        }
+      })()
+    ]);
+
+    // Determine the most recent collection time
+    let lastCollectionTime = null;
+    if (marketData && marketData.timestamp) {
+      lastCollectionTime = marketData.timestamp;
+    } else if (fearGreed && fearGreed.timestamp) {
+      lastCollectionTime = fearGreed.timestamp;
+    }
+
+    // Return only real data
+    return {
+      marketData,
+      aiAnalysis: analysis,
+      fearGreed,
+      trendingNarratives: narratives,
+      backtestResults: backtestMetrics,
+      upcomingEvents,
+      inflationData,
+      correlationData,
+      advancedMetrics,
+      marketSentiment,
+      derivativesData,
+      onchainData,
+      moneySupplyData,
+      layer1Data,
+      lastCollectionTime,
+      timestamp: lastCollectionTime || new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    return null;
+  }
+}
+
 // Ensure JWT_SECRET is set - CRITICAL for security
 if (!process.env.JWT_SECRET) {
   console.error('❌ CRITICAL ERROR: JWT_SECRET environment variable is required');
@@ -3028,6 +3232,25 @@ app.post('/api/collect-data', authenticateToken, requireAdmin, async (req, res) 
       // Collect upcoming events
       await eventCollector.collectUpcomingEvents();
       
+      // Clear cache and broadcast dashboard update to all connected users after data collection
+      // This is the ONLY time we should broadcast - when we have new data
+      dashboardCache.cache = null; // Clear cache to force fresh data on next request
+      dashboardCache.lastUpdate = null;
+      
+      const WebSocketService = require('./services/websocketService');
+      if (WebSocketService.io) {
+        // Get fresh dashboard data to broadcast
+        const dashboardData = await getDashboardData();
+        if (dashboardData) {
+          // Cache the new data
+          dashboardCache.set(dashboardData);
+          
+          // Broadcast to all connected users
+          WebSocketService.io.emit('dashboard_update', { data: dashboardData });
+          console.log('📡 Broadcasted dashboard update to all connected users after data collection');
+        }
+      }
+      
       console.log('🎉 ============================================');
       console.log('🎉 API: DATA COLLECTION COMPLETED SUCCESSFULLY! 🎉');
       console.log('🎉 ============================================');
@@ -3207,9 +3430,14 @@ app.post('/api/ai-analysis', authenticateToken, requireAdmin, async (req, res) =
   }
 });
 
-// Get dashboard summary
+// Get dashboard summary - CACHED to reduce egress charges
 app.get('/api/dashboard', optionalAuth, async (req, res) => {
   try {
+    // Check cache first to avoid expensive database calls
+    let dashboardData = dashboardCache.get();
+    
+    if (!dashboardData) {
+      console.log('📊 Dashboard cache miss - fetching fresh data...');
     const [
       marketData,
       analysis,
@@ -3673,13 +3901,37 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
     };
     
     
-    // Broadcast dashboard update via WebSocket if user is authenticated
-    // Only broadcast if this is not a WebSocket-triggered request
-    if (req.user && !req.headers['x-websocket-request']) {
-      WebSocketService.broadcastDashboardUpdate(req.user.id, dashboardData);
+      // Cache the dashboard data to avoid future expensive calls
+      dashboardCache.set(dashboardData);
+      console.log('📊 Dashboard data cached successfully');
+    } else {
+      console.log('📊 Dashboard cache hit - returning cached data');
     }
+
+    // Get subscription status for authenticated users (not cached)
+    let subscriptionStatus = null;
+    if (req.user) {
+      try {
+        subscriptionStatus = await subscriptionManager.getSubscriptionStatus(req.user.id);
+      } catch (error) {
+        console.error('Error fetching subscription status:', error);
+      }
+    }
+
+    // Add subscription status to response (not cached)
+    const responseData = {
+      ...dashboardData,
+      subscriptionStatus
+    };
     
-    res.json(dashboardData);
+    // DO NOT broadcast dashboard updates from API calls
+    // This was causing excessive egress charges on Railway
+    // WebSocket broadcasts should only happen when backend has new data
+    // if (req.user && !req.headers['x-websocket-request']) {
+    //   WebSocketService.broadcastDashboardUpdate(req.user.id, dashboardData);
+    // }
+    
+    res.json(responseData);
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard data' });
