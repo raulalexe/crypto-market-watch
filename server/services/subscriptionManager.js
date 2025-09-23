@@ -37,6 +37,10 @@ class SubscriptionManager {
         features: getPlanFeatures(SUBSCRIPTION_TYPES.PREMIUM)
       }
     };
+    
+    // Cache for subscription status to reduce database calls
+    this.subscriptionCache = new Map();
+    this.cacheTimeout = 30000; // 30 seconds cache
   }
 
   // Check if subscription is expired and handle expiration
@@ -109,6 +113,13 @@ class SubscriptionManager {
   // Get subscription status with expiration check
   async getSubscriptionStatus(userId) {
     try {
+      // Check cache first
+      const cacheKey = `subscription_${userId}`;
+      const cached = this.subscriptionCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < this.cacheTimeout) {
+        return cached.data;
+      }
+      
       console.log(`🔍 Getting subscription status for user ${userId}`);
       
       // Check if user is admin first
@@ -117,7 +128,7 @@ class SubscriptionManager {
       
       if (isAdmin) {
         console.log(`👑 User ${userId} is admin - granting full access`);
-        return {
+        const adminStatus = {
           plan: SUBSCRIPTION_TYPES.ADMIN,
           status: 'active',
           planName: getPlanName(SUBSCRIPTION_TYPES.ADMIN),
@@ -126,13 +137,29 @@ class SubscriptionManager {
           isAdmin: true,
           needsRenewal: false
         };
+        
+        // Cache the result
+        this.subscriptionCache.set(cacheKey, {
+          data: adminStatus,
+          timestamp: Date.now()
+        });
+        
+        return adminStatus;
       }
 
       // Get user data to check subscription (simplified approach)
       const user = await getUserById(userId);
       if (!user) {
         console.log(`❌ User ${userId} not found`);
-        return this.getFreePlanStatus();
+        const freeStatus = this.getFreePlanStatus();
+        
+        // Cache the result
+        this.subscriptionCache.set(cacheKey, {
+          data: freeStatus,
+          timestamp: Date.now()
+        });
+        
+        return freeStatus;
       }
       
       // Check if user has an active subscription
@@ -149,7 +176,15 @@ class SubscriptionManager {
             subscription_plan: SUBSCRIPTION_TYPES.FREE,
             subscription_expires_at: null
           });
-          return this.getFreePlanStatus();
+          const freeStatus = this.getFreePlanStatus();
+          
+          // Cache the result
+          this.subscriptionCache.set(cacheKey, {
+            data: freeStatus,
+            timestamp: Date.now()
+          });
+          
+          return freeStatus;
         }
         
         // Active subscription
@@ -160,7 +195,7 @@ class SubscriptionManager {
             expires: expiresAt
           });
           
-          return {
+          const activeStatus = {
             plan: user.subscription_plan,
             status: 'active',
             planName: getPlanName(user.subscription_plan),
@@ -168,16 +203,51 @@ class SubscriptionManager {
             currentPeriodEnd: expiresAt,
             needsRenewal: false
           };
+          
+          // Cache the result
+          this.subscriptionCache.set(cacheKey, {
+            data: activeStatus,
+            timestamp: Date.now()
+          });
+          
+          return activeStatus;
         }
       }
       
       // No active subscription - return free plan
       console.log(`📋 User ${userId} has no active subscription - using free plan`);
-      return this.getFreePlanStatus();
+      const freeStatus = this.getFreePlanStatus();
+      
+      // Cache the result
+      this.subscriptionCache.set(cacheKey, {
+        data: freeStatus,
+        timestamp: Date.now()
+      });
+      
+      return freeStatus;
     } catch (error) {
       console.error(`❌ Error getting subscription status for user ${userId}:`, error);
-      return this.getFreePlanStatus();
+      const freeStatus = this.getFreePlanStatus();
+      
+      // Cache the result
+      this.subscriptionCache.set(cacheKey, {
+        data: freeStatus,
+        timestamp: Date.now()
+      });
+      
+      return freeStatus;
     }
+  }
+
+  // Clear subscription cache for a user (call when subscription changes)
+  clearSubscriptionCache(userId) {
+    const cacheKey = `subscription_${userId}`;
+    this.subscriptionCache.delete(cacheKey);
+  }
+
+  // Clear all subscription cache
+  clearAllSubscriptionCache() {
+    this.subscriptionCache.clear();
   }
 
   // Create renewal subscription

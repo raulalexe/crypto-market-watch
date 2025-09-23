@@ -1,15 +1,25 @@
 import React from 'react';
-import { BarChart3, Target, TrendingUp } from 'lucide-react';
+import { BarChart3, Target, TrendingUp, Clock } from 'lucide-react';
 
 const BacktestCard = ({ data: backtestMetrics }) => {
-  if (!backtestMetrics) {
+  // Check if we have no data or if it's sample data with no real results
+  if (!backtestMetrics || (backtestMetrics.total_predictions === 0 && backtestMetrics.is_sample_data)) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
         <div className="flex items-center space-x-3 mb-4">
           <BarChart3 className="w-6 h-6 text-crypto-blue" />
-          <h3 className="text-lg font-semibold text-white">Backtest Results</h3>
+          <h3 className="text-lg font-semibold text-white">Backtest Performance</h3>
         </div>
-        <p className="text-slate-400">No backtest data available</p>
+        
+        <div className="text-center py-8">
+          <div className="flex items-center justify-center mb-4">
+            <Clock className="w-12 h-12 text-crypto-blue/50" />
+          </div>
+          <h4 className="text-xl font-semibold text-white mb-2">Coming Soon</h4>
+          <p className="text-slate-400 max-w-md mx-auto">
+            We're working on advanced backtesting features to show AI prediction performance and accuracy metrics.
+          </p>
+        </div>
       </div>
     );
   }
@@ -26,12 +36,29 @@ const BacktestCard = ({ data: backtestMetrics }) => {
     return 'text-crypto-red';
   };
 
+  // Check if we have data but no successful predictions yet
+  const hasNoSuccessfulPredictions = backtestMetrics.total_predictions > 0 && backtestMetrics.overall_accuracy === 0;
+
   return (
     <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
       <div className="flex items-center space-x-3 mb-6">
         <BarChart3 className="w-6 h-6 text-crypto-blue" />
         <h3 className="text-lg font-semibold text-white">Backtest Performance</h3>
       </div>
+
+      {/* Show special message if we have predictions but no successful ones yet */}
+      {hasNoSuccessfulPredictions && (
+        <div className="mb-6 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+          <div className="flex items-center space-x-2 mb-2">
+            <Clock className="w-5 h-5 text-yellow-400" />
+            <h4 className="text-yellow-400 font-medium">Building Prediction History</h4>
+          </div>
+          <p className="text-yellow-300 text-sm">
+            We have {backtestMetrics.total_predictions} predictions in our system. As more time passes and we collect more data, 
+            the accuracy metrics will become more meaningful. Check back later for improved performance metrics.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
         {/* Overall Accuracy */}

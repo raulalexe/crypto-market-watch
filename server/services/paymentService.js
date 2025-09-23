@@ -84,6 +84,9 @@ class PaymentService {
         duration: 30 // days
       }
     };
+    
+    // Cache for subscription status to reduce database calls
+    this.subscriptionCache = new Map();
   }
 
   // ===== STRIPE PAYMENTS =====
@@ -907,13 +910,20 @@ class PaymentService {
 
   async getSubscriptionStatus(userId) {
     try {
+      // Check cache first
+      const cacheKey = `payment_subscription_${userId}`;
+      const cached = this.subscriptionCache?.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < 30000) { // 30 second cache
+        return cached.data;
+      }
+      
       // Check if user is admin first
       const { isUserAdmin, getUserById } = require('../database');
       const isAdmin = await isUserAdmin(userId);
       
       if (isAdmin) {
         const adminPlan = this.subscriptionPlans[SUBSCRIPTION_TYPES.ADMIN];
-        return {
+        const adminStatus = {
           plan: SUBSCRIPTION_TYPES.ADMIN,
           status: 'active',
           planName: adminPlan.name,
@@ -922,6 +932,14 @@ class PaymentService {
           isAdmin: true,
           role: 'admin'
         };
+        
+        // Cache the result
+        this.subscriptionCache.set(cacheKey, {
+          data: adminStatus,
+          timestamp: Date.now()
+        });
+        
+        return adminStatus;
       }
 
       // Get user data to check subscription status
@@ -958,7 +976,7 @@ class PaymentService {
             expires: expiresAt
           });
           
-          return {
+          const activeStatus = {
             plan: user.subscription_plan,
             status: 'active',
             planName: plan.name,
@@ -966,18 +984,34 @@ class PaymentService {
             currentPeriodEnd: expiresAt,
             needsRenewal: false
           };
+          
+          // Cache the result
+          this.subscriptionCache.set(cacheKey, {
+            data: activeStatus,
+            timestamp: Date.now()
+          });
+          
+          return activeStatus;
         }
       }
       
       // No active subscription - return free plan
       console.log(`📋 User ${userId} has no active subscription - using free plan`);
       const freePlan = this.subscriptionPlans[SUBSCRIPTION_TYPES.FREE];
-      return { 
+      const freeStatus = { 
         plan: SUBSCRIPTION_TYPES.FREE, 
         status: 'inactive',
         planName: freePlan.name,
         features: freePlan.features
       };
+      
+      // Cache the result
+      this.subscriptionCache.set(cacheKey, {
+        data: freeStatus,
+        timestamp: Date.now()
+      });
+      
+      return freeStatus;
     } catch (error) {
       console.error('Get subscription status error:', error);
       throw error;

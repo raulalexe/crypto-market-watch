@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import logger from '../utils/logger';
 import websocketService from '../services/websocketService';
@@ -16,6 +16,16 @@ const useAdvancedAnalytics = (options = {}) => {
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
   const [isStale, setIsStale] = useState(false);
+  
+  // Use refs to store stable references to callbacks
+  const onErrorRef = useRef(onError);
+  const onSuccessRef = useRef(onSuccess);
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    onErrorRef.current = onError;
+    onSuccessRef.current = onSuccess;
+  }, [onError, onSuccess]);
 
   const fetchAnalyticsData = useCallback(async (forceRefresh = false) => {
     // Don't fetch if already loading unless forced
@@ -28,8 +38,31 @@ const useAdvancedAnalytics = (options = {}) => {
       // Add cache busting parameter if forced refresh
       const url = forceRefresh ? `/api/dashboard?t=${Date.now()}` : '/api/dashboard';
 
-      const response = await axios.get(url);
+      const response = await axios.get(url, {
+        headers: {
+          'x-websocket-request': 'true' // Prevent server from broadcasting WebSocket updates
+        }
+      });
       const dashboardData = response.data;
+      
+      // Add comprehensive logging for debugging
+      console.log('🔍 Advanced Analytics - Dashboard data received:', {
+        hasMarketData: !!dashboardData.marketData,
+        hasBacktestData: !!dashboardData.backtestResults,
+        hasCorrelationData: !!dashboardData.correlationData,
+        hasAdvancedMetrics: !!dashboardData.advancedMetrics,
+        hasMarketSentiment: !!dashboardData.marketSentiment,
+        hasDerivativesData: !!dashboardData.derivativesData,
+        hasOnchainData: !!dashboardData.onchainData,
+        hasMoneySupplyData: !!dashboardData.moneySupplyData,
+        hasLayer1Data: !!dashboardData.layer1Data,
+        hasInflationData: !!dashboardData.inflationData,
+        hasFearGreed: !!dashboardData.fearGreed,
+        hasTrendingNarratives: !!dashboardData.trendingNarratives,
+        hasUpcomingEvents: !!dashboardData.upcomingEvents,
+        hasAiAnalysis: !!dashboardData.aiAnalysis,
+        fullData: dashboardData
+      });
 
       if (dashboardData) {
         // Extract all the analytics data from the dashboard response
@@ -54,8 +87,8 @@ const useAdvancedAnalytics = (options = {}) => {
         setLastFetch(new Date());
         setIsStale(false); // Reset staleness on successful fetch
 
-        if (onSuccess) {
-          onSuccess(analyticsData);
+        if (onSuccessRef.current) {
+          onSuccessRef.current(analyticsData);
         }
       } else {
         setData(null);
@@ -68,17 +101,37 @@ const useAdvancedAnalytics = (options = {}) => {
 
       logger.error('Error fetching analytics data:', err);
 
-      if (onError) {
-        onError(err);
+      if (onErrorRef.current) {
+        onErrorRef.current(err);
       }
     } finally {
       setLoading(false);
     }
-  }, [loading, onError, onSuccess]);
+  }, [loading]); // Remove onError and onSuccess from dependencies to prevent infinite loop
 
   // Handle WebSocket dashboard updates
   const handleDashboardUpdate = useCallback((updateData) => {
     const dashboardData = updateData.data;
+    
+    // Add comprehensive logging for WebSocket updates
+    console.log('🔍 Advanced Analytics - WebSocket update received:', {
+      hasMarketData: !!dashboardData?.marketData,
+      hasBacktestData: !!dashboardData?.backtestResults,
+      hasCorrelationData: !!dashboardData?.correlationData,
+      hasAdvancedMetrics: !!dashboardData?.advancedMetrics,
+      hasMarketSentiment: !!dashboardData?.marketSentiment,
+      hasDerivativesData: !!dashboardData?.derivativesData,
+      hasOnchainData: !!dashboardData?.onchainData,
+      hasMoneySupplyData: !!dashboardData?.moneySupplyData,
+      hasLayer1Data: !!dashboardData?.layer1Data,
+      hasInflationData: !!dashboardData?.inflationData,
+      hasFearGreed: !!dashboardData?.fearGreed,
+      hasTrendingNarratives: !!dashboardData?.trendingNarratives,
+      hasUpcomingEvents: !!dashboardData?.upcomingEvents,
+      hasAiAnalysis: !!dashboardData?.aiAnalysis,
+      fullData: dashboardData
+    });
+    
     if (dashboardData) {
       // Extract all the analytics data from the dashboard response
       const analyticsData = {
@@ -102,18 +155,19 @@ const useAdvancedAnalytics = (options = {}) => {
       setLastFetch(new Date());
       setError(null); // Clear any previous errors
 
-      if (onSuccess) {
-        onSuccess(analyticsData);
+      if (onSuccessRef.current) {
+        onSuccessRef.current(analyticsData);
       }
     }
-  }, [onSuccess]);
+  }, []); // Remove onSuccess from dependencies to prevent infinite loop
 
-  // Skip auto-fetch - rely on WebSocket updates only
-  // useEffect(() => {
-  //   if (autoFetch) {
-  //     fetchAnalyticsData();
-  //   }
-  // }, [autoFetch, fetchAnalyticsData]);
+  // Auto-fetch as fallback when WebSocket is not available
+  useEffect(() => {
+    if (autoFetch) {
+      fetchAnalyticsData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch]); // Remove fetchAnalyticsData from dependencies to prevent infinite loop
 
   // Set up WebSocket listener for dashboard updates
   useEffect(() => {
@@ -122,7 +176,8 @@ const useAdvancedAnalytics = (options = {}) => {
     return () => {
       websocketService.off('dashboard_update', handleDashboardUpdate);
     };
-  }, [handleDashboardUpdate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove handleDashboardUpdate from dependencies to prevent infinite loop
 
   // Set up refresh interval if provided (fallback for when WebSocket is not available)
   useEffect(() => {
@@ -133,7 +188,8 @@ const useAdvancedAnalytics = (options = {}) => {
 
       return () => clearInterval(interval);
     }
-  }, [refreshInterval, fetchAnalyticsData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshInterval]); // Remove fetchAnalyticsData from dependencies to prevent infinite loop
 
   // Check for data staleness
   useEffect(() => {
@@ -155,7 +211,8 @@ const useAdvancedAnalytics = (options = {}) => {
   // Manual refresh function
   const refresh = useCallback(() => {
     fetchAnalyticsData(true);
-  }, [fetchAnalyticsData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove fetchAnalyticsData from dependencies to prevent infinite loop
 
   return { data, loading, error, lastFetch, isStale, refresh };
 };

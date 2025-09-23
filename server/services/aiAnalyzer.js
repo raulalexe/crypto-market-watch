@@ -653,14 +653,20 @@ ANALYSIS REQUIREMENTS:
   // Backtest previous predictions
   async backtestPredictions() {
     try {
-      console.log('Starting backtest analysis...');
+      console.log('🔄 Starting backtest analysis...');
       
       // Get latest AI analysis
       const latestAnalysis = await getLatestAIAnalysis();
       if (!latestAnalysis) {
-        console.log('No AI analysis found for backtesting');
+        console.log('⚠️ No AI analysis found for backtesting');
         return;
       }
+      
+      console.log('🔍 Latest AI Analysis:', {
+        timestamp: latestAnalysis.timestamp,
+        marketDirection: latestAnalysis.market_direction,
+        hasAnalysisData: !!latestAnalysis.analysis_data
+      });
 
       // Parse the analysis data to get overall direction
       let predictedDirection = latestAnalysis.market_direction;
@@ -827,8 +833,23 @@ ANALYSIS REQUIREMENTS:
       const { getBacktestResults } = require('../database');
       const results = await getBacktestResults(100);
       
+      console.log('🔍 Backtest Metrics Debug:', {
+        totalResults: results?.length || 0,
+        sampleResults: results?.slice(0, 3) || []
+      });
+      
       if (!results || results.length === 0) {
-        return null;
+        console.log('⚠️ No backtest results found in database');
+        
+        // Return sample data for demonstration purposes
+        return {
+          overall_accuracy: 0,
+          average_correlation: 0,
+          total_predictions: 0,
+          by_symbol: {},
+          recent_results: [],
+          is_sample_data: true
+        };
       }
 
       // Calculate overall accuracy
@@ -838,6 +859,20 @@ ANALYSIS REQUIREMENTS:
 
       // Calculate average correlation score
       const avgCorrelation = results.reduce((sum, r) => sum + parseInt(r.correlation_score), 0) / totalPredictions;
+      
+      console.log('🔍 Backtest Calculations:', {
+        totalPredictions,
+        correctPredictions,
+        overallAccuracy,
+        avgCorrelation,
+        accuracyBreakdown: results.map(r => ({ 
+          symbol: r.crypto_symbol, 
+          accuracy: r.accuracy, 
+          correlation: r.correlation_score,
+          predicted: r.predicted_direction,
+          actual: r.actual_direction
+        }))
+      });
 
       // Group by crypto symbol
       const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'SUI', 'XRP'];

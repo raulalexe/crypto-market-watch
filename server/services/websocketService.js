@@ -5,6 +5,7 @@ class WebSocketService {
   constructor() {
     this.io = null;
     this.connectedClients = new Map(); // userId -> socketId mapping
+    this.broadcastTimeouts = new Map(); // userId -> timeout mapping for debouncing
   }
 
   initialize(server) {
@@ -73,6 +74,14 @@ class WebSocketService {
       socket.on('disconnect', () => {
         if (socket.userId) {
           this.connectedClients.delete(socket.userId);
+          
+          // Clear any pending broadcast timeouts for this user
+          const timeoutKey = `dashboard_${socket.userId}`;
+          if (this.broadcastTimeouts.has(timeoutKey)) {
+            clearTimeout(this.broadcastTimeouts.get(timeoutKey));
+            this.broadcastTimeouts.delete(timeoutKey);
+          }
+          
           console.log(`🔌 User ${socket.userId} disconnected`);
         }
       });
@@ -154,8 +163,33 @@ class WebSocketService {
 
   broadcastDashboardUpdate(userId, data) {
     if (this.io) {
-      this.io.to(`user_${userId}`).emit('dashboard_update', { data });
-      this.io.to('data_dashboard').emit('dashboard_update', { data });
+      // Add logging for debugging
+      console.log('🔍 WebSocket - Broadcasting dashboard update:', {
+        userId,
+        hasMarketData: !!data.marketData,
+        hasAdvancedMetrics: !!data.advancedMetrics,
+        hasInflationData: !!data.inflationData,
+        hasMoneySupplyData: !!data.moneySupplyData,
+        hasLayer1Data: !!data.layer1Data,
+        timestamp: data.timestamp
+      });
+      
+      // Debounce broadcasts to prevent rapid successive updates
+      const timeoutKey = `dashboard_${userId}`;
+      
+      // Clear existing timeout
+      if (this.broadcastTimeouts.has(timeoutKey)) {
+        clearTimeout(this.broadcastTimeouts.get(timeoutKey));
+      }
+      
+      // Set new timeout for debounced broadcast
+      const timeout = setTimeout(() => {
+        this.io.to(`user_${userId}`).emit('dashboard_update', { data });
+        this.io.to('data_dashboard').emit('dashboard_update', { data });
+        this.broadcastTimeouts.delete(timeoutKey);
+      }, 100); // 100ms debounce
+      
+      this.broadcastTimeouts.set(timeoutKey, timeout);
     }
   }
 

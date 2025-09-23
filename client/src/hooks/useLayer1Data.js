@@ -78,12 +78,12 @@ const useLayer1Data = (options = {}) => {
     }
   }, [onSuccess]);
 
-  // Skip auto-fetch - rely on WebSocket updates only
-  // useEffect(() => {
-  //   if (autoFetch) {
-  //     fetchLayer1Data();
-  //   }
-  // }, [autoFetch, fetchLayer1Data]);
+  // Auto-fetch as fallback when WebSocket is not available
+  useEffect(() => {
+    if (autoFetch) {
+      fetchLayer1Data();
+    }
+  }, [autoFetch, fetchLayer1Data]);
 
   // Set up WebSocket listener for dashboard updates
   useEffect(() => {

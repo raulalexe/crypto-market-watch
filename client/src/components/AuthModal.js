@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Lock, Mail } from 'lucide-react';
 import axios from 'axios';
-import authService from '../services/authService';
 
 const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) => {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
@@ -86,7 +85,15 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) =>
         setEmailSent(true);
         setConfirmationMessage(error.response.data.message);
       } else {
-        setError(error.response?.data?.error || 'Authentication failed');
+        // Handle both string and object error responses
+        const errorMessage = error.response?.data?.error;
+        if (typeof errorMessage === 'string') {
+          setError(errorMessage);
+        } else if (errorMessage && errorMessage.message) {
+          setError(errorMessage.message);
+        } else {
+          setError('Authentication failed');
+        }
       }
     } finally {
       setLoading(false);
@@ -102,7 +109,15 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) =>
       await axios.post('/api/auth/forgot-password', { email });
       setForgotPasswordSent(true);
     } catch (error) {
-      setError(error.response?.data?.error || 'Failed to send password reset email');
+      // Handle both string and object error responses
+      const errorMessage = error.response?.data?.error;
+      if (typeof errorMessage === 'string') {
+        setError(errorMessage);
+      } else if (errorMessage && errorMessage.message) {
+        setError(errorMessage.message);
+      } else {
+        setError('Failed to send password reset email');
+      }
     } finally {
       setLoading(false);
     }
@@ -231,7 +246,15 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) =>
                     await axios.post('/api/auth/resend-confirmation', { email });
                     setConfirmationMessage('Confirmation email resent! Please check your inbox.');
                   } catch (error) {
-                    setError(error.response?.data?.error || 'Failed to resend confirmation email');
+                    // Handle both string and object error responses
+                    const errorMessage = error.response?.data?.error;
+                    if (typeof errorMessage === 'string') {
+                      setError(errorMessage);
+                    } else if (errorMessage && errorMessage.message) {
+                      setError(errorMessage.message);
+                    } else {
+                      setError('Failed to resend confirmation email');
+                    }
                   } finally {
                     setLoading(false);
                   }

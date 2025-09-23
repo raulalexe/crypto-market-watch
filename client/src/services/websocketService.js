@@ -47,8 +47,9 @@ class WebSocketService {
       });
 
       this.socket.on('authenticated', (data) => {
-        // Debug logging removed for production
         this.setupEventListeners();
+        // Emit connection event for hooks to listen to
+        this.emit('connected', data);
       });
 
       this.socket.on('auth_error', (error) => {

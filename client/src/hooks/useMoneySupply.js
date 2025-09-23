@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import logger from '../utils/logger';
 import websocketService from '../services/websocketService';
@@ -16,6 +16,16 @@ const useMoneySupply = (options = {}) => {
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
   const [isStale, setIsStale] = useState(false);
+  
+  // Use refs to store stable references to callbacks
+  const onErrorRef = useRef(onError);
+  const onSuccessRef = useRef(onSuccess);
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    onErrorRef.current = onError;
+    onSuccessRef.current = onSuccess;
+  }, [onError, onSuccess]);
 
   const fetchMoneySupply = useCallback(async (forceRefresh = false) => {
     // Don't fetch if already loading unless forced
@@ -28,7 +38,11 @@ const useMoneySupply = (options = {}) => {
       // Add cache busting parameter if forced refresh
       const url = forceRefresh ? `/api/dashboard?t=${Date.now()}` : '/api/dashboard';
 
-      const response = await axios.get(url);
+      const response = await axios.get(url, {
+        headers: {
+          'x-websocket-request': 'true' // Flag to prevent WebSocket broadcast
+        }
+      });
       const dashboardData = response.data;
 
       if (dashboardData) {
@@ -39,8 +53,8 @@ const useMoneySupply = (options = {}) => {
         setLastFetch(new Date());
         setIsStale(false); // Reset staleness on successful fetch
 
-        if (onSuccess) {
-          onSuccess(moneySupplyData);
+        if (onSuccessRef.current) {
+          onSuccessRef.current(moneySupplyData);
         }
       } else {
         setData(null);
@@ -53,13 +67,13 @@ const useMoneySupply = (options = {}) => {
 
       logger.error('Error fetching money supply data:', err);
 
-      if (onError) {
-        onError(err);
+      if (onErrorRef.current) {
+        onErrorRef.current(err);
       }
     } finally {
       setLoading(false);
     }
-  }, [loading, onError, onSuccess]);
+  }, [loading]); // Remove onError and onSuccess from dependencies to prevent infinite loop
 
   // Handle WebSocket dashboard updates
   const handleDashboardUpdate = useCallback((updateData) => {
@@ -72,27 +86,40 @@ const useMoneySupply = (options = {}) => {
       setLastFetch(new Date());
       setError(null); // Clear any previous errors
 
-      if (onSuccess) {
-        onSuccess(moneySupplyData);
+      if (onSuccessRef.current) {
+        onSuccessRef.current(moneySupplyData);
       }
     }
-  }, [onSuccess]);
+  }, []); // Remove onSuccess from dependencies to prevent infinite loop
 
-  // Skip auto-fetch - rely on WebSocket updates only
-  // useEffect(() => {
-  //   if (autoFetch) {
-  //     fetchMoneySupply();
-  //   }
-  // }, [autoFetch, fetchMoneySupply]);
+  // Auto-fetch as fallback when WebSocket is not available
+  useEffect(() => {
+    if (autoFetch) {
+      fetchMoneySupply();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch]); // Remove fetchMoneySupply from dependencies to prevent infinite loop
 
   // Set up WebSocket listener for dashboard updates
   useEffect(() => {
-    websocketService.on('dashboard_update', handleDashboardUpdate);
+    const setupWebSocketListener = () => {
+      websocketService.on('dashboard_update', handleDashboardUpdate);
+    };
+
+    // Set up listener immediately if already connected
+    if (websocketService.isConnectedToServer()) {
+      setupWebSocketListener();
+    }
+
+    // Also listen for connection events to set up listener when connection is established
+    websocketService.on('connected', setupWebSocketListener);
 
     return () => {
       websocketService.off('dashboard_update', handleDashboardUpdate);
+      websocketService.off('connected', setupWebSocketListener);
     };
-  }, [handleDashboardUpdate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove handleDashboardUpdate from dependencies to prevent infinite loop
 
   // Set up refresh interval if provided (fallback for when WebSocket is not available)
   useEffect(() => {
@@ -103,7 +130,8 @@ const useMoneySupply = (options = {}) => {
 
       return () => clearInterval(interval);
     }
-  }, [refreshInterval, fetchMoneySupply]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshInterval]); // Remove fetchMoneySupply from dependencies to prevent infinite loop
 
   // Check for data staleness
   useEffect(() => {
