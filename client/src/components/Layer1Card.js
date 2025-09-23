@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import { Layers, TrendingUp, TrendingDown, DollarSign, BarChart3, ChevronDown, ChevronRight, Activity, Users, RefreshCw } from 'lucide-react';
 import useLayer1Data from '../hooks/useLayer1Data';
 
-const Layer1Card = () => {
+const Layer1Card = ({ data: propData }) => {
   const [expandedChains, setExpandedChains] = useState({});
 
-  // Use the custom hook for layer1 data
+  // Use the custom hook as fallback only if no prop data
   const {
-    data: layer1Data,
+    data: hookData,
     loading,
     error,
     lastFetch,
     isStale,
     refresh
   } = useLayer1Data({
-    autoFetch: true,
+    autoFetch: !propData, // Only auto-fetch if no prop data
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => {
       console.error('🔍 Layer1Card - Layer1 data error:', err);
@@ -23,6 +23,8 @@ const Layer1Card = () => {
     }
   });
 
+  // Use prop data if available, otherwise use hook data
+  const layer1Data = propData || hookData;
 
   const toggleChain = (chainId) => {
     setExpandedChains(prev => ({

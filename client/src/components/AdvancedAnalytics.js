@@ -42,7 +42,7 @@ const AdvancedAnalytics = ({ userData }) => {
     isStale,
     refresh
   } = useAdvancedAnalytics({
-    autoFetch: true,
+    autoFetch: false, // Disabled - WebSocket handles updates
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => logger.error('Analytics data error:', err),
     onSuccess: (data) => {} // WebSocket data received

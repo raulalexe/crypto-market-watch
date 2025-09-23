@@ -2,21 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Minus, DollarSign, Building2, Activity, RefreshCw } from 'lucide-react';
 import useMoneySupply from '../hooks/useMoneySupply';
 
-const MoneySupplyCard = () => {
-  // Use the custom hook for money supply data
+const MoneySupplyCard = ({ data: propData }) => {
+  // Use the custom hook as fallback only if no prop data
   const {
-    data: moneySupplyData,
+    data: hookData,
     loading,
     error,
     lastFetch,
     isStale,
     refresh
   } = useMoneySupply({
-    autoFetch: true,
+    autoFetch: !propData, // Only auto-fetch if no prop data
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Money supply error:', err),
     onSuccess: (data) => {} // WebSocket data received
   });
+
+  // Use prop data if available, otherwise use hook data
+  const moneySupplyData = propData || hookData;
 
   const formatCurrency = (value) => {
     if (value === null || value === undefined) return 'N/A';

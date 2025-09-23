@@ -56,7 +56,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch(`/api/dashboard?t=${Date.now()}`, {
+      const response = await fetch('/api/dashboard', {
         headers
       });
       
@@ -224,7 +224,8 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         )}
         
         <AIAnalysisCard 
-          autoFetch={true}
+          data={dashboardData?.aiAnalysis} // Pass AI analysis data from dashboard
+          autoFetch={false} // Disabled - WebSocket handles updates
           refreshInterval={null} // No polling - WebSocket handles updates
           showRefreshButton={false} // WebSocket handles real-time updates
         />
@@ -236,7 +237,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         <InflationDataCard userData={userData} inflationData={dashboardData?.inflationData} />
         
         {/* Money Supply Card */}
-        <MoneySupplyCard />
+        <MoneySupplyCard data={dashboardData?.moneySupplyData} />
         
         {/* Alert Card - Show for all users, component handles upgrade prompts */}
         <AlertCard 
@@ -250,7 +251,7 @@ const Dashboard = ({ isAuthenticated, userData }) => {
         <NarrativesCard data={dashboardData?.trendingNarratives} />
         <AdvancedMetricsCard data={dashboardData?.advancedMetrics} />
         <BacktestCard data={dashboardData?.backtestResults} />
-        <Layer1Card />
+        <Layer1Card data={dashboardData?.layer1Data} />
 
       </div>
     </div>

@@ -27,16 +27,16 @@ const useAdvancedMetrics = (options = {}) => {
     onSuccessRef.current = onSuccess;
   }, [onError, onSuccess]);
 
-  const fetchAdvancedMetrics = useCallback(async (forceRefresh = false) => {
-    // Don't fetch if already loading unless forced
-    if (loading && !forceRefresh) return;
+  const fetchAdvancedMetrics = useCallback(async () => {
+    // Don't fetch if already loading
+    if (loading) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      // Add cache busting parameter if forced refresh
-      const url = forceRefresh ? `/api/dashboard?t=${Date.now()}` : '/api/dashboard';
+      // Use standard endpoint - WebSocket handles real-time updates
+      const url = '/api/dashboard';
 
       const response = await axios.get(url, {
         headers: {
@@ -138,7 +138,7 @@ const useAdvancedMetrics = (options = {}) => {
   useEffect(() => {
     if (refreshInterval && refreshInterval > 0) {
       const interval = setInterval(() => {
-        fetchAdvancedMetrics(true); // Force refresh
+        fetchAdvancedMetrics(); // Force refresh
       }, refreshInterval);
 
       return () => clearInterval(interval);
@@ -165,7 +165,7 @@ const useAdvancedMetrics = (options = {}) => {
 
   // Manual refresh function
   const refresh = useCallback(() => {
-    fetchAdvancedMetrics(true);
+    fetchAdvancedMetrics();
   }, [fetchAdvancedMetrics]);
 
   return { data, loading, error, lastFetch, isStale, refresh };

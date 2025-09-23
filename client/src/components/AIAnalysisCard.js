@@ -4,6 +4,7 @@ import ExpandableText from './ExpandableText';
 import useAIAnalysis from '../hooks/useAIAnalysis';
 
 const AIAnalysisCard = ({ 
+  data: propData, // Accept data as prop
   autoFetch = true, 
   refreshInterval = 300000, // 5 minutes fallback
   showRefreshButton = false, // Disabled by default since WebSocket handles updates
@@ -13,20 +14,23 @@ const AIAnalysisCard = ({
 }) => {
   const [expandedTimeframes, setExpandedTimeframes] = useState({});
   
-  // Use the custom hook for data fetching
+  // Use the custom hook for data fetching (fallback if no prop data)
   const { 
-    data, 
+    data: hookData, 
     loading, 
     error, 
     lastFetch, 
     isStale, 
     refresh 
   } = useAIAnalysis({
-    autoFetch,
+    autoFetch: !propData, // Only auto-fetch if no prop data
     refreshInterval,
     onError,
     onSuccess
   });
+
+  // Use prop data if available, otherwise use hook data
+  const data = propData || hookData;
 
   const toggleTimeframe = (timeframe) => {
     setExpandedTimeframes(prev => ({

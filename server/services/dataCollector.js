@@ -1296,6 +1296,11 @@ class DataCollector {
       const { getLatestFearGreedIndex } = require('../database');
       const fearGreed = await getLatestFearGreedIndex();
 
+      // Get crypto news events
+      const CryptoNewsDetector = require('./cryptoNewsDetector');
+      const cryptoNewsDetector = new CryptoNewsDetector();
+      const cryptoEvents = await cryptoNewsDetector.getEventSummary();
+
       // Prepare comprehensive data for AI analysis
       const comprehensiveData = {
         ...marketDataSummary,
@@ -1307,7 +1312,7 @@ class DataCollector {
         onchain: advancedMetrics?.onchain,
         upcoming_events: upcomingEvents,
         fear_greed: fearGreed,
-        regulatory_news: null // We'll get this from real sources when available
+        crypto_events: cryptoEvents // Real-time crypto news events
       };
 
       // SINGLE AI CALL - This is the only place where AI is called during data collection

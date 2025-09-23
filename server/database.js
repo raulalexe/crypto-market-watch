@@ -1372,7 +1372,10 @@ const updateNotificationPreferences = (userId, preferences) => {
       eventNotifications,
       eventNotificationWindows,
       eventNotificationChannels,
-      eventImpactFilter
+      eventImpactFilter,
+      cryptoNewsNotifications,
+      cryptoNewsChannels,
+      cryptoNewsImpactFilter
     } = preferences;
     
     
@@ -1385,8 +1388,11 @@ const updateNotificationPreferences = (userId, preferences) => {
         event_notifications = $5,
         event_notification_windows = $6,
         event_notification_channels = $7,
-        event_impact_filter = $8
-       WHERE id = $9`,
+        event_impact_filter = $8,
+        crypto_news_notifications = $9,
+        crypto_news_channels = $10,
+        crypto_news_impact_filter = $11
+       WHERE id = $12`,
       [
         emailNotifications,
         pushNotifications,
@@ -1396,6 +1402,9 @@ const updateNotificationPreferences = (userId, preferences) => {
         JSON.stringify(eventNotificationWindows || [3]),
         JSON.stringify(eventNotificationChannels || ['email', 'push']),
         eventImpactFilter,
+        cryptoNewsNotifications,
+        JSON.stringify(cryptoNewsChannels || ['email', 'push', 'telegram']),
+        cryptoNewsImpactFilter || 'medium',
         userId
       ]
     ).then(result => {
@@ -1411,7 +1420,7 @@ const updateNotificationPreferences = (userId, preferences) => {
 const getNotificationPreferences = (userId) => {
   return new Promise((resolve, reject) => {
     dbAdapter.get(
-      'SELECT email_notifications, push_notifications, telegram_notifications, notification_preferences, event_notifications, event_notification_windows, event_notification_channels, event_impact_filter FROM users WHERE id = $1',
+      'SELECT email_notifications, push_notifications, telegram_notifications, notification_preferences, event_notifications, event_notification_windows, event_notification_channels, event_impact_filter, crypto_news_notifications, crypto_news_channels, crypto_news_impact_filter FROM users WHERE id = $1',
       [userId]
     ).then(row => {
       if (row) {
@@ -1423,7 +1432,10 @@ const getNotificationPreferences = (userId) => {
           eventNotifications: Boolean(row.event_notifications),
           eventNotificationWindows: JSON.parse(row.event_notification_windows || '[3]'),
           eventNotificationChannels: JSON.parse(row.event_notification_channels || '["email","push"]'),
-          eventImpactFilter: row.event_impact_filter || 'all'
+          eventImpactFilter: row.event_impact_filter || 'all',
+          cryptoNewsNotifications: Boolean(row.crypto_news_notifications),
+          cryptoNewsChannels: JSON.parse(row.crypto_news_channels || '["email","push","telegram"]'),
+          cryptoNewsImpactFilter: row.crypto_news_impact_filter || 'medium'
         });
       } else {
         resolve(null);
@@ -1437,6 +1449,7 @@ const getUsersWithNotifications = () => {
     dbAdapter.all(
       `SELECT u.id, u.email, u.email_notifications, u.push_notifications, u.telegram_notifications,
               u.event_notifications, u.event_notification_windows, u.event_notification_channels, u.event_impact_filter,
+              u.crypto_news_notifications, u.crypto_news_channels, u.crypto_news_impact_filter,
               u.telegram_chat_id, u.telegram_verified,
               ps.endpoint, ps.p256dh, ps.auth
        FROM users u
@@ -1458,6 +1471,9 @@ const getUsersWithNotifications = () => {
             eventNotificationWindows: JSON.parse(row.event_notification_windows || '[3]'),
             eventNotificationChannels: JSON.parse(row.event_notification_channels || '["email","push"]'),
             eventImpactFilter: row.event_impact_filter || 'all',
+            cryptoNewsNotifications: Boolean(row.crypto_news_notifications),
+            cryptoNewsChannels: JSON.parse(row.crypto_news_channels || '["email","push","telegram"]'),
+            cryptoNewsImpactFilter: row.crypto_news_impact_filter || 'medium',
             telegramChatId: row.telegram_chat_id,
             telegramVerified: Boolean(row.telegram_verified),
             pushSubscriptions: []

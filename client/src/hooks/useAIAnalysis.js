@@ -16,16 +16,16 @@ const useAIAnalysis = (options = {}) => {
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
 
-  const fetchAIAnalysis = useCallback(async (forceRefresh = false) => {
-    // Don't fetch if already loading unless forced
-    if (loading && !forceRefresh) return;
+  const fetchAIAnalysis = useCallback(async () => {
+    // Don't fetch if already loading
+    if (loading) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      // Add cache busting parameter if forced refresh
-      const url = forceRefresh ? `/api/dashboard?t=${Date.now()}` : '/api/dashboard';
+      // Use standard endpoint - WebSocket handles real-time updates
+      const url = '/api/dashboard';
       
       const response = await axios.get(url);
       const aiAnalysisData = response.data.aiAnalysis;
@@ -90,7 +90,7 @@ const useAIAnalysis = (options = {}) => {
   useEffect(() => {
     if (refreshInterval && refreshInterval > 0) {
       const interval = setInterval(() => {
-        fetchAIAnalysis(true); // Force refresh
+        fetchAIAnalysis(); // Force refresh
       }, refreshInterval);
 
       return () => clearInterval(interval);
@@ -99,7 +99,7 @@ const useAIAnalysis = (options = {}) => {
 
   // Manual refresh function
   const refresh = useCallback(() => {
-    fetchAIAnalysis(true);
+    fetchAIAnalysis();
   }, [fetchAIAnalysis]);
 
   // Check if data is stale (older than 5 minutes)

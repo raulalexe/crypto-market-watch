@@ -27,16 +27,16 @@ const useLayer1Data = (options = {}) => {
     onSuccessRef.current = onSuccess;
   }, [onError, onSuccess]);
 
-  const fetchLayer1Data = useCallback(async (forceRefresh = false) => {
-    // Don't fetch if already loading unless forced
-    if (loading && !forceRefresh) return;
+  const fetchLayer1Data = useCallback(async () => {
+    // Don't fetch if already loading
+    if (loading) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      // Add cache busting parameter if forced refresh
-      const url = forceRefresh ? `/api/dashboard?t=${Date.now()}` : '/api/dashboard';
+      // Use standard endpoint - WebSocket handles real-time updates
+      const url = '/api/dashboard';
 
       const response = await axios.get(url, {
         headers: {
@@ -139,7 +139,7 @@ const useLayer1Data = (options = {}) => {
   useEffect(() => {
     if (refreshInterval && refreshInterval > 0) {
       const interval = setInterval(() => {
-        fetchLayer1Data(true); // Force refresh
+        fetchLayer1Data(); // Force refresh
       }, refreshInterval);
 
       return () => clearInterval(interval);
@@ -166,7 +166,7 @@ const useLayer1Data = (options = {}) => {
 
   // Manual refresh function
   const refresh = useCallback(() => {
-    fetchLayer1Data(true);
+    fetchLayer1Data();
   }, [fetchLayer1Data]);
 
   return { data, loading, error, lastFetch, isStale, refresh };

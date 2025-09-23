@@ -80,6 +80,91 @@ class GroqService {
     }
   }
 
+  // Analyze crypto news event for market impact
+  async analyzeNewsEvent(article) {
+    try {
+      if (!this.apiKey) {
+        throw new Error('Groq API key not configured');
+      }
+
+      const prompt = this.createNewsAnalysisPrompt(article);
+      const response = await this.callGroqAPI(prompt);
+      
+      return this.parseNewsAnalysisResponse(response);
+    } catch (error) {
+      console.error('Groq news analysis failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Create news analysis prompt
+  createNewsAnalysisPrompt(article) {
+    return `Analyze this cryptocurrency news article for market impact and significance. Provide a JSON response with the following structure:
+
+Article Title: ${article.title}
+Article Description: ${article.description}
+Source: ${article.source}
+Published: ${article.publishedAt}
+
+Please analyze this news for:
+1. Market significance (0-1 scale)
+2. Market impact (0-1 scale) 
+3. Event category (hack, regulation, market, institutional, technical, exchange, general)
+4. Affected cryptocurrencies (list of major coins that might be impacted)
+5. Short-term price impact prediction (bullish, bearish, neutral)
+6. Confidence level (0-1 scale)
+7. Key points (bullet points of main implications)
+
+Respond with valid JSON only:
+{
+  "significance": 0.8,
+  "marketImpact": 0.7,
+  "category": "regulation",
+  "affectedCryptos": ["BTC", "ETH"],
+  "priceImpact": "bearish",
+  "confidence": 0.75,
+  "keyPoints": [
+    "Regulatory uncertainty may cause short-term volatility",
+    "Long-term impact depends on final regulations"
+  ]
+}`;
+  }
+
+  // Parse news analysis response
+  parseNewsAnalysisResponse(response) {
+    try {
+      // Extract JSON from response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      
+      const analysis = JSON.parse(jsonMatch[0]);
+      
+      // Validate required fields
+      if (typeof analysis.significance !== 'number' || 
+          typeof analysis.marketImpact !== 'number' ||
+          !analysis.category ||
+          !analysis.priceImpact) {
+        throw new Error('Invalid analysis structure');
+      }
+      
+      return analysis;
+    } catch (error) {
+      console.error('Error parsing news analysis response:', error.message);
+      // Return default analysis if parsing fails
+      return {
+        significance: 0.5,
+        marketImpact: 0.5,
+        category: 'general',
+        affectedCryptos: [],
+        priceImpact: 'neutral',
+        confidence: 0.3,
+        keyPoints: ['Analysis failed - manual review required']
+      };
+    }
+  }
+
   // Prepare market context for analysis
   prepareMarketContext(marketData, inflationData, upcomingEvents) {
     const context = {

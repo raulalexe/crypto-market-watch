@@ -2,21 +2,24 @@ import React from 'react';
 import { TrendingUp, DollarSign, BarChart3, Activity, RefreshCw } from 'lucide-react';
 import useAdvancedMetrics from '../hooks/useAdvancedMetrics';
 
-const AdvancedMetricsCard = () => {
-  // Use the custom hook for advanced metrics data
+const AdvancedMetricsCard = ({ data: propData }) => {
+  // Use the custom hook as fallback only if no prop data
   const {
-    data,
+    data: hookData,
     loading,
     error,
     lastFetch,
     isStale,
     refresh
   } = useAdvancedMetrics({
-    autoFetch: true,
+    autoFetch: !propData, // Only auto-fetch if no prop data
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Advanced metrics error:', err),
     onSuccess: (data) => {} // WebSocket data received
   });
+
+  // Use prop data if available, otherwise use hook data
+  const data = propData || hookData;
 
   // Extract data from the hook response
   const metrics = data?.metrics;

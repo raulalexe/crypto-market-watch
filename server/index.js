@@ -15,11 +15,15 @@ class DashboardCache {
     this.cache = null;
     this.lastUpdate = null;
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
+    this.lastLogTime = 0;
+    this.logInterval = 30 * 1000; // Only log every 30 seconds
+    this.cacheHitCount = 0;
   }
 
   set(data) {
     this.cache = data;
     this.lastUpdate = Date.now();
+    this.cacheHitCount = 0; // Reset counter when new data is cached
   }
 
   get() {
@@ -34,6 +38,7 @@ class DashboardCache {
       return null;
     }
     
+    this.cacheHitCount++;
     return this.cache;
   }
 
@@ -41,9 +46,30 @@ class DashboardCache {
     if (!this.lastUpdate) return true;
     return Date.now() - this.lastUpdate > this.cacheTimeout;
   }
+
+  // Rate-limited logging to prevent log spam
+  logCacheHit() {
+    const now = Date.now();
+    if (now - this.lastLogTime > this.logInterval) {
+      console.log(`📊 Dashboard cache hit - served ${this.cacheHitCount} requests in last 30s`);
+      this.lastLogTime = now;
+      this.cacheHitCount = 0;
+    }
+  }
+
+  logCacheMiss() {
+    console.log('📊 Dashboard cache miss - fetching fresh data...');
+  }
+
+  logCacheSet() {
+    console.log('📊 Dashboard data cached successfully');
+  }
 }
 
 const dashboardCache = new DashboardCache();
+
+// Request deduplication to prevent multiple simultaneous requests
+let pendingDashboardRequest = null;
 
 // Helper function to get dashboard data (reusable for WebSocket broadcasts)
 async function getDashboardData() {
@@ -62,7 +88,8 @@ async function getDashboardData() {
       derivativesData,
       onchainData,
       moneySupplyData,
-      layer1Data
+      layer1Data,
+      cryptoEvents
     ] = await Promise.all([
       dataCollector.getMarketDataSummary(),
       aiAnalyzer.getAnalysisSummary(),
@@ -162,8 +189,18 @@ async function getDashboardData() {
       })(),
       (async () => {
         try {
-          const { getLatestMoneySupplyData } = require('./database');
-          return await getLatestMoneySupplyData();
+          const { getLatestMarketData } = require('./database');
+          const m1Data = await getLatestMarketData('MONEY_SUPPLY', 'M1');
+          const m2Data = await getLatestMarketData('MONEY_SUPPLY', 'M2');
+          const m3Data = await getLatestMarketData('MONEY_SUPPLY', 'M3');
+          const bankReservesData = await getLatestMarketData('MONEY_SUPPLY', 'BANK_RESERVES');
+          
+          return {
+            m1: m1Data,
+            m2: m2Data,
+            m3: m3Data,
+            bankReserves: bankReservesData
+          };
         } catch (error) {
           console.error('Error fetching money supply data:', error);
           return null;
@@ -172,9 +209,34 @@ async function getDashboardData() {
       (async () => {
         try {
           const { getLatestLayer1Data } = require('./database');
-          return await getLatestLayer1Data();
+          // Get Layer1 data for major chains
+          const chains = ['BTC', 'ETH', 'BNB', 'ADA', 'SOL', 'DOT', 'AVAX', 'MATIC'];
+          const layer1Data = {};
+          
+          for (const chain of chains) {
+            try {
+              const data = await getLatestLayer1Data(chain);
+              if (data) {
+                layer1Data[chain] = data;
+              }
+            } catch (error) {
+              console.error(`Error fetching ${chain} data:`, error);
+            }
+          }
+          
+          return Object.keys(layer1Data).length > 0 ? layer1Data : null;
         } catch (error) {
           console.error('Error fetching layer1 data:', error);
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          const CryptoNewsDetector = require('./services/cryptoNewsDetector');
+          const cryptoNewsDetector = new CryptoNewsDetector();
+          return await cryptoNewsDetector.getEventSummary();
+        } catch (error) {
+          console.error('Error fetching crypto events:', error);
           return null;
         }
       })()
@@ -204,6 +266,7 @@ async function getDashboardData() {
       onchainData,
       moneySupplyData,
       layer1Data,
+      cryptoEvents,
       lastCollectionTime,
       timestamp: lastCollectionTime || new Date().toISOString()
     };
@@ -3402,6 +3465,11 @@ app.post('/api/ai-analysis', authenticateToken, requireAdmin, async (req, res) =
     const { getLatestFearGreedIndex } = require('./database');
     const fearGreed = await getLatestFearGreedIndex();
 
+    // Get crypto news events
+    const CryptoNewsDetector = require('./services/cryptoNewsDetector');
+    const cryptoNewsDetector = new CryptoNewsDetector();
+    const cryptoEvents = await cryptoNewsDetector.getEventSummary();
+
     // Prepare comprehensive data for AI analysis
     const comprehensiveData = {
       ...marketDataSummary,
@@ -3413,7 +3481,7 @@ app.post('/api/ai-analysis', authenticateToken, requireAdmin, async (req, res) =
       onchain: advancedMetrics?.onchain,
       upcoming_events: upcomingEvents,
       fear_greed: fearGreed,
-      regulatory_news: null
+      crypto_events: cryptoEvents
     };
 
     // Run AI analysis with existing data
@@ -3430,508 +3498,100 @@ app.post('/api/ai-analysis', authenticateToken, requireAdmin, async (req, res) =
   }
 });
 
+// Crypto News Detection trigger - Admin only
+app.post('/api/detect-crypto-news', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    console.log('📰 Admin triggered crypto news detection...');
+    
+    const CryptoNewsDetector = require('./services/cryptoNewsDetector');
+    const cryptoNewsDetector = new CryptoNewsDetector();
+    
+    const events = await cryptoNewsDetector.detectCryptoEvents();
+    
+    res.json({ 
+      success: true, 
+      message: `Crypto news detection completed. Found ${events.length} significant events.`,
+      events: events,
+      timestamp: new Date().toISOString()
+    });
+        } catch (error) {
+    console.error('Error in crypto news detection:', error);
+    res.status(500).json({ error: 'Failed to detect crypto news events' });
+  }
+});
+
 // Get dashboard summary - CACHED to reduce egress charges
 app.get('/api/dashboard', optionalAuth, async (req, res) => {
   try {
+    // Ignore cache-busting parameters to maintain server-side caching
     // Check cache first to avoid expensive database calls
     let dashboardData = dashboardCache.get();
     
     if (!dashboardData) {
-      console.log('📊 Dashboard cache miss - fetching fresh data...');
-    const [
-      marketData,
-      analysis,
-      fearGreed,
-      narratives,
-      backtestMetrics,
-      upcomingEvents,
-      inflationData,
-      correlationData,
-      advancedMetrics,
-      marketSentiment,
-      derivativesData,
-      onchainData,
-      moneySupplyData,
-      layer1Data
-    ] = await Promise.all([
-      dataCollector.getMarketDataSummary(),
-      aiAnalyzer.getAnalysisSummary(),
-      (async () => {
-        const { getLatestFearGreedIndex } = require('./database');
-        return await getLatestFearGreedIndex();
-      })(),
-      (async () => {
-        const { getProcessedTrendingNarratives } = require('./database');
-        return await getProcessedTrendingNarratives(5);
-      })(),
-      aiAnalyzer.getBacktestMetrics(),
-      eventCollector.getUpcomingEvents(10),
-      (async () => {
+      dashboardCache.logCacheMiss();
+      
+      // If there's already a pending request, wait for it instead of making a new one
+      if (pendingDashboardRequest) {
+        console.log('📊 Dashboard request already in progress, waiting for result...');
+        dashboardData = await pendingDashboardRequest;
+      } else {
+        // Start new request and store the promise
+        pendingDashboardRequest = getDashboardData();
         try {
-          const { getLatestInflationData } = require('./database');
-          const [cpiData, pceData, ppiData] = await Promise.all([
-            getLatestInflationData('CPI'),
-            getLatestInflationData('PCE'),
-            getLatestInflationData('PPI')
-          ]);
-          
-          // Format data like /api/inflation/latest endpoint
-          const inflationData = {
-            cpi: cpiData ? {
-              cpi: cpiData.value?.toString(),
-              coreCPI: cpiData.core_value?.toString(),
-              cpiYoY: cpiData.yoy_change?.toString(),
-              coreCPIYoY: cpiData.core_yoy_change?.toString(),
-              date: cpiData.date
-            } : null,
-            pce: pceData ? {
-              pce: pceData.value?.toString(),
-              corePCE: pceData.core_value?.toString(),
-              pceYoY: pceData.yoy_change?.toString(),
-              corePCEYoY: pceData.core_yoy_change?.toString(),
-              date: pceData.date
-            } : null,
-            ppi: ppiData ? {
-              ppi: ppiData.value?.toString(),
-              corePPI: ppiData.core_value?.toString(),
-              ppiMoM: ppiData.mom_change?.toString(),
-              corePPIMoM: ppiData.core_mom_change?.toString(),
-              ppiYoY: ppiData.yoy_change?.toString(),
-              corePPIYoY: ppiData.core_yoy_change?.toString(),
-              date: ppiData.date
-            } : null,
-            timestamp: new Date().toISOString(),
-            source: "database"
-          };
-          
-          return inflationData;
-        } catch (error) {
-          console.log('⚠️ Could not fetch inflation data:', error.message);
-          return null;
+          dashboardData = await pendingDashboardRequest;
+        } finally {
+          // Clear the pending request
+          pendingDashboardRequest = null;
         }
-      })(),
-      (async () => {
-        try {
-          const { getLatestCorrelationData } = require('./database');
-          return await getLatestCorrelationData();
-        } catch (error) {
-          console.log('⚠️ Could not fetch correlation data:', error.message);
-          return null;
-        }
-      })(),
-      (async () => {
-        try {
-          const { getLatestBitcoinDominance, getLatestStablecoinMetrics, getLatestExchangeFlows, getOnchainData } = require('./database');
-          const [bitcoinDominance, stablecoinMetrics, exchangeFlows, onchainData] = await Promise.all([
-            getLatestBitcoinDominance(),
-            getLatestStablecoinMetrics(),
-            getLatestExchangeFlows(),
-            getOnchainData()
-          ]);
-          
-          // Format data like /api/advanced-metrics endpoint
-          const totalMarketCap = stablecoinMetrics.find(m => m.metric_type === 'total_market_cap');
-          const ssr = stablecoinMetrics.find(m => m.metric_type === 'ssr');
-          
-          // Process exchange flows from onchain data
-          const processFlows = (asset) => {
-            const exchangeFlowData = onchainData.find(o => o.metric_type === 'exchange_flows');
-            if (exchangeFlowData && exchangeFlowData.metadata) {
-              const metadata = exchangeFlowData.metadata;
-              if (metadata[`${asset.toLowerCase()}_inflow`] && metadata[`${asset.toLowerCase()}_outflow`]) {
-                return {
-                  inflow: metadata[`${asset.toLowerCase()}_inflow`],
-                  outflow: metadata[`${asset.toLowerCase()}_outflow`],
-                  netFlow: metadata[`${asset.toLowerCase()}_inflow`] - metadata[`${asset.toLowerCase()}_outflow`]
-                };
-              }
-            }
-            return null;
-          };
-          
-          const btcFlows = [];
-          const ethFlows = [];
-          
-          // Calculate market sentiment score
-          const calculateSentiment = () => {
-            if (!bitcoinDominance) return { score: 50, interpretation: 'Neutral' };
-            
-            const dominance = parseFloat(bitcoinDominance.value);
-            if (dominance > 60) return { score: 30, interpretation: 'Bearish' };
-            if (dominance > 50) return { score: 40, interpretation: 'Neutral' };
-            if (dominance > 40) return { score: 60, interpretation: 'Bullish' };
-            return { score: 70, interpretation: 'Very Bullish' };
-          };
-          
-          const marketSentiment = calculateSentiment();
-          
-          // Process derivatives data
-          const derivativesData = {
-            openInterest: {
-              value: 1078008754.145,
-              metadata: {
-                btc_oi: "90436.135",
-                eth_oi: "1933822.079",
-                sol_oi: "12318260.66"
-              }
-            },
-            fundingRate: {
-              value: 0.00441599156118143,
-              metadata: {
-                btc_funding: 0.008928,
-                eth_funding: 0.004292000000000001,
-                sol_funding: 0.01
-              }
-            },
-            liquidations: {
-              value: 24568169.645650007,
-              metadata: {
-                long_liquidations: 14740901.787390003,
-                short_liquidations: 9827267.858260002
-              }
-            }
-          };
-          
-          // Process onchain data
-          const [whaleData, hashData, addressData] = [
-            onchainData.find(o => o.metric_type === 'whale_activity'),
-            onchainData.find(o => o.metric_type === 'hash_rate'),
-            onchainData.find(o => o.metric_type === 'active_addresses')
-          ];
-          
-          const onchainMetrics = {
-            whaleTransactions: whaleData ? {
-              value: Math.round(parseFloat(whaleData.value)),
-              metadata: {
-                large_transfers: Math.round(parseFloat(whaleData.value) * 0.6),
-                exchange_deposits: Math.round(parseFloat(whaleData.value) * 0.4)
-              }
-            } : null,
-            hashRate: hashData ? {
-              value: parseFloat(hashData.value),
-              metadata: {
-                difficulty: (hashData.metadata.difficulty / 1e12) || 68,
-                network_health: hashData.metadata.network_health || 'Unknown'
-              }
-            } : null,
-            activeAddresses: addressData ? {
-              value: parseFloat(addressData.value),
-              metadata: {
-                new_addresses: Math.round(parseFloat(addressData.value) * 0.15),
-                returning_addresses: Math.round(parseFloat(addressData.value) * 0.85)
-              }
-            } : null
-          };
-          
-          return {
-            bitcoinDominance: bitcoinDominance ? {
-              value: bitcoinDominance.value?.toString(),
-              change_24h: 0.08530205071543655
-            } : null,
-            totalMarketCap: {
-              value: 4442204373451.586,
-              change_24h: 2.0408163265306127
-            },
-            altcoinSeason: {
-              indicator: 44.32460572432768,
-              season: "Neutral",
-              metadata: {
-                season: "Neutral",
-                strength: "Moderate"
-              }
-            },
-            stablecoinMetrics: {
-              totalMarketCap: totalMarketCap?.value?.toString() || "244652835022.9403",
-              ssr: ssr?.value?.toString() || "9.589914491786374",
-              change_24h: -0.0023130048300760296
-            },
-            exchangeFlows: {
-              btc: processFlows('btc'),
-              eth: processFlows('eth')
-            },
-            marketSentiment,
-            derivatives: derivativesData,
-            onchain: onchainMetrics
-          };
-        } catch (error) {
-          console.log('⚠️ Could not fetch advanced metrics:', error.message);
-          return null;
-        }
-      })(),
-      (async () => {
-        try {
-          // Market sentiment would be derived from fear/greed and other indicators
-          return { sentiment: 'neutral', confidence: 0.5 };
-        } catch (error) {
-          console.log('⚠️ Could not fetch market sentiment:', error.message);
-          return null;
-        }
-      })(),
-      (async () => {
-        try {
-          const { getDerivativesData } = require('./database');
-          const allDerivatives = await getDerivativesData();
-          if (!allDerivatives || allDerivatives.length === 0) {
-            return null;
-          }
-          // Group and aggregate derivatives data
-          const assetsData = {};
-          let totalOpenInterest = 0;
-          let totalVolume24h = 0;
-          let totalFundingRate = 0;
-          let assetCount = 0;
-
-          allDerivatives.forEach(derivative => {
-            const asset = derivative.asset;
-            if (!assetsData[asset]) {
-              assetsData[asset] = {
-                asset: asset,
-                derivative_type: derivative.derivative_type,
-                open_interest: 0,
-                volume_24h: 0,
-                funding_rate: 0,
-                source: derivative.source,
-                timestamp: derivative.timestamp
-              };
-            }
-            assetsData[asset].open_interest += parseFloat(derivative.open_interest || 0);
-            assetsData[asset].volume_24h += parseFloat(derivative.volume_24h || 0);
-            assetsData[asset].funding_rate = parseFloat(derivative.funding_rate || 0);
-            totalOpenInterest += parseFloat(derivative.open_interest || 0);
-            totalVolume24h += parseFloat(derivative.volume_24h || 0);
-            totalFundingRate += parseFloat(derivative.funding_rate || 0);
-            assetCount++;
-          });
-
-          const averageFundingRate = assetCount > 0 ? totalFundingRate / assetCount : 0;
-          return {
-            summary: { totalOpenInterest, totalVolume24h, averageFundingRate, assetCount: Object.keys(assetsData).length },
-            assets: assetsData,
-            timestamp: new Date().toISOString()
-          };
-        } catch (error) {
-          console.log('⚠️ Could not fetch derivatives data:', error.message);
-          return null;
-        }
-      })(),
-      (async () => {
-        try {
-          const { getOnchainData } = require('./database');
-          return await getOnchainData();
-        } catch (error) {
-          console.log('⚠️ Could not fetch onchain data:', error.message);
-          return null;
-        }
-      })(),
-      (async () => {
-        try {
-          // Use the same processing logic as /api/money-supply endpoint
-          const { getLatestMarketData, calculateChange } = require('./database');
-          let m1Data = await getLatestMarketData('MONEY_SUPPLY', 'M1');
-          let m2Data = await getLatestMarketData('MONEY_SUPPLY', 'M2');
-          let m3Data = await getLatestMarketData('MONEY_SUPPLY', 'M3');
-          let bankReservesData = await getLatestMarketData('MONEY_SUPPLY', 'BANK_RESERVES');
-
-          // If some data is missing, try to fetch from FRED API
-          if (!m1Data || !m2Data || !m3Data || !bankReservesData) {
-            console.log('📊 Some money supply data missing from database, fetching from FRED API...');
-            try {
-              const EconomicDataService = require('./services/economicDataService');
-              const economicService = new EconomicDataService();
-              
-              if (!m1Data) {
-                const m1ApiData = await economicService.fetchM1MoneySupply();
-                if (m1ApiData) {
-                  m1Data = m1ApiData;
-                }
-              }
-              
-              if (!m2Data) {
-                const m2ApiData = await economicService.fetchM2MoneySupply();
-                if (m2ApiData) {
-                  m2Data = m2ApiData;
-                }
-              }
-              
-              if (!m3Data) {
-                const m3ApiData = await economicService.fetchM3MoneySupply();
-                if (m3ApiData) {
-                  m3Data = m3ApiData;
-                }
-              }
-            } catch (apiError) {
-              console.error('Error fetching money supply data from FRED API:', apiError);
-            }
-          }
-
-          // Format data like /api/money-supply endpoint (without change calculations for now)
-          const moneySupplyData = {
-            m1: m1Data ? {
-              value: parseFloat(m1Data.value),
-              date: m1Data.timestamp,
-              change_30d: 0 // Set to 0 for now to avoid calculateChange dependency
-            } : null,
-            m2: m2Data ? {
-              value: parseFloat(m2Data.value),
-              date: m2Data.timestamp,
-              change_30d: 0 // Set to 0 for now to avoid calculateChange dependency
-            } : null,
-            m3: m3Data ? {
-              value: parseFloat(m3Data.value),
-              date: m3Data.timestamp,
-              change_30d: 0 // Set to 0 for now to avoid calculateChange dependency
-            } : null,
-            bank_reserves: bankReservesData ? {
-              value: parseFloat(bankReservesData.value),
-              date: bankReservesData.timestamp,
-              change_30d: 0 // Set to 0 for now to avoid calculateChange dependency
-            } : null,
-            last_updated: new Date().toISOString()
-          };
-
-          return moneySupplyData;
-        } catch (error) {
-          console.log('⚠️ Could not fetch money supply data:', error.message);
-          return null;
-        }
-      })(),
-      (async () => {
-        try {
-          const { getLayer1Data } = require('./database');
-          const layer1Data = await getLayer1Data();
-          
-          // Format data like /api/layer1-data endpoint
-          if (!layer1Data || layer1Data.length === 0) {
-            return {
-              chains: [],
-              total_market_cap: 0,
-              total_volume_24h: 0,
-              avg_change_24h: 0,
-              message: 'No real Layer 1 blockchain data available yet. Data collection is in progress.',
-              status: 'no_data'
-            };
-          }
-          
-          // Check if the data looks fake (hardcoded values)
-          const hasFakeData = layer1Data.some(chain => 
-            chain.price === 45000 || chain.price === 2800 || chain.price === 95 ||
-            chain.market_cap === 850000000000 || chain.market_cap === 350000000000 ||
-            chain.volume_24h === 25000000000 || chain.volume_24h === 18000000000
-          );
-          
-          if (hasFakeData) {
-            return {
-              chains: [],
-              total_market_cap: 0,
-              total_volume_24h: 0,
-              avg_change_24h: 0,
-              message: 'No real Layer 1 blockchain data available yet. Data collection is in progress.',
-              status: 'no_data',
-              note: 'Fake data detected and removed. Real data collection is required.'
-            };
-          }
-          
-          // Calculate totals
-          const totalMarketCap = layer1Data.reduce((sum, chain) => sum + chain.market_cap, 0);
-          const totalVolume24h = layer1Data.reduce((sum, chain) => sum + chain.volume_24h, 0);
-          const avgChange24h = layer1Data.reduce((sum, chain) => sum + chain.change_24h, 0) / layer1Data.length;
-          
-          return {
-            chains: layer1Data.map(chain => ({
-              id: chain.chain_id,
-              name: chain.name,
-              symbol: chain.symbol,
-              price: chain.price?.toString(),
-              change_24h: chain.change_24h?.toString(),
-              market_cap: chain.market_cap?.toString(),
-              volume_24h: chain.volume_24h?.toString(),
-              tps: chain.tps?.toString(),
-              active_addresses: chain.active_addresses?.toString(),
-              hash_rate: chain.hash_rate?.toString(),
-              dominance: chain.dominance?.toString(),
-              narrative: chain.narrative,
-              sentiment: chain.sentiment
-            })),
-            total_market_cap: totalMarketCap,
-            total_volume_24h: totalVolume24h,
-            avg_change_24h: avgChange24h
-          };
-        } catch (error) {
-          console.log('⚠️ Could not fetch layer1 data:', error.message);
-          return null;
-        }
-      })()
-    ]);
-
-    // Add subscription status if user is authenticated
-    let subscriptionStatus = null;
-    if (req.user) {
-      subscriptionStatus = await paymentService.getSubscriptionStatus(req.user.id);
-    }
-
-    // Get the actual last collection time from the most recent data
-    let lastCollectionTime = null;
-    if (analysis && analysis.timestamp) {
-      lastCollectionTime = analysis.timestamp;
-    } else if (marketData && marketData.timestamp) {
-      lastCollectionTime = marketData.timestamp;
-    } else if (fearGreed && fearGreed.timestamp) {
-      lastCollectionTime = fearGreed.timestamp;
-    }
-
-    // Return only real data
-    const dashboardData = {
-      marketData,
-      aiAnalysis: analysis,
-      fearGreed,
-      trendingNarratives: narratives,
-      backtestResults: backtestMetrics,
-      upcomingEvents,
-      inflationData,
-      correlationData,
-      advancedMetrics,
-      marketSentiment,
-      derivativesData,
-      onchainData,
-      moneySupplyData,
-      layer1Data,
-      subscriptionStatus,
-      lastCollectionTime,
-      timestamp: lastCollectionTime || new Date().toISOString()
-    };
-    
-    
-      // Cache the dashboard data to avoid future expensive calls
-      dashboardCache.set(dashboardData);
-      console.log('📊 Dashboard data cached successfully');
-    } else {
-      console.log('📊 Dashboard cache hit - returning cached data');
-    }
-
-    // Get subscription status for authenticated users (not cached)
-    let subscriptionStatus = null;
-    if (req.user) {
-      try {
-        subscriptionStatus = await subscriptionManager.getSubscriptionStatus(req.user.id);
-      } catch (error) {
-        console.error('Error fetching subscription status:', error);
       }
     }
+    
+    // If we still don't have data after the above, fetch it directly
+    if (!dashboardData) {
+      dashboardData = await getDashboardData();
+    }
+    
+    // If we still don't have data, there's an error
+    if (!dashboardData) {
+      return res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    }
+    
+    // Cache the dashboard data to avoid future expensive calls
+    dashboardCache.set(dashboardData);
+    dashboardCache.logCacheSet();
 
-    // Add subscription status to response (not cached)
-    const responseData = {
-      ...dashboardData,
-      subscriptionStatus
-    };
-    
-    // DO NOT broadcast dashboard updates from API calls
-    // This was causing excessive egress charges on Railway
-    // WebSocket broadcasts should only happen when backend has new data
-    // if (req.user && !req.headers['x-websocket-request']) {
-    //   WebSocketService.broadcastDashboardUpdate(req.user.id, dashboardData);
-    // }
-    
-    res.json(responseData);
+  // Get subscription status for authenticated users (not cached)
+    let subscriptionStatus = null;
+    if (req.user) {
+    try {
+      const subscriptionManager = require('./services/subscriptionManager');
+      subscriptionStatus = await subscriptionManager.getSubscriptionStatus(req.user.id);
+    } catch (error) {
+      console.error('Error fetching subscription status:', error);
+    }
+  }
+
+  // Add subscription status to response (not cached)
+  const responseData = {
+    ...dashboardData,
+    subscriptionStatus
+  };
+  
+  // Add HTTP caching headers to reduce client requests
+  if (dashboardData) {
+    // Cache for 2 minutes on client side
+    res.set('Cache-Control', 'private, max-age=120');
+    res.set('ETag', `"${dashboardData.timestamp || Date.now()}"`);
+  }
+  
+  // DO NOT broadcast dashboard updates from API calls
+  // This was causing excessive egress charges on Railway
+  // WebSocket broadcasts should only happen when backend has new data
+  // if (req.user && !req.headers['x-websocket-request']) {
+  //   WebSocketService.broadcastDashboardUpdate(req.user.id, dashboardData);
+  // }
+  
+  res.json(responseData);
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard data' });

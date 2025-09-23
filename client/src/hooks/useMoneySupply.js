@@ -27,16 +27,16 @@ import websocketService from '../services/websocketService';
     onSuccessRef.current = onSuccess;
   }, [onError, onSuccess]);
 
-  const fetchMoneySupply = useCallback(async (forceRefresh = false) => {
-    // Don't fetch if already loading unless forced
-    if (loading && !forceRefresh) return;
+  const fetchMoneySupply = useCallback(async () => {
+    // Don't fetch if already loading
+    if (loading) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      // Add cache busting parameter if forced refresh
-      const url = forceRefresh ? `/api/dashboard?t=${Date.now()}` : '/api/dashboard';
+      // Use standard endpoint - WebSocket handles real-time updates
+      const url = '/api/dashboard';
 
       const response = await axios.get(url, {
         headers: {
@@ -126,7 +126,7 @@ import websocketService from '../services/websocketService';
   useEffect(() => {
     if (refreshInterval && refreshInterval > 0) {
       const interval = setInterval(() => {
-        fetchMoneySupply(true); // Force refresh
+        fetchMoneySupply(); // Force refresh
       }, refreshInterval);
 
       return () => clearInterval(interval);
@@ -153,7 +153,7 @@ import websocketService from '../services/websocketService';
 
   // Manual refresh function
   const refresh = useCallback(() => {
-    fetchMoneySupply(true);
+    fetchMoneySupply();
   }, [fetchMoneySupply]);
 
   return { data, loading, error, lastFetch, isStale, refresh };
