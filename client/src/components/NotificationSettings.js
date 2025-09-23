@@ -12,7 +12,10 @@ const NotificationSettings = () => {
     eventNotifications: true,
     eventNotificationWindows: [3],
     eventNotificationChannels: ['email', 'push'],
-    eventImpactFilter: 'all'
+    eventImpactFilter: 'all',
+    cryptoNewsNotifications: true,
+    cryptoNewsChannels: ['email', 'push', 'telegram'],
+    cryptoNewsImpactFilter: 'medium'
   });
   
   const [pushStatus, setPushStatus] = useState({
@@ -53,7 +56,10 @@ const NotificationSettings = () => {
           eventNotifications: true,
           eventNotificationWindows: [3],
           eventNotificationChannels: ['email', 'push'],
-          eventImpactFilter: 'all'
+          eventImpactFilter: 'all',
+          cryptoNewsNotifications: true,
+          cryptoNewsChannels: ['email', 'push', 'telegram'],
+          cryptoNewsImpactFilter: 'medium'
         });
       } else {
         console.error('Failed to load preferences:', response.status, response.statusText);
@@ -555,6 +561,119 @@ const NotificationSettings = () => {
                         await savePreferencesWithData(newPreferences);
                       }}
                       className="mt-1 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-white font-medium">{option.label}</div>
+                      <div className="text-slate-400 text-sm break-words">{option.description}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Crypto News Notifications Section */}
+        <div className="p-4 bg-slate-700/50 rounded-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <MessageCircle className="w-5 h-5 text-purple-400 mr-3" />
+              <div>
+                <h3 className="text-white font-medium">Crypto News Notifications</h3>
+                <p className="text-slate-400 text-sm">Receive notifications for significant crypto news events</p>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                const newPreferences = { ...preferences, cryptoNewsNotifications: !preferences.cryptoNewsNotifications };
+                setPreferences(newPreferences);
+                await savePreferencesWithData(newPreferences);
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                preferences.cryptoNewsNotifications ? 'bg-purple-600' : 'bg-slate-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  preferences.cryptoNewsNotifications ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Crypto News Channels Setting */}
+          {preferences.cryptoNewsNotifications && (
+            <div className="p-4 bg-slate-700/50 rounded-lg mb-4">
+              <div className="flex items-center mb-3">
+                <Bell className="w-5 h-5 text-green-400 mr-3" />
+                <div>
+                  <h4 className="text-white font-medium">Notification Channels</h4>
+                  <p className="text-slate-400 text-sm">Choose how to receive crypto news notifications</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {[
+                  { key: 'email', label: 'Email', icon: <Mail className="w-4 h-4" />, color: 'text-blue-400' },
+                  { key: 'push', label: 'Push Notifications', icon: <Smartphone className="w-4 h-4" />, color: 'text-green-400' },
+                  { key: 'telegram', label: 'Telegram', icon: <MessageCircle className="w-4 h-4" />, color: 'text-blue-500' }
+                ].map(channel => (
+                  <label key={channel.key} className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={preferences.cryptoNewsChannels?.includes(channel.key) || false}
+                      onChange={async () => {
+                        const currentChannels = preferences.cryptoNewsChannels || [];
+                        const newChannels = currentChannels.includes(channel.key)
+                          ? currentChannels.filter(c => c !== channel.key)
+                          : [...currentChannels, channel.key];
+                        
+                        const newPreferences = { ...preferences, cryptoNewsChannels: newChannels };
+                        setPreferences(newPreferences);
+                        await savePreferencesWithData(newPreferences);
+                      }}
+                      className="mt-1 text-purple-600 focus:ring-purple-500"
+                    />
+                    <div className={`${channel.color}`}>
+                      {channel.icon}
+                    </div>
+                    <span className="text-white">{channel.label}</span>
+                  </label>
+                ))}
+                {(!preferences.cryptoNewsChannels || preferences.cryptoNewsChannels.length === 0) && (
+                  <p className="text-red-400 text-xs mt-2">⚠️ Please select at least one notification channel</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Crypto News Impact Filter Setting */}
+          {preferences.cryptoNewsNotifications && (
+            <div className="p-4 bg-slate-700/50 rounded-lg">
+              <div className="flex items-center mb-3">
+                <Filter className="w-5 h-5 text-orange-400 mr-3" />
+                <div>
+                  <h4 className="text-white font-medium">News Impact Filter</h4>
+                  <p className="text-slate-400 text-sm">Which crypto news events to receive notifications for</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { value: 'all', label: 'All News', description: 'High, medium, and low impact crypto news' },
+                  { value: 'high', label: 'High Impact Only', description: 'Major regulatory changes, exchange hacks, major partnerships' },
+                  { value: 'medium', label: 'Medium & High Impact', description: 'Excludes low impact news' }
+                ].map(option => (
+                  <label key={option.value} className="flex items-start space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="cryptoNewsImpactFilter"
+                      value={option.value}
+                      checked={preferences.cryptoNewsImpactFilter === option.value}
+                      onChange={async () => {
+                        const newPreferences = { ...preferences, cryptoNewsImpactFilter: option.value };
+                        setPreferences(newPreferences);
+                        await savePreferencesWithData(newPreferences);
+                      }}
+                      className="mt-1 text-purple-600 focus:ring-purple-500"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="text-white font-medium">{option.label}</div>
