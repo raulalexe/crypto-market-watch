@@ -5,7 +5,7 @@ import websocketService from '../services/websocketService';
 
 const useAdvancedAnalytics = (options = {}) => {
   const {
-    autoFetch = true,
+    autoFetch = false, // Changed to false - only fetch on WebSocket connection
     refreshInterval = null, // Fallback polling interval if WebSocket is not used
     onError = null,
     onSuccess = null
@@ -135,10 +135,23 @@ const useAdvancedAnalytics = (options = {}) => {
 
   // Set up WebSocket listener for dashboard updates
   useEffect(() => {
-    websocketService.on('dashboard_update', handleDashboardUpdate);
+    const setupWebSocketListener = () => {
+      websocketService.on('dashboard_update', handleDashboardUpdate);
+      // Fetch data when WebSocket connects (this is the only time we should fetch)
+      fetchAnalyticsData();
+    };
+
+    // Set up listener immediately if already connected
+    if (websocketService.isConnectedToServer()) {
+      setupWebSocketListener();
+    }
+
+    // Also listen for connection events to set up listener when connection is established
+    websocketService.on('connected', setupWebSocketListener);
 
     return () => {
       websocketService.off('dashboard_update', handleDashboardUpdate);
+      websocketService.off('connected', setupWebSocketListener);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Remove handleDashboardUpdate from dependencies to prevent infinite loop

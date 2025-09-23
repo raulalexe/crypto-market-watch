@@ -5,7 +5,7 @@ import websocketService from '../services/websocketService';
 
 const useInflationData = (options = {}) => {
   const {
-    autoFetch = true,
+    autoFetch = false, // Changed to false - only fetch on WebSocket connection
     refreshInterval = null, // Fallback polling interval if WebSocket is not used
     onError = null,
     onSuccess = null
@@ -98,6 +98,8 @@ const useInflationData = (options = {}) => {
   useEffect(() => {
     const setupWebSocketListener = () => {
       websocketService.on('dashboard_update', handleDashboardUpdate);
+      // Fetch data when WebSocket connects (this is the only time we should fetch)
+      fetchInflationData();
     };
 
     // Set up listener immediately if already connected

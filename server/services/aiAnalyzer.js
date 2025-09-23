@@ -21,6 +21,11 @@ class AIAnalyzer {
     this.huggingFaceService = new HuggingFaceService();
     this.groqService = new GroqService();
     
+    // Logging control for backtest warnings
+    this.lastNoBacktestLogTime = 0; // Track when we last logged "no backtest results"
+    this.lastNoAnalysisLogTime = 0; // Track when we last logged "no AI analysis"
+    this.noBacktestLogInterval = 60 * 60 * 1000; // Only log once per hour
+    
     // Log API configuration for debugging
     console.log('🔧 AI Configuration:');
     console.log('  Venice AI Key:', this.veniceApiKey ? '✅ Configured' : '❌ Missing');
@@ -658,7 +663,12 @@ ANALYSIS REQUIREMENTS:
       // Get latest AI analysis
       const latestAnalysis = await getLatestAIAnalysis();
       if (!latestAnalysis) {
-        console.log('⚠️ No AI analysis found for backtesting');
+        // Only log this warning once per hour to avoid flooding production logs
+        const now = Date.now();
+        if (now - this.lastNoAnalysisLogTime > this.noBacktestLogInterval) {
+          console.log('⚠️ No AI analysis found for backtesting (will check again in 1 hour)');
+          this.lastNoAnalysisLogTime = now;
+        }
         return;
       }
       
@@ -881,7 +891,12 @@ ANALYSIS REQUIREMENTS:
       
       
       if (!results || results.length === 0) {
-        console.log('⚠️ No backtest results found in database');
+        // Only log this warning once per hour to avoid flooding production logs
+        const now = Date.now();
+        if (now - this.lastNoBacktestLogTime > this.noBacktestLogInterval) {
+          console.log('⚠️ No backtest results found in database (will check again in 1 hour)');
+          this.lastNoBacktestLogTime = now;
+        }
         
         // Return sample data for demonstration purposes
         return {

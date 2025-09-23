@@ -5,7 +5,7 @@ import websocketService from '../services/websocketService';
 
 const useAdvancedMetrics = (options = {}) => {
   const {
-    autoFetch = true,
+    autoFetch = false, // Changed to false - only fetch on WebSocket connection
     refreshInterval = null, // Fallback polling interval if WebSocket is not used
     onError = null,
     onSuccess = null
@@ -113,10 +113,14 @@ const useAdvancedMetrics = (options = {}) => {
     // Only set up listeners if WebSocket is connected
     if (websocketService.isConnectedToServer()) {
       websocketService.on('dashboard_update', handleDashboardUpdate);
+      // Fetch data when WebSocket connects (this is the only time we should fetch)
+      fetchAdvancedMetrics();
     } else {
       // Listen for connection event to set up dashboard listener
       const handleConnected = () => {
         websocketService.on('dashboard_update', handleDashboardUpdate);
+        // Fetch data when WebSocket connects (this is the only time we should fetch)
+        fetchAdvancedMetrics();
       };
       websocketService.on('connected', handleConnected);
       
@@ -164,8 +168,7 @@ const useAdvancedMetrics = (options = {}) => {
   // Manual refresh function
   const refresh = useCallback(() => {
     fetchAdvancedMetrics(true);
-  }, []); // Remove fetchAdvancedMetrics from dependencies to prevent infinite loops
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchAdvancedMetrics]);
 
   return { data, loading, error, lastFetch, isStale, refresh };
 };

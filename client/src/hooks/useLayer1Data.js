@@ -5,7 +5,7 @@ import websocketService from '../services/websocketService';
 
 const useLayer1Data = (options = {}) => {
   const {
-    autoFetch = true,
+    autoFetch = false, // Changed to false - only fetch on WebSocket connection
     refreshInterval = null, // Fallback polling interval if WebSocket is not used
     onError = null,
     onSuccess = null
@@ -114,10 +114,14 @@ const useLayer1Data = (options = {}) => {
     // Only set up listeners if WebSocket is connected
     if (websocketService.isConnectedToServer()) {
       websocketService.on('dashboard_update', handleDashboardUpdate);
+      // Fetch data when WebSocket connects (this is the only time we should fetch)
+      fetchLayer1Data();
     } else {
       // Listen for connection event to set up dashboard listener
       const handleConnected = () => {
         websocketService.on('dashboard_update', handleDashboardUpdate);
+        // Fetch data when WebSocket connects (this is the only time we should fetch)
+        fetchLayer1Data();
       };
       websocketService.on('connected', handleConnected);
       
@@ -165,8 +169,7 @@ const useLayer1Data = (options = {}) => {
   // Manual refresh function
   const refresh = useCallback(() => {
     fetchLayer1Data(true);
-  }, []); // Remove fetchLayer1Data from dependencies to prevent infinite loops
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchLayer1Data]);
 
   return { data, loading, error, lastFetch, isStale, refresh };
 };
