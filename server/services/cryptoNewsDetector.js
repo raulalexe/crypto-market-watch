@@ -7,7 +7,7 @@ const GroqService = require('./groqService');
 
 class CryptoNewsDetector {
   constructor() {
-    this.newsApiKey = process.env.NEWS_API_KEY;
+    this.newsApiKey = process.env.NEWSAPI_API_KEY;
     this.coinTelegraphApiKey = process.env.COINTELEGRAPH_API_KEY;
     this.cryptoPanicApiKey = process.env.CRYPTO_PANIC_API_KEY;
     
@@ -36,21 +36,13 @@ class CryptoNewsDetector {
         }
       },
       {
-        name: 'CoinTelegraph',
-        url: 'https://cointelegraph.com/api/v1/content',
-        params: {
-          type: 'post',
-          limit: 20
-        }
-      },
-      {
         name: 'CryptoPanic',
-        url: 'https://cryptopanic.com/api/v1/posts/',
+        url: 'https://cryptopanic.com/api/developer/v2/posts/',
         params: {
           auth_token: this.cryptoPanicApiKey,
-          currencies: 'BTC,ETH',
-          filter: 'hot',
-          public: true
+          kind: 'news',
+          currencies: 'BTC,ETH,SOL',
+          filter: 'hot'
         }
       }
     ];
@@ -66,9 +58,13 @@ class CryptoNewsDetector {
     };
     
     console.log('📰 Crypto News Detector Configuration:');
-    console.log('  NewsAPI Key:', this.newsApiKey ? '✅ Configured' : '❌ Missing');
-    console.log('  CoinTelegraph Key:', this.coinTelegraphApiKey ? '✅ Configured' : '❌ Missing');
+    console.log('  NewsAPI Key (NEWSAPI_API_KEY):', this.newsApiKey ? '✅ Configured' : '❌ Missing');
+    console.log('  CoinTelegraph:', '🚫 Disabled (no public API)');
     console.log('  CryptoPanic Key:', this.cryptoPanicApiKey ? '✅ Configured' : '❌ Missing');
+    if (this.cryptoPanicApiKey) {
+      console.log('  CryptoPanic Key Length:', this.cryptoPanicApiKey.length);
+      console.log('  CryptoPanic Key Preview:', this.cryptoPanicApiKey.substring(0, 8) + '...');
+    }
   }
 
   // Main method to detect and analyze crypto news events
@@ -161,8 +157,19 @@ class CryptoNewsDetector {
         this.newsCache.set(cacheKey, { data, timestamp: Date.now() });
         return data;
       } else if (source.name === 'CryptoPanic') {
-        response = await axios.get(source.url, {
-          params: source.params
+        // Manual URL construction for CryptoPanic to match curl behavior
+        const baseUrl = source.url;
+        const authToken = encodeURIComponent(this.cryptoPanicApiKey);
+        const fullUrl = `${baseUrl}?auth_token=${authToken}`;
+        
+        console.log('🔍 CryptoPanic Full URL:', fullUrl);
+        console.log('🔍 CryptoPanic API Key Length:', this.cryptoPanicApiKey ? this.cryptoPanicApiKey.length : 'undefined');
+        
+        response = await axios.get(fullUrl, {
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; crypto-market-watch/1.0)'
+          }
         });
         const data = this.parseCryptoPanicResponse(response.data);
         this.newsCache.set(cacheKey, { data, timestamp: Date.now() });
@@ -255,7 +262,7 @@ class CryptoNewsDetector {
       // Use Groq for fast analysis
       const analysis = await this.groqService.analyzeNewsEvent(article);
       
-      if (analysis && analysis.significance > 0.6) {
+      if (analysis && analysis.significance > 0.1) {
         return {
           ...article,
           analysis,
@@ -270,21 +277,51 @@ class CryptoNewsDetector {
     }
   }
 
-  // Filter for significant events
+  // Filter for significant crypto market events only
   filterSignificantEvents(events) {
     return events.filter(event => {
       const analysis = event.analysis;
+      const title = event.title.toLowerCase();
+      const content = (event.content || '').toLowerCase();
       
-      // Must have high significance
-      if (analysis.significance < 0.7) return false;
+      // Must have meaningful significance and market impact
+      if (analysis.significance < 0.3) return false;
+      if (analysis.marketImpact < 0.3) return false;
       
-      // Must have market impact
-      if (analysis.marketImpact < 0.6) return false;
-      
-      // Must be recent (within last 2 hours)
+      // Must be recent (within last 12 hours)
       const eventTime = moment(event.publishedAt);
       const now = moment();
-      if (now.diff(eventTime, 'hours') > 2) return false;
+      if (now.diff(eventTime, 'hours') > 12) return false;
+      
+      // Must have affected cryptocurrencies specified
+      if (!analysis.affectedCryptos || analysis.affectedCryptos.length === 0) return false;
+      
+      // Exclude traditional banking/finance news without crypto impact
+      const traditionalBankingKeywords = [
+        'citibank', 'wells fargo', 'jpmorgan', 'bank of america', 'traditional banking',
+        'credit card fraud', 'banking scam', 'atm fraud', 'wire transfer fraud'
+      ];
+      
+      const hasTraditionalBankingKeywords = traditionalBankingKeywords.some(keyword => 
+        title.includes(keyword) || content.includes(keyword)
+      );
+      
+      if (hasTraditionalBankingKeywords && analysis.category !== 'regulation') {
+        return false;
+      }
+      
+      // Must contain crypto-specific keywords for relevance
+      const cryptoKeywords = [
+        'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency', 'blockchain',
+        'defi', 'nft', 'altcoin', 'stablecoin', 'dao', 'yield', 'mining', 'staking',
+        'dex', 'exchange listing', 'smart contract', 'layer 1', 'layer 2'
+      ];
+      
+      const hasCryptoKeywords = cryptoKeywords.some(keyword => 
+        title.includes(keyword) || content.includes(keyword)
+      );
+      
+      if (!hasCryptoKeywords) return false;
       
       return true;
     });
@@ -303,7 +340,7 @@ class CryptoNewsDetector {
     return unique.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
   }
 
-  // Get event summary for dashboard
+  // Get event summary for dashboard (top 3 only)
   async getEventSummary() {
     try {
       const events = await this.detectCryptoEvents();
@@ -320,12 +357,38 @@ class CryptoNewsDetector {
       return {
         hasEvents: true,
         eventCount: events.length,
-        events: events.slice(0, 5), // Return top 5 events
+        events: events.slice(0, 3), // Return top 3 events for dashboard
+        lastUpdate: new Date().toISOString(),
+        categories: this.categorizeEvents(events),
+        hasMoreEvents: events.length > 3 // Flag to show "See More" button
+      };
+    } catch (error) {
+      console.error('Error getting event summary:', error.message);
+      return {
+        hasEvents: false,
+        eventCount: 0,
+        events: [],
+        lastUpdate: new Date().toISOString(),
+        error: error.message,
+        hasMoreEvents: false
+      };
+    }
+  }
+
+  // Get all crypto events for dedicated news page
+  async getAllEvents() {
+    try {
+      const events = await this.detectCryptoEvents();
+      
+      return {
+        hasEvents: events.length > 0,
+        eventCount: events.length,
+        events: events, // Return all events
         lastUpdate: new Date().toISOString(),
         categories: this.categorizeEvents(events)
       };
     } catch (error) {
-      console.error('Error getting event summary:', error.message);
+      console.error('Error getting all events:', error.message);
       return {
         hasEvents: false,
         eventCount: 0,

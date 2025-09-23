@@ -3520,6 +3520,26 @@ app.post('/api/detect-crypto-news', authenticateToken, requireAdmin, async (req,
   }
 });
 
+// API endpoint to get all crypto news events for the news page
+app.get('/api/crypto-news', optionalAuth, async (req, res) => {
+  try {
+    const CryptoNewsDetector = require('./services/cryptoNewsDetector');
+    const cryptoNewsDetector = new CryptoNewsDetector();
+    
+    const newsData = await cryptoNewsDetector.getAllEvents();
+    
+    res.json(newsData);
+  } catch (error) {
+    console.error('Error fetching crypto news:', error);
+    res.status(500).json({
+      hasEvents: false,
+      eventCount: 0,
+      events: [],
+      error: error.message
+    });
+  }
+});
+
 // Get dashboard summary - CACHED to reduce egress charges
 app.get('/api/dashboard', optionalAuth, async (req, res) => {
   try {
