@@ -23,6 +23,7 @@ import SubscriptionPlans from './components/SubscriptionPlans';
 
 import AdminDashboard from './components/AdminDashboard';
 import AuthRequired from './components/AuthRequired';
+import NewsPage from './components/NewsPage';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsAndConditions from './components/TermsAndConditions';
 import Profile from './components/Profile';
@@ -258,6 +259,10 @@ function App() {
               <Route 
                 path="events" 
                 element={<UpcomingEventsPage />} 
+              />
+              <Route 
+                path="news" 
+                element={<NewsPage />} 
               />
               <Route 
                 path="prices" 

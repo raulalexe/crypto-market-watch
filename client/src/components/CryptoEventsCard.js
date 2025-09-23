@@ -9,8 +9,10 @@ import {
   Building,
   Settings,
   ExternalLink,
-  Clock
+  Clock,
+  ArrowRight
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const CryptoEventsCard = ({ cryptoEvents }) => {
   if (!cryptoEvents || !cryptoEvents.hasEvents) {
@@ -202,11 +204,20 @@ const CryptoEventsCard = ({ cryptoEvents }) => {
         ))}
       </div>
 
-      {cryptoEvents.eventCount > 5 && (
+      {cryptoEvents.hasMoreEvents && (
         <div className="mt-4 pt-4 border-t border-slate-700">
-          <p className="text-sm text-slate-400 text-center">
-            Showing 5 of {cryptoEvents.eventCount} events
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-400">
+              Showing 3 of {cryptoEvents.eventCount} events
+            </p>
+            <Link 
+              to="/news" 
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors duration-200"
+            >
+              See More
+              <ArrowRight className="ml-1 w-3 h-3" />
+            </Link>
+          </div>
         </div>
       )}
 
