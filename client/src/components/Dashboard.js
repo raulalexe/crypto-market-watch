@@ -13,6 +13,7 @@ import UpcomingEventsCard from './UpcomingEventsCard';
 import AlertCard from './AlertCard';
 import InflationDataCard from './InflationDataCard';
 import MoneySupplyCard from './MoneySupplyCard';
+import CryptoEventsCard from './CryptoEventsCard';
 
 const Dashboard = ({ isAuthenticated, userData }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -228,8 +229,11 @@ const Dashboard = ({ isAuthenticated, userData }) => {
           showRefreshButton={false} // WebSocket handles real-time updates
         />
         
+        {/* Crypto News Events Card - AI Analysis of News */}
+        <CryptoEventsCard cryptoEvents={dashboardData?.cryptoEvents} />
+        
         {/* Inflation Data Card */}
-        <InflationDataCard userData={userData} />
+        <InflationDataCard userData={userData} inflationData={dashboardData?.inflationData} />
         
         {/* Money Supply Card */}
         <MoneySupplyCard />

@@ -1,29 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, Calendar, BarChart3, DollarSign, Activity, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Calendar, BarChart3, DollarSign, Activity } from 'lucide-react';
 import useInflationData from '../hooks/useInflationData';
 
-const InflationDataCard = ({ userData }) => {
-  const [releases, setReleases] = useState([]);
-  const [forecasts, setForecasts] = useState(null);
-  const [expectations, setExpectations] = useState(null);
-  const [sentiment, setSentiment] = useState(null);
-  const [additionalLoading, setAdditionalLoading] = useState(false);
-  const [additionalError, setAdditionalError] = useState(null);
+const InflationDataCard = ({ userData, inflationData: propInflationData }) => {
+  const [releases] = useState([]);
+  const [forecasts] = useState(null);
+  const [expectations] = useState(null);
+  const [sentiment] = useState(null);
 
-  // Use the custom hook for main inflation data (CPI, PCE, PPI)
+  // Use the custom hook for main inflation data (CPI, PCE, PPI) as fallback
   const {
-    data: inflationData,
+    data: hookInflationData,
     loading,
     error,
-    lastFetch,
-    isStale,
     refresh
   } = useInflationData({
-    autoFetch: true,
+    autoFetch: !propInflationData, // Only auto-fetch if no prop data
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Inflation data error:', err),
     onSuccess: (data) => {} // WebSocket data received
   });
+
+  // Use prop data if available, otherwise use hook data
+  const inflationData = propInflationData || hookInflationData;
+  
+  
 
   // Skip additional API calls - using WebSocket for all data
   // const fetchAdditionalData = async () => {
@@ -124,6 +125,7 @@ const InflationDataCard = ({ userData }) => {
       </div>
     );
   }
+
 
   if (error) {
     return (
@@ -245,7 +247,8 @@ const InflationDataCard = ({ userData }) => {
       )}
 
       {/* PCE Data */}
-      {inflationData?.pce ? (
+      {inflationData ? (
+        inflationData.pce ? (
         <div className="bg-slate-700 rounded-lg p-4 mb-4">
           <h4 className="text-white font-medium mb-3 flex items-center space-x-2">
             <DollarSign className="w-4 h-4 text-green-400" />
@@ -307,17 +310,19 @@ const InflationDataCard = ({ userData }) => {
             Date: {formatDate(inflationData.pce.date)}
           </div>
         </div>
-      ) : (
-        <div className="bg-slate-700 rounded-lg p-4 mb-4">
-          <h4 className="text-white font-medium mb-3">Personal Consumption Expenditures (PCE)</h4>
-          <div className="text-sm text-slate-400 bg-slate-600 p-3 rounded-lg">
-            PCE data temporarily unavailable
+        ) : (
+          <div className="bg-slate-700 rounded-lg p-4 mb-4">
+            <h4 className="text-white font-medium mb-3">Personal Consumption Expenditures (PCE)</h4>
+            <div className="text-sm text-slate-400 bg-slate-600 p-3 rounded-lg">
+              PCE data temporarily unavailable
+            </div>
           </div>
-        </div>
-      )}
+        )
+      ) : null}
 
       {/* PPI Data */}
-      {inflationData?.ppi ? (
+      {inflationData ? (
+        inflationData.ppi ? (
         <div className="bg-slate-700 rounded-lg p-4 mb-4">
           <h4 className="text-white font-medium mb-3 flex items-center space-x-2">
             <DollarSign className="w-4 h-4 text-green-400" />
@@ -379,14 +384,15 @@ const InflationDataCard = ({ userData }) => {
             Date: {formatDate(inflationData.ppi.date)}
           </div>
         </div>
-      ) : (
-        <div className="bg-slate-700 rounded-lg p-4 mb-4">
-          <h4 className="text-white font-medium mb-3">Producer Price Index (PPI)</h4>
-          <div className="text-sm text-slate-400 bg-slate-600 p-3 rounded-lg">
-            PPI data temporarily unavailable
+        ) : (
+          <div className="bg-slate-700 rounded-lg p-4 mb-4">
+            <h4 className="text-white font-medium mb-3">Producer Price Index (PPI)</h4>
+            <div className="text-sm text-slate-400 bg-slate-600 p-3 rounded-lg">
+              PPI data temporarily unavailable
+            </div>
           </div>
-        </div>
-      )}
+        )
+      ) : null}
 
       {/* AI Analysis Section */}
       {inflationData && (inflationData.cpi || inflationData.pce || inflationData.ppi) && (
