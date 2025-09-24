@@ -74,6 +74,7 @@ const AIAnalysisCard = ({
     }
   };
 
+
   const getConfidenceColor = (confidence) => {
     if (confidence >= 80) return 'text-crypto-green';
     if (confidence >= 60) return 'text-crypto-yellow';
@@ -693,6 +694,7 @@ const AIAnalysisCard = ({
             )}
           </div>
         )}
+
       </div>
     </div>
   );

@@ -12,7 +12,8 @@ import {
   User,
   Calendar,
   Mail,
-  DollarSign
+  DollarSign,
+  Newspaper
 } from 'lucide-react';
 import { isAdmin as isAdminUser, isAuthenticated, hasProAccess, hasPremiumAccess } from '../utils/authUtils';
 
@@ -29,6 +30,11 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
       path: '/app/events',
       name: 'Upcoming Events',
       icon: Calendar
+    },
+    {
+      path: '/app/news',
+      name: 'AI News Analysis',
+      icon: Newspaper
     },
     {
       path: '/app/prices',

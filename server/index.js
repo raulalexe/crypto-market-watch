@@ -3662,6 +3662,12 @@ app.get('/api/websocket-stats', authenticateToken, requireAdmin, (req, res) => {
   }
 });
 
+// Get popup urgent news config
+app.get('/api/config/popup-urgent-news', (req, res) => {
+  const enabled = process.env.POPUP_URGENT_NEWS === 'true';
+  res.json({ enabled });
+});
+
 // ===== INFLATION DATA ENDPOINTS =====
 
 // Test PPI endpoint

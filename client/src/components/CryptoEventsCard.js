@@ -122,7 +122,9 @@ const CryptoEventsCard = ({ cryptoEvents }) => {
       </div>
 
       <div className="space-y-4">
-        {cryptoEvents.events.slice(0, 5).map((event, index) => (
+        {cryptoEvents.events
+          .sort((a, b) => new Date(b.publishedAt || b.detectedAt) - new Date(a.publishedAt || a.detectedAt))
+          .slice(0, 3).map((event, index) => (
           <div 
             key={index}
             className={`p-4 rounded-lg border ${getCategoryColor(event.analysis.category)}`}
@@ -204,20 +206,34 @@ const CryptoEventsCard = ({ cryptoEvents }) => {
         ))}
       </div>
 
-      {cryptoEvents.hasMoreEvents && (
+      {cryptoEvents.eventCount > 3 && (
         <div className="mt-4 pt-4 border-t border-slate-700">
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-400">
-              Showing 3 of {cryptoEvents.eventCount} events
+              Showing 3 most recent of {cryptoEvents.eventCount} events
             </p>
             <Link 
-              to="/news" 
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors duration-200"
+              to="/app/news" 
+              className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
             >
               See More
-              <ArrowRight className="ml-1 w-3 h-3" />
+              <ArrowRight className="ml-2 w-4 h-4" />
             </Link>
           </div>
+        </div>
+      )}
+      
+      {/* Always show link to news page even when no events */}
+      {!cryptoEvents.hasEvents && (
+        <div className="mt-4 pt-4 border-t border-slate-700 text-center">
+          <Link 
+            to="/app/news" 
+            className="inline-flex items-center px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-lg transition-colors duration-200"
+          >
+            <Newspaper className="mr-2 w-4 h-4" />
+            View News Page
+            <ArrowRight className="ml-2 w-4 h-4" />
+          </Link>
         </div>
       )}
 
