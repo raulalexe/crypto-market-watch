@@ -5,6 +5,8 @@ import authService from './services/authService';
 import websocketService from './services/websocketService';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
+import FreeDashboard from './components/FreeDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -193,7 +195,7 @@ function App() {
     // Handle auth query parameters
     useEffect(() => {
       const authParam = searchParams.get('auth');
-      if (authParam === 'register' || authParam === 'login') {
+      if (authParam === 'register' || authParam === 'signup' || authParam === 'login') {
         setAuthModalOpen(true);
         // Scroll to top when modal opens due to URL parameter
         window.scrollTo(0, 0);
@@ -211,36 +213,55 @@ function App() {
       window.scrollTo(0, 0);
     };
 
+    // Check if we should show freemium for unauthenticated users
+    const showFreemiumForUnauthenticated = !isAuthenticated && process.env.REACT_APP_DISABLE_FREEMIUM !== 'true';
+
     return (
       <>
-        <Header 
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          onAuthClick={() => {
-            window.location.href = '/app?auth=login';
-          }}
-          onLogoutClick={handleLogout}
-          loading={loading}
-          isAuthenticated={isAuthenticated}
-          userData={userData}
-          setAuthModalOpen={setAuthModalOpen}
-        />
-        
-        <div className="flex min-h-screen">
-          <Sidebar 
-            userData={userData} 
-            isOpen={sidebarOpen} 
-            onClose={() => setSidebarOpen(false)} 
+        {/* Show Header/Sidebar for:
+            1. Authenticated users (always)
+            2. When freemium is disabled (all users, like before) */}
+        {(isAuthenticated || process.env.REACT_APP_DISABLE_FREEMIUM === 'true') && (
+          <Header 
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+            onAuthClick={() => {
+              window.location.href = '/app?auth=login';
+            }}
+            onLogoutClick={handleLogout}
+            loading={loading}
+            isAuthenticated={isAuthenticated}
+            userData={userData}
+            setAuthModalOpen={setAuthModalOpen}
           />
+        )}
+        
+        <div className={`flex min-h-screen ${showFreemiumForUnauthenticated ? '' : ''}`}>
+          {/* Show Sidebar for:
+              1. Authenticated users (always)  
+              2. When freemium is disabled (all users, like before) */}
+          {(isAuthenticated || process.env.REACT_APP_DISABLE_FREEMIUM === 'true') && (
+            <Sidebar 
+              userData={userData} 
+              isOpen={sidebarOpen} 
+              onClose={() => setSidebarOpen(false)} 
+            />
+          )}
           
-          <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
+          <main className={`flex-1 overflow-x-hidden ${showFreemiumForUnauthenticated ? 'p-0' : 'p-4 md:p-6'}`}>
             <Routes>
               <Route 
                 path="/" 
                 element={
-                  <Dashboard 
-                    isAuthenticated={isAuthenticated}
-                    userData={userData}
-                  />
+                  // If freemium is enabled and user is not authenticated, show FreeDashboard
+                  // Otherwise, always show full Dashboard (like before)
+                  showFreemiumForUnauthenticated ? (
+                    <FreeDashboard />
+                  ) : (
+                    <Dashboard 
+                      isAuthenticated={isAuthenticated}
+                      userData={userData}
+                    />
+                  )
                 } 
               />
               <Route 
@@ -357,7 +378,7 @@ function App() {
           isOpen={authModalOpen}
           onClose={handleCloseModal}
           onAuthSuccess={handleAuthSuccess}
-          initialMode={searchParams.get('auth') === 'register' ? 'signup' : 'login'}
+          initialMode={searchParams.get('auth') === 'register' || searchParams.get('auth') === 'signup' ? 'signup' : 'login'}
         />
         
         {/* Renewal Reminder */}
@@ -391,6 +412,7 @@ function App() {
                 {/* Marketing page as index - no header/sidebar */}
         <Routes>
           <Route path="/" element={<MarketingPage />} />
+          <Route path="/preview" element={<FreeDashboard />} />
 
           <Route path="/about" element={<MarketingAbout />} />
           <Route path="/unsubscribe-success" element={<UnsubscribeSuccess />} />
