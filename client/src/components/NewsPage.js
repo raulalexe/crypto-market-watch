@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Newspaper, 
   TrendingUp, 
@@ -30,8 +30,53 @@ const NewsPage = () => {
   const [showHighImpactModal, setShowHighImpactModal] = useState(false);
   const [highImpactNews, setHighImpactNews] = useState([]);
 
+  // Helper function to calculate weighted impact score
+  const getWeightedImpactScore = (event) => {
+    if (!event.analysis) return 0;
+    const impact = event.analysis.marketImpact || 0;
+    const confidence = event.analysis.confidence || 0;
+    return (impact * 2 + confidence) / 3;
+  };
+
+  // Check for high-impact news and show modal if conditions are met
+  const checkForHighImpactNews = useCallback(async (data) => {
+    if (!data || !data.events) return;
+
+    try {
+      // First check if the environment variable allows popups
+      const configResponse = await fetch('/api/config/popup-urgent-news');
+      const configData = await configResponse.json();
+      
+      if (!configData.enabled) {
+        return; // Don't show modal if env var is not set to true
+      }
+
+      // Check if we have high-impact events (over 70%)
+      const highImpactEvents = data.events.filter(event => {
+        const score = getWeightedImpactScore(event);
+        const isHighImpact = score >= 0.7;
+        
+        // Check if the event was detected within the last 4 hours
+        const detectedAt = new Date(event.detectedAt || event.publishedAt);
+        const now = new Date();
+        const hoursSinceDetection = (now - detectedAt) / (1000 * 60 * 60);
+        const isRecent = hoursSinceDetection <= 4;
+        
+        return isHighImpact && isRecent;
+      });
+
+      if (highImpactEvents.length > 0) {
+        setHighImpactNews(highImpactEvents);
+        setShowHighImpactModal(true);
+      }
+    } catch (error) {
+      console.error('Error checking popup config:', error);
+      // Fail silently - don't show modal if there's an error
+    }
+  }, []); // No dependencies needed as it only uses its parameter and setState
+
   // Initial data fetch on component mount
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -58,7 +103,7 @@ const NewsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [checkForHighImpactNews]); // Depends on checkForHighImpactNews
 
   useEffect(() => {
     // Load initial data
@@ -82,7 +127,7 @@ const NewsPage = () => {
     return () => {
       websocketService.off('dashboard_update', handleDashboardUpdate);
     };
-  }, []);
+  }, [fetchInitialData, checkForHighImpactNews]); // Add missing dependencies
 
   const getCategoryIcon = (category) => {
     switch (category) {
@@ -158,50 +203,6 @@ const NewsPage = () => {
     return 'text-green-400';
   };
 
-  // Calculate weighted impact score
-  const getWeightedImpactScore = (event) => {
-    if (!event.analysis) return 0;
-    const impact = event.analysis.marketImpact || 0;
-    const confidence = event.analysis.confidence || 0;
-    return (impact * 2 + confidence) / 3;
-  };
-
-  // Check for high-impact news and show modal if conditions are met
-  const checkForHighImpactNews = async (data) => {
-    if (!data || !data.events) return;
-
-    try {
-      // First check if the environment variable allows popups
-      const configResponse = await fetch('/api/config/popup-urgent-news');
-      const configData = await configResponse.json();
-      
-      if (!configData.enabled) {
-        return; // Don't show modal if env var is not set to true
-      }
-
-      // Check if we have high-impact events (over 70%)
-      const highImpactEvents = data.events.filter(event => {
-        const score = getWeightedImpactScore(event);
-        const isHighImpact = score >= 0.7;
-        
-        // Check if the event was detected within the last 4 hours
-        const detectedAt = new Date(event.detectedAt || event.publishedAt);
-        const now = new Date();
-        const hoursSinceDetection = (now - detectedAt) / (1000 * 60 * 60);
-        const isRecent = hoursSinceDetection <= 4;
-        
-        return isHighImpact && isRecent;
-      });
-
-      if (highImpactEvents.length > 0) {
-        setHighImpactNews(highImpactEvents);
-        setShowHighImpactModal(true);
-      }
-    } catch (error) {
-      console.error('Error checking popup config:', error);
-      // Fail silently - don't show modal if there's an error
-    }
-  };
 
   const getFilteredEvents = () => {
     if (!newsData || !newsData.events) return [];

@@ -128,22 +128,7 @@ import websocketService from '../services/websocketService';
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshInterval]); // Remove fetchInflationData from dependencies to prevent infinite loop
 
-  // Check for data staleness
-  useEffect(() => {
-    if (lastFetch && refreshInterval) {
-      const intervalId = setInterval(() => {
-        const now = new Date();
-        const timeElapsed = now.getTime() - lastFetch.getTime();
-        if (timeElapsed > refreshInterval) {
-          setIsStale(true);
-        } else {
-          setIsStale(false);
-        }
-      }, 10000); // Check every 10 seconds
-
-      return () => clearInterval(intervalId);
-    }
-  }, [lastFetch, refreshInterval]);
+  // Note: Staleness checking removed since refreshInterval is always null for WebSocket-only operation
 
   // Manual refresh function
   const refresh = useCallback(() => {

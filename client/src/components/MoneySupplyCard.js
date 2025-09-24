@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Minus, DollarSign, Building2, Activity, RefreshCw } from 'lucide-react';
+import React from 'react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, Building2, Activity } from 'lucide-react';
 import useMoneySupply from '../hooks/useMoneySupply';
 
 const MoneySupplyCard = ({ data: propData }) => {
@@ -9,8 +9,7 @@ const MoneySupplyCard = ({ data: propData }) => {
     loading,
     error,
     lastFetch,
-    isStale,
-    refresh
+    isStale
   } = useMoneySupply({
     autoFetch: !propData, // Only auto-fetch if no prop data
     refreshInterval: null, // No polling - WebSocket handles updates
@@ -98,22 +97,12 @@ const MoneySupplyCard = ({ data: propData }) => {
             FRED Data
           </span>
         </div>
-        <div className="flex items-center space-x-2">
-          {lastFetch && (
-            <span className="text-xs text-slate-500">
-              {lastFetch.toLocaleTimeString()}
-              {isStale && <span className="text-yellow-400 ml-1">•</span>}
-            </span>
-          )}
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="p-2 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
-            title="Refresh money supply data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+        {lastFetch && (
+          <span className="text-xs text-slate-500">
+            Last updated: {lastFetch.toLocaleTimeString()}
+            {isStale && <span className="text-yellow-400 ml-1">• Stale</span>}
+          </span>
+        )}
       </div>
 
       {/* Money Supply Grid */}

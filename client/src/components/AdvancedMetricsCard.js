@@ -1,28 +1,31 @@
 import React from 'react';
-import { TrendingUp, DollarSign, BarChart3, Activity, RefreshCw } from 'lucide-react';
+import { TrendingUp, DollarSign, BarChart3, Activity } from 'lucide-react';
 import useAdvancedMetrics from '../hooks/useAdvancedMetrics';
 
 const AdvancedMetricsCard = ({ data: propData }) => {
-  // Use the custom hook as fallback only if no prop data
+  // Check if propData is in raw database format (needs processing)
+  // Raw data has 'id' and 'timestamp' fields, processed data has 'change_24h'
+  const isRawData = propData && propData.bitcoinDominance?.id && !propData.bitcoinDominance?.change_24h;
+  
+  // Use the custom hook when we need processed data
   const {
     data: hookData,
     loading,
     error,
     lastFetch,
-    isStale,
-    refresh
+    isStale
   } = useAdvancedMetrics({
-    autoFetch: !propData, // Only auto-fetch if no prop data
+    autoFetch: !propData || isRawData, // Auto-fetch if no prop data or if prop data is raw format
     refreshInterval: null, // No polling - WebSocket handles updates
     onError: (err) => console.error('Advanced metrics error:', err),
     onSuccess: (data) => {} // WebSocket data received
   });
 
-  // Use prop data if available, otherwise use hook data
-  const data = propData || hookData;
+  // Use processed hook data if prop data is raw, otherwise use prop data
+  const data = isRawData ? hookData : (propData || hookData);
 
-  // Extract data - prop data comes directly from dashboard, hook data might be wrapped
-  const metrics = propData ? propData : data?.metrics;
+  // Use the data directly as it comes from /api/advanced-metrics endpoint
+  const metrics = data;
   const trendingNarratives = data?.trendingNarratives || [];
 
 
@@ -60,27 +63,14 @@ const AdvancedMetricsCard = ({ data: propData }) => {
   if (error) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 border border-red-500/30">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <BarChart3 className="w-6 h-6 text-red-400" />
-            <h3 className="text-lg font-semibold text-white">Advanced Metrics</h3>
-          </div>
-          <button
-            onClick={refresh}
-            className="p-2 text-slate-400 hover:text-white transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+        <div className="flex items-center space-x-3 mb-4">
+          <BarChart3 className="w-6 h-6 text-red-400" />
+          <h3 className="text-lg font-semibold text-white">Advanced Metrics</h3>
         </div>
         <div className="text-center py-8">
           <p className="text-red-400 mb-2">Failed to load advanced metrics</p>
-          <p className="text-slate-400 text-sm mb-4">{error.message}</p>
-          <button
-            onClick={refresh}
-            className="px-4 py-2 bg-crypto-blue hover:bg-blue-600 text-white rounded-lg transition-colors"
-          >
-            Try Again
-          </button>
+          <p className="text-slate-400 text-sm">{error.message}</p>
+          <p className="text-slate-500 text-xs mt-2">Data will refresh automatically when available</p>
         </div>
       </div>
     );
@@ -109,22 +99,12 @@ const AdvancedMetricsCard = ({ data: propData }) => {
           <BarChart3 className="w-6 h-6 text-crypto-blue" />
           <h2 className="text-xl font-semibold text-white">Advanced Metrics</h2>
         </div>
-        <div className="flex items-center space-x-2">
-          {lastFetch && (
-            <span className="text-xs text-slate-500">
-              {lastFetch.toLocaleTimeString()}
-              {isStale && <span className="text-yellow-400 ml-1">•</span>}
-            </span>
-          )}
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="p-2 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
-            title="Refresh advanced metrics"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+        {lastFetch && (
+          <span className="text-xs text-slate-500">
+            Last updated: {lastFetch.toLocaleTimeString()}
+            {isStale && <span className="text-yellow-400 ml-1">• Stale</span>}
+          </span>
+        )}
       </div>
 
       <div className="space-y-6">

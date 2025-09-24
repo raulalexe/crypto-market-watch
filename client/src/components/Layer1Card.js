@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, TrendingUp, TrendingDown, DollarSign, BarChart3, ChevronDown, ChevronRight, Activity, Users, RefreshCw } from 'lucide-react';
+import { Layers, TrendingUp, TrendingDown, DollarSign, BarChart3, ChevronDown, ChevronRight, Activity, Users } from 'lucide-react';
 import useLayer1Data from '../hooks/useLayer1Data';
 
 const Layer1Card = ({ data: propData }) => {
@@ -11,8 +11,7 @@ const Layer1Card = ({ data: propData }) => {
     loading,
     error,
     lastFetch,
-    isStale,
-    refresh
+    isStale
   } = useLayer1Data({
     autoFetch: !propData, // Only auto-fetch if no prop data
     refreshInterval: null, // No polling - WebSocket handles updates
@@ -138,22 +137,12 @@ const Layer1Card = ({ data: propData }) => {
           <Layers className="w-6 h-6 text-crypto-blue" />
           <h3 className="text-lg font-semibold text-white">Layer 1 Blockchains</h3>
         </div>
-        <div className="flex items-center space-x-2">
-          {lastFetch && (
-            <span className="text-xs text-slate-500">
-              {lastFetch.toLocaleTimeString()}
-              {isStale && <span className="text-yellow-400 ml-1">•</span>}
-            </span>
-          )}
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="p-2 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
-            title="Refresh layer1 data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+        {lastFetch && (
+          <span className="text-xs text-slate-500">
+            Last updated: {lastFetch.toLocaleTimeString()}
+            {isStale && <span className="text-yellow-400 ml-1">• Stale</span>}
+          </span>
+        )}
       </div>
 
       {/* Summary Stats */}

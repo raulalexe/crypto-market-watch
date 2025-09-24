@@ -3308,7 +3308,8 @@ app.post('/api/collect-data', authenticateToken, requireAdmin, async (req, res) 
           // Cache the new data
           dashboardCache.set(dashboardData);
           
-          // Broadcast to all connected users
+          // Broadcast complete dashboard update to all connected users
+          // This only happens when data collector finishes - no other triggers
           WebSocketService.io.emit('dashboard_update', { data: dashboardData });
           console.log('📡 Broadcasted dashboard update to all connected users after data collection');
         }
@@ -3547,7 +3548,11 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
     // Check cache first to avoid expensive database calls
     let dashboardData = dashboardCache.get();
     
-    if (!dashboardData) {
+    if (dashboardData) {
+      // Cache hit - return existing data without fetching
+      dashboardCache.logCacheHit();
+    } else {
+      // Cache miss - fetch fresh data
       dashboardCache.logCacheMiss();
       
       // If there's already a pending request, wait for it instead of making a new one
@@ -3564,21 +3569,21 @@ app.get('/api/dashboard', optionalAuth, async (req, res) => {
           pendingDashboardRequest = null;
         }
       }
+      
+      // If we still don't have data after the above, fetch it directly
+      if (!dashboardData) {
+        dashboardData = await getDashboardData();
+      }
+      
+      // If we still don't have data, there's an error
+      if (!dashboardData) {
+        return res.status(500).json({ error: 'Failed to fetch dashboard data' });
+      }
+      
+      // Cache the newly fetched dashboard data
+      dashboardCache.set(dashboardData);
+      dashboardCache.logCacheSet();
     }
-    
-    // If we still don't have data after the above, fetch it directly
-    if (!dashboardData) {
-      dashboardData = await getDashboardData();
-    }
-    
-    // If we still don't have data, there's an error
-    if (!dashboardData) {
-      return res.status(500).json({ error: 'Failed to fetch dashboard data' });
-    }
-    
-    // Cache the dashboard data to avoid future expensive calls
-    dashboardCache.set(dashboardData);
-    dashboardCache.logCacheSet();
 
   // Get subscription status for authenticated users (not cached)
     let subscriptionStatus = null;

@@ -5,7 +5,7 @@ import websocketService from '../services/websocketService';
 
 const useAdvancedMetrics = (options = {}) => {
   const {
-    autoFetch = false, // Changed to false - only fetch on WebSocket connection
+    autoFetch = false, // Use props from Dashboard instead of separate API calls
     refreshInterval = null, // Fallback polling interval if WebSocket is not used
     onError = null,
     onSuccess = null
@@ -35,30 +35,25 @@ const useAdvancedMetrics = (options = {}) => {
       setLoading(true);
       setError(null);
 
-      // Use standard endpoint - WebSocket handles real-time updates
-      const url = '/api/dashboard';
+      // Use advanced metrics endpoint for proper data structure
+      const url = '/api/advanced-metrics';
 
       const response = await axios.get(url, {
         headers: {
           'x-websocket-request': 'true' // Prevent server-side WebSocket broadcasts from API requests
         }
       });
-      const dashboardData = response.data;
+      const metricsData = response.data;
 
 
-      if (dashboardData) {
-        // Extract advanced metrics data from the dashboard response
-        const advancedMetricsData = {
-          metrics: dashboardData.advancedMetrics,
-          trendingNarratives: dashboardData.trendingNarratives || []
-        };
-
-        setData(advancedMetricsData);
+      if (metricsData) {
+        // Data is already in the correct format from advanced-metrics endpoint
+        setData(metricsData);
         setLastFetch(new Date());
         setIsStale(false); // Reset staleness on successful fetch
 
         if (onSuccessRef.current) {
-          onSuccessRef.current(advancedMetricsData);
+          onSuccessRef.current(metricsData);
         }
       } else {
         setData(null);
@@ -82,23 +77,17 @@ const useAdvancedMetrics = (options = {}) => {
   // Handle WebSocket dashboard updates
   const handleDashboardUpdate = useCallback((updateData) => {
     const dashboardData = updateData.data;
-    if (dashboardData) {
-      // Extract advanced metrics data from the dashboard response
-      const advancedMetricsData = {
-        metrics: dashboardData.advancedMetrics,
-        trendingNarratives: dashboardData.trendingNarratives || []
-      };
-
-
-      setData(advancedMetricsData);
+    if (dashboardData && dashboardData.advancedMetrics) {
+      // Use the advanced metrics data directly from dashboard update - no additional API calls
+      setData(dashboardData.advancedMetrics);
       setLastFetch(new Date());
-      setError(null); // Clear any previous errors
-
+      setError(null);
+      
       if (onSuccessRef.current) {
-        onSuccessRef.current(advancedMetricsData);
+        onSuccessRef.current(dashboardData.advancedMetrics);
       }
     }
-  }, []); // Remove onSuccess from dependencies to prevent infinite loops
+  }, []); // No dependencies needed since we use dashboard data directly
 
   // Auto-fetch as fallback when WebSocket is not available
   useEffect(() => {
@@ -146,22 +135,7 @@ const useAdvancedMetrics = (options = {}) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshInterval]); // Remove fetchAdvancedMetrics from dependencies to prevent infinite loops
 
-  // Check for data staleness
-  useEffect(() => {
-    if (lastFetch && refreshInterval) {
-      const intervalId = setInterval(() => {
-        const now = new Date();
-        const timeElapsed = now.getTime() - lastFetch.getTime();
-        if (timeElapsed > refreshInterval) {
-          setIsStale(true);
-        } else {
-          setIsStale(false);
-        }
-      }, 10000); // Check every 10 seconds
-
-      return () => clearInterval(intervalId);
-    }
-  }, [lastFetch, refreshInterval]);
+  // Note: Staleness checking removed since refreshInterval is always null for WebSocket-only operation
 
   // Manual refresh function
   const refresh = useCallback(() => {
