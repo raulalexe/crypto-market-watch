@@ -97,6 +97,27 @@ class GroqService {
     }
   }
 
+  // Batch analyze multiple articles in a single API call
+  async batchAnalyzeNewsEvents(articles) {
+    try {
+      if (!this.apiKey) {
+        throw new Error('Groq API key not configured');
+      }
+
+      if (!articles || articles.length === 0) {
+        return [];
+      }
+
+      const prompt = this.createBatchNewsAnalysisPrompt(articles);
+      const response = await this.callGroqAPI(prompt);
+      
+      return this.parseBatchNewsAnalysisResponse(response, articles.length);
+    } catch (error) {
+      console.error('Groq batch news analysis error:', error.message);
+      throw error;
+    }
+  }
+
   // Create news analysis prompt
   createNewsAnalysisPrompt(article) {
     return `Analyze this cryptocurrency news article for market impact and significance. Provide a JSON response with the following structure:
@@ -503,6 +524,97 @@ Focus on practical insights that help regular people make informed decisions abo
     if (lowerText.includes('correction')) risks.push('Market correction risk');
     
     return risks.length > 0 ? risks : ['Market volatility', 'Regulatory uncertainty'];
+  }
+
+  // Create batch news analysis prompt for multiple articles
+  createBatchNewsAnalysisPrompt(articles) {
+    const articlesText = articles.map((article, index) => {
+      return `Article ${index + 1}:
+Title: ${article.title}
+Content: ${article.description || article.content || 'No content available'}
+Source: ${article.source}`;
+    }).join('\n\n');
+
+    return `Analyze these ${articles.length} cryptocurrency news articles for market impact and significance. Provide a JSON array response with one analysis object for each article in the same order.
+
+${articlesText}
+
+Respond with a JSON array containing ${articles.length} analysis objects, each with this structure:
+{
+  "significance": 0.8,
+  "marketImpact": 0.7,
+  "category": "regulation",
+  "affectedCryptos": ["BTC", "ETH"],
+  "priceImpact": "bearish",
+  "confidence": 0.75,
+  "keyPoints": [
+    "Regulatory uncertainty may cause short-term volatility",
+    "Long-term impact depends on final regulations"
+  ]
+}
+
+Categories: "hack", "regulation", "exchange", "institutional", "technical", "market", "general"
+Price Impact: "bullish", "bearish", "neutral"
+Significance/Impact/Confidence: 0.0 to 1.0
+
+Respond with valid JSON array only:`;
+  }
+
+  // Parse batch news analysis response
+  parseBatchNewsAnalysisResponse(response, expectedCount) {
+    try {
+      // Extract JSON array from response
+      const jsonMatch = response.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        throw new Error('No JSON array found in response');
+      }
+      
+      const analyses = JSON.parse(jsonMatch[0]);
+      
+      if (!Array.isArray(analyses)) {
+        throw new Error('Response is not an array');
+      }
+      
+      // Validate and clean up analyses
+      const validAnalyses = analyses.slice(0, expectedCount).map((analysis, index) => {
+        try {
+          // Validate required fields
+          if (typeof analysis.significance !== 'number' || 
+              typeof analysis.marketImpact !== 'number' ||
+              typeof analysis.confidence !== 'number') {
+            throw new Error(`Invalid analysis format for article ${index + 1}`);
+          }
+          
+          return analysis;
+        } catch (error) {
+          console.error(`Error validating analysis ${index + 1}:`, error.message);
+          // Return default analysis as fallback
+          return {
+            significance: 0.1,
+            marketImpact: 0.1,
+            category: 'general',
+            affectedCryptos: [],
+            priceImpact: 'neutral',
+            confidence: 0.1,
+            keyPoints: [`Analysis failed for article ${index + 1} - using default values`]
+          };
+        }
+      });
+      
+      return validAnalyses;
+    } catch (error) {
+      console.error('Error parsing Groq batch news analysis response:', error.message);
+      // Return array of default analyses
+      return Array(expectedCount).fill(null).map((_, index) => ({
+        significance: 0.1,
+        marketImpact: 0.1,
+        category: 'general',
+        affectedCryptos: [],
+        priceImpact: 'neutral',
+        confidence: 0.1,
+        keyPoints: [`Batch analysis failed for article ${index + 1} - using default values`]
+      }));
+    }
   }
 }
 

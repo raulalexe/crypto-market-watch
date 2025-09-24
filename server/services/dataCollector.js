@@ -753,10 +753,11 @@ class DataCollector {
         console.log(`✅ Global metrics: Market Cap: $${(metrics.totalMarketCap / 1e12).toFixed(2)}T, BTC Dominance: ${metrics.bitcoinDominance.toFixed(2)}%`);
         
         // Store in database
-        const { insertMarketData } = require('../database');
+        const { insertMarketData, insertBitcoinDominance } = require('../database');
         await insertMarketData('GLOBAL_METRICS', 'TOTAL_MARKET_CAP', metrics.totalMarketCap, 'CoinGecko');
         await insertMarketData('GLOBAL_METRICS', 'TOTAL_VOLUME_24H', metrics.totalVolume24h, 'CoinGecko');
-        await insertMarketData('GLOBAL_METRICS', 'BITCOIN_DOMINANCE', metrics.bitcoinDominance, 'CoinGecko');
+        // Store Bitcoin Dominance in the dedicated table
+        await insertBitcoinDominance(metrics.bitcoinDominance, 'CoinGecko');
         await insertMarketData('GLOBAL_METRICS', 'ACTIVE_CRYPTOS', metrics.activeCryptocurrencies, 'CoinGecko');
         await insertMarketData('GLOBAL_METRICS', 'MARKETS', metrics.markets, 'CoinGecko');
         
@@ -1166,36 +1167,36 @@ class DataCollector {
 
   // Analyze sentiment based on score and market data
   analyzeSentiment(score, priceChange = 0, volume = 0) {
-    // Base sentiment from score
+    // Base sentiment from score (using user-friendly terms)
     let baseSentiment = 'neutral';
-    if (score >= 80) baseSentiment = 'very_positive';
-    else if (score >= 60) baseSentiment = 'positive';
+    if (score >= 80) baseSentiment = 'very_bullish';
+    else if (score >= 60) baseSentiment = 'bullish';
     else if (score >= 40) baseSentiment = 'neutral';
-    else if (score >= 20) baseSentiment = 'negative';
-    else baseSentiment = 'very_negative';
+    else if (score >= 20) baseSentiment = 'bearish';
+    else baseSentiment = 'very_bearish';
     
     // Adjust based on price movement
     if (priceChange > 10) {
-      if (baseSentiment === 'very_positive') return 'very_positive';
-      if (baseSentiment === 'positive') return 'very_positive';
-      if (baseSentiment === 'neutral') return 'positive';
-      if (baseSentiment === 'negative') return 'neutral';
-      return 'negative';
+      if (baseSentiment === 'very_bullish') return 'very_bullish';
+      if (baseSentiment === 'bullish') return 'very_bullish';
+      if (baseSentiment === 'neutral') return 'bullish';
+      if (baseSentiment === 'bearish') return 'neutral';
+      return 'bearish';
     } else if (priceChange > 5) {
-      if (baseSentiment === 'very_negative') return 'negative';
-      if (baseSentiment === 'negative') return 'neutral';
-      if (baseSentiment === 'neutral') return 'positive';
+      if (baseSentiment === 'very_bearish') return 'bearish';
+      if (baseSentiment === 'bearish') return 'neutral';
+      if (baseSentiment === 'neutral') return 'bullish';
       return baseSentiment;
     } else if (priceChange < -10) {
-      if (baseSentiment === 'very_negative') return 'very_negative';
-      if (baseSentiment === 'negative') return 'very_negative';
-      if (baseSentiment === 'neutral') return 'negative';
-      if (baseSentiment === 'positive') return 'neutral';
-      return 'negative';
+      if (baseSentiment === 'very_bearish') return 'very_bearish';
+      if (baseSentiment === 'bearish') return 'very_bearish';
+      if (baseSentiment === 'neutral') return 'bearish';
+      if (baseSentiment === 'bullish') return 'neutral';
+      return 'bearish';
     } else if (priceChange < -5) {
-      if (baseSentiment === 'very_positive') return 'positive';
-      if (baseSentiment === 'positive') return 'neutral';
-      if (baseSentiment === 'neutral') return 'negative';
+      if (baseSentiment === 'very_bullish') return 'bullish';
+      if (baseSentiment === 'bullish') return 'neutral';
+      if (baseSentiment === 'neutral') return 'bearish';
       return baseSentiment;
     }
     

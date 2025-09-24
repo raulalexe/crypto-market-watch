@@ -98,10 +98,43 @@ class CryptoNewsDetector {
       
       console.log(`🎯 Detected ${significantEvents.length} significant crypto events`);
       
+      // Store events in database to avoid repeated AI calls
+      if (significantEvents.length > 0) {
+        await this.storeEventsInDatabase(significantEvents);
+      }
+      
       return significantEvents;
     } catch (error) {
       console.error('❌ Crypto news detection failed:', error.message);
       return [];
+    }
+  }
+
+  // Store crypto events in database to avoid repeated AI calls
+  async storeEventsInDatabase(events) {
+    try {
+      const { insertCryptoEvent, deleteCryptoEventsBefore } = require('../database');
+      
+      console.log(`💾 Storing ${events.length} events in database...`);
+      
+      // Clean up old events (older than 7 days)
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      await deleteCryptoEventsBefore(sevenDaysAgo);
+      
+      // Store new events
+      let storedCount = 0;
+      for (const event of events) {
+        try {
+          await insertCryptoEvent(event);
+          storedCount++;
+        } catch (error) {
+          console.error('Error storing individual event:', error.message);
+        }
+      }
+      
+      console.log(`✅ Successfully stored ${storedCount}/${events.length} events in database`);
+    } catch (error) {
+      console.error('Error storing events in database:', error.message);
     }
   }
 
@@ -228,35 +261,119 @@ class CryptoNewsDetector {
     }));
   }
 
-  // Analyze news articles for market impact using AI
+  // Analyze news articles for market impact using AI (BATCHED to reduce API calls)
   async analyzeNewsForEvents(articles) {
+    // Limit number of articles to analyze to avoid excessive API calls
+    const maxArticles = 15;
+    const limitedArticles = articles.slice(0, maxArticles);
+    
+    console.log(`📰 Limiting analysis to ${limitedArticles.length} articles (max: ${maxArticles})`);
+    
+    if (limitedArticles.length === 0) {
+      return [];
+    }
+    
     const analyzedEvents = [];
     
-    // Process articles in batches to avoid rate limits
-    const batchSize = 5;
-    for (let i = 0; i < articles.length; i += batchSize) {
-      const batch = articles.slice(i, i + batchSize);
+    // Process articles in batches to reduce API calls
+    const batchSize = 5; // Analyze 5 articles per API call
+    const batches = [];
+    
+    for (let i = 0; i < limitedArticles.length; i += batchSize) {
+      batches.push(limitedArticles.slice(i, i + batchSize));
+    }
+    
+    console.log(`🔍 Processing ${batches.length} batches of ${batchSize} articles each`);
+    
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
       
       try {
-        const batchResults = await Promise.all(
-          batch.map(article => this.analyzeArticleWithAI(article))
-        );
+        console.log(`📦 Analyzing batch ${batchIndex + 1}/${batches.length} (${batch.length} articles)`);
         
-        analyzedEvents.push(...batchResults.filter(result => result !== null));
+        const batchResults = await this.analyzeBatchWithAI(batch);
+        
+        // Combine batch results with original articles
+        for (let i = 0; i < batch.length && i < batchResults.length; i++) {
+          if (batchResults[i]) {
+            analyzedEvents.push({
+              ...batch[i],
+              analysis: batchResults[i]
+            });
+          }
+        }
         
         // Add delay between batches to respect rate limits
-        if (i + batchSize < articles.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        if (batchIndex < batches.length - 1) {
+          console.log('⏳ Waiting 5 seconds before next batch...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
       } catch (error) {
-        console.error('Error analyzing batch:', error.message);
+        console.error(`Error analyzing batch ${batchIndex + 1}:`, error.message);
+        // Continue with next batch even if this one fails
       }
     }
     
+    console.log(`🎯 AI Analysis complete: ${analyzedEvents.length} events analyzed from ${limitedArticles.length} articles`);
     return analyzedEvents;
   }
 
-  // Analyze individual article with AI
+  // Analyze batch of articles with AI (more efficient)
+  async analyzeBatchWithAI(articles) {
+    try {
+      if (!this.groqService || articles.length === 0) {
+        return [];
+      }
+      
+      console.log(`🤖 Sending batch of ${articles.length} articles to Groq AI...`);
+      
+      // Use Groq batch analysis for efficiency
+      const batchAnalyses = await this.groqService.batchAnalyzeNewsEvents(articles);
+      
+      if (!Array.isArray(batchAnalyses)) {
+        console.error('Groq batch analysis did not return an array');
+        return [];
+      }
+      
+      console.log(`✅ Received ${batchAnalyses.length} analyses from Groq`);
+      
+      // Filter analyses that meet minimum thresholds
+      return batchAnalyses.filter(analysis => 
+        analysis && analysis.significance > 0.1
+      );
+      
+    } catch (error) {
+      console.error('Error in batch AI analysis:', error.message);
+      // Fallback to individual analysis if batch fails
+      console.log('🔄 Falling back to individual article analysis...');
+      return this.fallbackToIndividualAnalysis(articles);
+    }
+  }
+
+  // Fallback method for individual analysis if batch fails
+  async fallbackToIndividualAnalysis(articles) {
+    const results = [];
+    
+    for (let i = 0; i < Math.min(articles.length, 3); i++) { // Limit fallback to 3 articles
+      try {
+        const analysis = await this.groqService.analyzeNewsEvent(articles[i]);
+        if (analysis && analysis.significance > 0.1) {
+          results.push(analysis);
+        }
+        
+        // Add delay between individual calls
+        if (i < articles.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      } catch (error) {
+        console.error(`Error in fallback analysis for article ${i + 1}:`, error.message);
+      }
+    }
+    
+    return results;
+  }
+
+  // Analyze individual article with AI (kept for compatibility)
   async analyzeArticleWithAI(article) {
     try {
       // Use Groq for fast analysis
@@ -340,20 +457,23 @@ class CryptoNewsDetector {
     return unique.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
   }
 
-  // Get event summary for dashboard (top 3 only)
+  // Get event summary for dashboard (top 3 only) - FROM DATABASE
   async getEventSummary() {
     try {
-      const events = await this.detectCryptoEvents();
+      const { getLatestCryptoEvents } = require('../database');
+      const events = await getLatestCryptoEvents(20); // Get last 20 events from DB
       
       if (events.length === 0) {
         return {
           hasEvents: false,
           eventCount: 0,
           events: [],
-          lastUpdate: new Date().toISOString()
+          lastUpdate: new Date().toISOString(),
+          hasMoreEvents: false
         };
       }
       
+      // Events are already sorted by impact_score in the database query
       return {
         hasEvents: true,
         eventCount: events.length,
@@ -375,15 +495,26 @@ class CryptoNewsDetector {
     }
   }
 
-  // Get all crypto events for dedicated news page
+  // Get all crypto events for dedicated news page - FROM DATABASE
   async getAllEvents() {
     try {
-      const events = await this.detectCryptoEvents();
+      const { getCryptoEvents } = require('../database');
+      const events = await getCryptoEvents(100); // Get up to 100 events from DB
       
+      if (events.length === 0) {
+        return {
+          hasEvents: false,
+          eventCount: 0,
+          events: [],
+          lastUpdate: new Date().toISOString()
+        };
+      }
+      
+      // Events are already sorted by impact_score in the database query
       return {
-        hasEvents: events.length > 0,
+        hasEvents: true,
         eventCount: events.length,
-        events: events, // Return all events
+        events: events, // Return all events sorted by impact
         lastUpdate: new Date().toISOString(),
         categories: this.categorizeEvents(events)
       };

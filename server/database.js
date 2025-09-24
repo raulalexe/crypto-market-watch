@@ -580,6 +580,14 @@ const initDatabase = async () => {
     } catch (migrationError) {
       console.warn('⚠️ Data constraints migration failed (non-critical):', migrationError.message);
     }
+
+    // Run crypto events table migration
+    try {
+      const createCryptoEventsTable = require('./scripts/migrations/009-create-crypto-events-table');
+      await createCryptoEventsTable();
+    } catch (migrationError) {
+      console.warn('⚠️ Crypto events table migration failed (non-critical):', migrationError.message);
+    }
   } catch (error) {
     console.error('❌ PostgreSQL initialization failed:', error);
     throw error;
@@ -2491,6 +2499,145 @@ const getCorrelationData = (limit = 100) => {
   });
 };
 
+// ==========================================
+// CRYPTO EVENTS FUNCTIONS
+// ==========================================
+
+const insertCryptoEvent = (eventData) => {
+  return new Promise((resolve, reject) => {
+    const {
+      title,
+      description,
+      content,
+      url,
+      publishedAt,
+      source,
+      category,
+      analysis
+    } = eventData;
+
+    // Calculate impact score: (market_impact*2 + confidence)/3
+    const impactScore = analysis ? 
+      ((analysis.marketImpact || 0) * 2 + (analysis.confidence || 0)) / 3 : 0;
+
+    dbAdapter.run(
+      `INSERT INTO crypto_events (
+        title, description, content, url, published_at, source, category,
+        significance, market_impact, confidence, price_impact, 
+        affected_cryptos, key_points, impact_score
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      [
+        title,
+        description || null,
+        content || null,
+        url || null,
+        publishedAt,
+        source,
+        category,
+        analysis?.significance || null,
+        analysis?.marketImpact || null,
+        analysis?.confidence || null,
+        analysis?.priceImpact || null,
+        analysis?.affectedCryptos ? JSON.stringify(analysis.affectedCryptos) : null,
+        analysis?.keyPoints ? JSON.stringify(analysis.keyPoints) : null,
+        impactScore
+      ]
+    ).then(result => {
+      resolve(result.lastID);
+    }).catch(error => {
+      console.error('❌ Error inserting crypto event:', error);
+      reject(error);
+    });
+  });
+};
+
+const getCryptoEvents = (limit = 50, offset = 0) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.all(
+      `SELECT 
+        id, title, description, content, url, published_at, source, category,
+        significance, market_impact, confidence, price_impact,
+        affected_cryptos, key_points, impact_score, detected_at
+      FROM crypto_events 
+      ORDER BY impact_score DESC, detected_at DESC 
+      LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    ).then(rows => {
+      const events = rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        content: row.content,
+        url: row.url,
+        publishedAt: row.published_at,
+        source: row.source,
+        category: row.category,
+        analysis: {
+          significance: row.significance,
+          marketImpact: row.market_impact,
+          confidence: row.confidence,
+          priceImpact: row.price_impact,
+          affectedCryptos: row.affected_cryptos ? JSON.parse(row.affected_cryptos) : [],
+          keyPoints: row.key_points ? JSON.parse(row.key_points) : []
+        },
+        impactScore: row.impact_score,
+        detectedAt: row.detected_at
+      }));
+      resolve(events);
+    }).catch(reject);
+  });
+};
+
+const getLatestCryptoEvents = (limit = 20) => {
+  return new Promise((resolve, reject) => {
+    // Get events from last 24 hours, sorted by impact score
+    dbAdapter.all(
+      `SELECT 
+        id, title, description, content, url, published_at, source, category,
+        significance, market_impact, confidence, price_impact,
+        affected_cryptos, key_points, impact_score, detected_at
+      FROM crypto_events 
+      WHERE detected_at > NOW() - INTERVAL '24 hours'
+      ORDER BY impact_score DESC, detected_at DESC 
+      LIMIT $1`,
+      [limit]
+    ).then(rows => {
+      const events = rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        content: row.content,
+        url: row.url,
+        publishedAt: row.published_at,
+        source: row.source,
+        category: row.category,
+        analysis: {
+          significance: row.significance,
+          marketImpact: row.market_impact,
+          confidence: row.confidence,
+          priceImpact: row.price_impact,
+          affectedCryptos: row.affected_cryptos ? JSON.parse(row.affected_cryptos) : [],
+          keyPoints: row.key_points ? JSON.parse(row.key_points) : []
+        },
+        impactScore: row.impact_score,
+        detectedAt: row.detected_at
+      }));
+      resolve(events);
+    }).catch(reject);
+  });
+};
+
+const deleteCryptoEventsBefore = (timestamp) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.run(
+      'DELETE FROM crypto_events WHERE detected_at < $1',
+      [timestamp]
+    ).then(result => {
+      resolve(result.changes);
+    }).catch(reject);
+  });
+};
+
 
 module.exports = {
   db,
@@ -2623,6 +2770,12 @@ module.exports = {
   
   // Email unsubscribe functions
   unsubscribeFromEmailNotifications,
+  
+  // Crypto Events functions
+  insertCryptoEvent,
+  getCryptoEvents,
+  getLatestCryptoEvents,
+  deleteCryptoEventsBefore,
   
   // Database health check
   checkDatabaseHealth
