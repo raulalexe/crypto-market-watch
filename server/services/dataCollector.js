@@ -18,6 +18,7 @@ const {
 const ErrorLogger = require('./errorLogger');
 const AlertService = require('./alertService');
 const AdvancedDataCollector = require('./advancedDataCollector');
+const FreeMarketDataService = require('./freeMarketDataService');
 
 class DataCollector {
   constructor() {
@@ -26,6 +27,7 @@ class DataCollector {
     this.errorLogger = new ErrorLogger();
     this.alertService = new AlertService();
     this.advancedDataCollector = new AdvancedDataCollector();
+    this.freeMarketDataService = new FreeMarketDataService();
     
     // Rate limiting for CoinGecko API
     this.coingeckoLastCall = 0;
@@ -1700,31 +1702,13 @@ class DataCollector {
       // First, collect global crypto metrics (replaces individual crypto price collection)
       const globalMetrics = await this.getGlobalCryptoMetrics();
       
-      // Use bulk Alpha Vantage collection to reduce API calls
-      console.log('Using bulk Alpha Vantage collection to minimize API calls...');
-      const alphaVantageData = await this.collectBulkAlphaVantageData();
+      // Use free market data service instead of Alpha Vantage (avoids 25/day rate limit)
+      console.log('🆓 Using free market data sources instead of Alpha Vantage (no rate limits)...');
+      const freeMarketData = await this.freeMarketDataService.collectAllMarketData();
       
-      // Process bulk Alpha Vantage data
-      if (alphaVantageData.DXY) {
-        await this.processDXYData(alphaVantageData.DXY);
-      }
-      if (alphaVantageData.Treasury2Y) {
-        await this.processTreasuryData(alphaVantageData.Treasury2Y, '2Y');
-      }
-      if (alphaVantageData.Treasury10Y) {
-        await this.processTreasuryData(alphaVantageData.Treasury10Y, '10Y');
-      }
-      if (alphaVantageData.SP500) {
-        await this.processEquityData(alphaVantageData.SP500, 'SP500');
-      }
-      if (alphaVantageData.NASDAQ) {
-        await this.processEquityData(alphaVantageData.NASDAQ, 'NASDAQ');
-      }
-      if (alphaVantageData.VIX) {
-        await this.processVIXData(alphaVantageData.VIX);
-      }
-      if (alphaVantageData.Oil) {
-        await this.processOilData(alphaVantageData.Oil);
+      // Process free market data
+      if (freeMarketData) {
+        await this.processFreeMarketData(freeMarketData);
       }
       
       // Collect remaining data that doesn't use Alpha Vantage
@@ -2070,6 +2054,90 @@ class DataCollector {
       console.error('❌ Error collecting Layer 1 data:', error.message);
       await this.errorLogger.logApiFailure('CoinGecko', 'Layer 1 Data', error);
       return null;
+    }
+  }
+
+  // Process free market data from the FreeMarketDataService
+  async processFreeMarketData(freeMarketData) {
+    try {
+      console.log('📊 Processing free market data...');
+      
+      // Process S&P 500 data
+      if (freeMarketData.sp500) {
+        const sp500 = freeMarketData.sp500;
+        await insertMarketData('EQUITY_INDEX', 'SP500', sp500.price, {
+          change: sp500.change,
+          changePercent: sp500.changePercent,
+          volume: sp500.volume
+        }, 'Yahoo Finance (Free)');
+        
+        console.log(`✅ SP500: $${sp500.price.toFixed(2)} (${sp500.changePercent >= 0 ? '+' : ''}${sp500.changePercent.toFixed(2)}%)`);
+      }
+      
+      // Process NASDAQ data
+      if (freeMarketData.nasdaq) {
+        const nasdaq = freeMarketData.nasdaq;
+        await insertMarketData('EQUITY_INDEX', 'NASDAQ', nasdaq.price, {
+          change: nasdaq.change,
+          changePercent: nasdaq.changePercent,
+          volume: nasdaq.volume
+        }, 'Yahoo Finance (Free)');
+        
+        console.log(`✅ NASDAQ: $${nasdaq.price.toFixed(2)} (${nasdaq.changePercent >= 0 ? '+' : ''}${nasdaq.changePercent.toFixed(2)}%)`);
+      }
+      
+      // Process VIX data
+      if (freeMarketData.vix) {
+        const vix = freeMarketData.vix;
+        await insertMarketData('VOLATILITY_INDEX', 'VIX', vix.price, {
+          change: vix.change,
+          changePercent: vix.changePercent
+        }, 'Yahoo Finance (Free)');
+        
+        console.log(`✅ VIX: ${vix.price.toFixed(2)} (${vix.changePercent >= 0 ? '+' : ''}${vix.changePercent.toFixed(2)}%)`);
+      }
+      
+      // Process Oil data
+      if (freeMarketData.oil) {
+        const oil = freeMarketData.oil;
+        await insertMarketData('COMMODITY', 'OIL_WTI', oil.price, {
+          change: oil.change,
+          changePercent: oil.changePercent
+        }, 'Yahoo Finance (Free)');
+        
+        console.log(`✅ Oil (WTI): $${oil.price.toFixed(2)} (${oil.changePercent >= 0 ? '+' : ''}${oil.changePercent.toFixed(2)}%)`);
+      }
+      
+      // Process DXY data
+      if (freeMarketData.dxy) {
+        const dxy = freeMarketData.dxy;
+        await insertMarketData('CURRENCY_INDEX', 'DXY', dxy.price, {
+          change: dxy.change,
+          changePercent: dxy.changePercent
+        }, 'Yahoo Finance (Free)');
+        
+        console.log(`✅ DXY: ${dxy.price.toFixed(2)} (${dxy.changePercent >= 0 ? '+' : ''}${dxy.changePercent.toFixed(2)}%)`);
+      }
+      
+      // Process Treasury yields data
+      if (freeMarketData.treasuryYields) {
+        const treasury = freeMarketData.treasuryYields;
+        
+        if (treasury.yield2Y) {
+          await insertMarketData('TREASURY_YIELD', '2Y', treasury.yield2Y, {}, 'FRED (Free)');
+          console.log(`✅ 2Y Treasury: ${treasury.yield2Y.toFixed(2)}%`);
+        }
+        
+        if (treasury.yield10Y) {
+          await insertMarketData('TREASURY_YIELD', '10Y', treasury.yield10Y, {}, 'FRED (Free)');
+          console.log(`✅ 10Y Treasury: ${treasury.yield10Y.toFixed(2)}%`);
+        }
+      }
+      
+      console.log('✅ Free market data processing completed');
+      
+    } catch (error) {
+      console.error('❌ Error processing free market data:', error.message);
     }
   }
 
