@@ -45,24 +45,32 @@ class GroqService {
     const baseDelay = 2000; // 2 seconds
     
     try {
+      // Log request details for debugging large requests
+      const requestBody = {
+        model: this.model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a professional cryptocurrency market analyst with deep expertise in financial markets, technical analysis, and macroeconomic factors. Provide detailed, data-driven analysis with specific confidence levels and reasoning.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+        top_p: 0.9
+      };
+      
+      const requestSize = JSON.stringify(requestBody).length;
+      if (requestSize > 50000) { // Log if request is larger than 50KB
+        console.log(`⚠️ Large Groq request: ${requestSize} bytes (${Math.round(requestSize/1024)}KB)`);
+      }
+      
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
-        {
-          model: this.model,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a professional cryptocurrency market analyst with deep expertise in financial markets, technical analysis, and macroeconomic factors. Provide detailed, data-driven analysis with specific confidence levels and reasoning.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000,
-          top_p: 0.9
-        },
+        requestBody,
         {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
@@ -85,17 +93,41 @@ class GroqService {
         return this.callGroqAPI(prompt, retryCount + 1);
       }
       
-      // Log specific error details for debugging
+      // Log detailed error information for debugging
+      const errorDetails = {
+        status: status,
+        statusText: error.response?.statusText,
+        message: error.message,
+        responseData: error.response?.data,
+        requestUrl: error.config?.url,
+        requestMethod: error.config?.method,
+        requestHeaders: error.config?.headers ? Object.keys(error.config.headers) : null
+      };
+      
       if (status === 500) {
-        console.error('🔥 Groq server error (500) - API service may be temporarily unavailable');
+        console.error('🔥 Groq server error (500) - API service temporarily unavailable');
+        console.error('📋 Error details:', JSON.stringify(errorDetails, null, 2));
       } else if (status === 401) {
         console.error('🔑 Groq authentication error (401) - check API key configuration');
+        console.error('📋 Error details:', JSON.stringify(errorDetails, null, 2));
       } else if (status === 403) {
         console.error('🚫 Groq access forbidden (403) - check API key permissions or quota');
+        console.error('📋 Error details:', JSON.stringify(errorDetails, null, 2));
       } else if (status === 429) {
         console.error('🚦 Groq rate limit exceeded (429) - all retries exhausted');
+        console.error('📋 Error details:', JSON.stringify(errorDetails, null, 2));
       } else {
         console.error(`❌ Groq API error ${status}:`, error.message);
+        console.error('📋 Full error details:', JSON.stringify(errorDetails, null, 2));
+      }
+      
+      // Log to database for persistent debugging
+      try {
+        const ErrorLogger = require('./errorLogger');
+        const errorLogger = new ErrorLogger();
+        await errorLogger.logApiFailure('Groq', 'chat/completions', error, errorDetails);
+      } catch (logError) {
+        console.error('Failed to log Groq error to database:', logError.message);
       }
       
       throw error;
@@ -135,7 +167,27 @@ class GroqService {
       
       return this.parseBatchNewsAnalysisResponse(response, articles.length);
     } catch (error) {
+      const errorInfo = {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        responseData: error.response?.data,
+        articlesCount: articles.length,
+        promptLength: this.createBatchNewsAnalysisPrompt(articles)?.length
+      };
+      
       console.error('Groq batch news analysis error:', error.message);
+      console.error('📋 Batch analysis error details:', JSON.stringify(errorInfo, null, 2));
+      
+      // Log to database for debugging
+      try {
+        const ErrorLogger = require('./errorLogger');
+        const errorLogger = new ErrorLogger();
+        await errorLogger.logApiFailure('Groq', 'batch-news-analysis', error, errorInfo);
+      } catch (logError) {
+        console.error('Failed to log batch analysis error:', logError.message);
+      }
+      
       throw error;
     }
   }
