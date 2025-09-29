@@ -39,8 +39,11 @@ class GroqService {
     }
   }
 
-  // Call Groq API
-  async callGroqAPI(prompt) {
+  // Call Groq API with improved error handling and retry logic
+  async callGroqAPI(prompt, retryCount = 0) {
+    const maxRetries = 3;
+    const baseDelay = 2000; // 2 seconds
+    
     try {
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
@@ -71,11 +74,30 @@ class GroqService {
 
       return response.data.choices[0].message.content;
     } catch (error) {
-      if (error.response?.status === 429) {
-        console.log('Groq rate limit hit, waiting 10 seconds...');
-        await new Promise(resolve => setTimeout(resolve, 10000));
-        return this.callGroqAPI(prompt);
+      const status = error.response?.status;
+      const shouldRetry = retryCount < maxRetries && (status === 429 || status === 500 || status === 502 || status === 503);
+      
+      if (shouldRetry) {
+        const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+        console.log(`⚠️ Groq API error ${status}, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.callGroqAPI(prompt, retryCount + 1);
       }
+      
+      // Log specific error details for debugging
+      if (status === 500) {
+        console.error('🔥 Groq server error (500) - API service may be temporarily unavailable');
+      } else if (status === 401) {
+        console.error('🔑 Groq authentication error (401) - check API key configuration');
+      } else if (status === 403) {
+        console.error('🚫 Groq access forbidden (403) - check API key permissions or quota');
+      } else if (status === 429) {
+        console.error('🚦 Groq rate limit exceeded (429) - all retries exhausted');
+      } else {
+        console.error(`❌ Groq API error ${status}:`, error.message);
+      }
+      
       throw error;
     }
   }
