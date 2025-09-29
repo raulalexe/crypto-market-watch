@@ -4,7 +4,7 @@
   "description": "Comprehensive crypto market monitoring with AI-powered analysis",
   "main": "server/index.js",
   "scripts": {
-    "start": "npm run migrate:production && node server/index.js",
+    "start": "node server/index.js",
     "server": "node server/index.js",
     "migrate:production": "node scripts/run-production-migrations.js",
     "client": "cd client && npm start",

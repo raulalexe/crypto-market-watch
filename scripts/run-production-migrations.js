@@ -28,15 +28,21 @@ async function runProductionMigrations() {
     const client = await pool.connect();
     console.log('✅ Connected to database');
     
-    // Ensure migrations table exists
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id SERIAL PRIMARY KEY,
-        migration_id VARCHAR(255) UNIQUE NOT NULL,
-        description TEXT,
-        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // Ensure migrations table exists with proper error handling
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS migrations (
+          id SERIAL PRIMARY KEY,
+          migration_id VARCHAR(255) UNIQUE NOT NULL,
+          description TEXT,
+          executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('✅ Migrations table verified/created');
+    } catch (tableError) {
+      console.error('❌ Failed to create migrations table:', tableError.message);
+      throw tableError;
+    }
     
     // Get all migration files
     const migrationsDir = path.join(__dirname, '../server/scripts/migrations');
@@ -46,13 +52,19 @@ async function runProductionMigrations() {
     
     console.log(`📂 Found ${migrationFiles.length} migration files`);
     
-    // Get already executed migrations
-    const executedMigrations = await client.query(
-      'SELECT migration_id FROM migrations ORDER BY executed_at'
-    );
-    const executedIds = new Set(executedMigrations.rows.map(row => row.migration_id));
-    
-    console.log(`✅ ${executedIds.size} migrations already executed`);
+    // Get already executed migrations with error handling
+    let executedIds = new Set();
+    try {
+      const executedMigrations = await client.query(
+        'SELECT migration_id FROM migrations ORDER BY executed_at'
+      );
+      executedIds = new Set(executedMigrations.rows.map(row => row.migration_id));
+      console.log(`✅ ${executedIds.size} migrations already executed`);
+    } catch (queryError) {
+      console.log('⚠️ Could not query existing migrations (table may be new):', queryError.message);
+      console.log('🔄 Proceeding with all migrations...');
+      executedIds = new Set(); // Empty set means run all migrations
+    }
     
     let executedCount = 0;
     
@@ -78,11 +90,16 @@ async function runProductionMigrations() {
         // Execute the migration
         await migration.up(client);
         
-        // Record the migration as executed
-        await client.query(
-          'INSERT INTO migrations (migration_id, description) VALUES ($1, $2)',
-          [migration.id, migration.description || '']
-        );
+        // Record the migration as executed with error handling
+        try {
+          await client.query(
+            'INSERT INTO migrations (migration_id, description) VALUES ($1, $2)',
+            [migration.id, migration.description || '']
+          );
+        } catch (insertError) {
+          console.warn(`⚠️ Could not record migration ${migration.id}:`, insertError.message);
+          // Continue execution even if recording fails
+        }
         
         console.log(`✅ Migration ${migration.id} completed successfully`);
         executedCount++;
