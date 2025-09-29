@@ -3099,7 +3099,7 @@ class DataCollector {
         console.log('📊 Sample events:');
         events.slice(0, 2).forEach((event, index) => {
           console.log(`  ${index + 1}. ${event.title}`);
-          console.log(`     Impact: ${event.impact}, Confidence: ${event.confidence}%`);
+          console.log(`     Impact: ${(event.analysis?.marketImpact * 100).toFixed(1)}%, Confidence: ${(event.analysis?.confidence * 100).toFixed(1)}%`);
         });
       }
       

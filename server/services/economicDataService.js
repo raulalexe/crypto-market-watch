@@ -40,7 +40,7 @@ class EconomicDataService {
 
   // ===== EMPLOYMENT DATA (FRED API - Railway Compatible) =====
   
-  // Fetch Nonfarm Payrolls from FRED (better Railway compatibility than BLS curl)
+  // Fetch Nonfarm Payrolls from FRED using curl (Railway OpenSSL compatibility)
   async fetchNonfarmPayrollsFRED() {
     try {
       if (!this.fredApiKey) {
@@ -48,68 +48,67 @@ class EconomicDataService {
         return null;
       }
 
-      console.log('📊 Fetching Nonfarm Payrolls data from FRED (Railway compatible)...');
+      console.log('📊 Fetching Nonfarm Payrolls data from FRED (Railway curl workaround)...');
       
       // FRED series PAYEMS = All Employees, Total Nonfarm (same data as BLS CES0000000001)
       const seriesId = 'PAYEMS';
       
-      try {
-        // Use axios instead of curl for better Railway compatibility
-        const response = await axios.get('https://api.stlouisfed.org/fred/series/observations', {
-          params: {
-            series_id: seriesId,
-            api_key: this.fredApiKey,
-            file_type: 'json',
-            sort_order: 'desc',
-            limit: 2 // Get latest 2 values to calculate change
-          },
-          timeout: 15000,
-          headers: {
-            'User-Agent': 'CryptoMarketWatch/1.0 (Economic Data Collector)',
-            'Accept': 'application/json'
-          }
-        });
-
-        if (response.data && response.data.observations && response.data.observations.length > 0) {
-          const latestData = response.data.observations[0];
-          const previousData = response.data.observations[1];
-          const nfpValue = parseFloat(latestData.value);
-          const previousValue = previousData ? parseFloat(previousData.value) : null;
-          const change = previousValue ? nfpValue - previousValue : null;
-          
-          if (!isNaN(nfpValue)) {
-            console.log(`✅ Nonfarm Payrolls (FRED): ${nfpValue.toLocaleString()}K employees (${latestData.date})`);
-            if (change) {
-              console.log(`   📈 Change: ${change > 0 ? '+' : ''}${change.toLocaleString()}K from previous month`);
-            }
-            
-            return {
-              seriesId: 'NFP_FRED',
-              date: latestData.date,
-              value: nfpValue,
-              previousValue: previousValue,
-              change: change,
-              source: 'FRED',
-              description: 'Total Nonfarm Payrolls (FRED)'
-            };
-          }
-        }
-        
-        throw new Error('Invalid response format from FRED API');
-        
-      } catch (error) {
-        console.error('❌ Error fetching Nonfarm Payrolls from FRED:', error.message);
-        return null;
+      // Use curl workaround for Railway OpenSSL version mismatch
+      const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=2`;
+      const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 "${url}"`;
+      console.log(`🔧 Using curl workaround for Railway OpenSSL compatibility (NFP)`);
+      
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      
+      const { stdout, stderr } = await execAsync(curlCommand);
+      
+      if (stderr) {
+        console.warn(`⚠️ Curl stderr for NFP: ${stderr}`);
       }
       
+      if (!stdout) {
+        throw new Error('No response from curl command');
+      }
+      
+      const response = JSON.parse(stdout);
+
+      if (response.observations && response.observations.length > 0) {
+        const latestData = response.observations[0];
+        const previousData = response.observations[1];
+        const nfpValue = parseFloat(latestData.value);
+        const previousValue = previousData ? parseFloat(previousData.value) : null;
+        const change = previousValue ? nfpValue - previousValue : null;
+        
+        if (!isNaN(nfpValue)) {
+          console.log(`✅ Nonfarm Payrolls (FRED curl): ${nfpValue.toLocaleString()}K employees (${latestData.date})`);
+          if (change) {
+            console.log(`   📈 Change: ${change > 0 ? '+' : ''}${change.toLocaleString()}K from previous month`);
+          }
+          
+          return {
+            seriesId: 'NFP_FRED',
+            date: latestData.date,
+            value: nfpValue,
+            previousValue: previousValue,
+            change: change,
+            source: 'FRED (curl)',
+            description: 'Total Nonfarm Payrolls (FRED)'
+          };
+        }
+      }
+      
+      throw new Error('Invalid response format from FRED API');
+      
     } catch (error) {
-      console.error('❌ Error in FRED Nonfarm Payrolls fetch:', error.message);
+      console.error('❌ Error fetching Nonfarm Payrolls from FRED:', error.message);
       await this.errorLogger.logError('fred_nonfarm_payrolls', error.message);
       return null;
     }
   }
 
-  // Fetch Unemployment Rate from FRED (better Railway compatibility than BLS curl)
+  // Fetch Unemployment Rate from FRED using curl (Railway OpenSSL compatibility)
   async fetchUnemploymentRateFRED() {
     try {
       if (!this.fredApiKey) {
@@ -117,61 +116,61 @@ class EconomicDataService {
         return null;
       }
 
-      console.log('📊 Fetching Unemployment Rate data from FRED (Railway compatible)...');
+      console.log('📊 Fetching Unemployment Rate data from FRED (Railway curl workaround)...');
       
       // FRED series UNRATE = Unemployment Rate (same data as BLS LNS14000000)
       const seriesId = 'UNRATE';
       
-      try {
-        const response = await axios.get('https://api.stlouisfed.org/fred/series/observations', {
-          params: {
-            series_id: seriesId,
-            api_key: this.fredApiKey,
-            file_type: 'json',
-            sort_order: 'desc',
-            limit: 2 // Get latest 2 values to calculate change
-          },
-          timeout: 15000,
-          headers: {
-            'User-Agent': 'CryptoMarketWatch/1.0 (Economic Data Collector)',
-            'Accept': 'application/json'
-          }
-        });
-
-        if (response.data && response.data.observations && response.data.observations.length > 0) {
-          const latestData = response.data.observations[0];
-          const previousData = response.data.observations[1];
-          const unemploymentRate = parseFloat(latestData.value);
-          const previousValue = previousData ? parseFloat(previousData.value) : null;
-          const change = previousValue ? unemploymentRate - previousValue : null;
-          
-          if (!isNaN(unemploymentRate)) {
-            console.log(`✅ Unemployment Rate (FRED): ${unemploymentRate}% (${latestData.date})`);
-            if (change) {
-              console.log(`   📈 Change: ${change > 0 ? '+' : ''}${change.toFixed(1)}% from previous month`);
-            }
-            
-            return {
-              seriesId: 'UNRATE_FRED',
-              date: latestData.date,
-              value: unemploymentRate,
-              previousValue: previousValue,
-              change: change,
-              source: 'FRED',
-              description: 'Unemployment Rate (FRED)'
-            };
-          }
-        }
-        
-        throw new Error('Invalid response format from FRED API');
-        
-      } catch (error) {
-        console.error('❌ Error fetching Unemployment Rate from FRED:', error.message);
-        return null;
+      // Use curl workaround for Railway OpenSSL version mismatch
+      const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${this.fredApiKey}&file_type=json&sort_order=desc&limit=2`;
+      const curlCommand = `curl -s --max-time 30 --retry 2 --retry-delay 1 "${url}"`;
+      console.log(`🔧 Using curl workaround for Railway OpenSSL compatibility (Unemployment Rate)`);
+      
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      
+      const { stdout, stderr } = await execAsync(curlCommand);
+      
+      if (stderr) {
+        console.warn(`⚠️ Curl stderr for Unemployment Rate: ${stderr}`);
       }
       
+      if (!stdout) {
+        throw new Error('No response from curl command');
+      }
+      
+      const response = JSON.parse(stdout);
+
+      if (response.observations && response.observations.length > 0) {
+        const latestData = response.observations[0];
+        const previousData = response.observations[1];
+        const unemploymentRate = parseFloat(latestData.value);
+        const previousValue = previousData ? parseFloat(previousData.value) : null;
+        const change = previousValue ? unemploymentRate - previousValue : null;
+        
+        if (!isNaN(unemploymentRate)) {
+          console.log(`✅ Unemployment Rate (FRED curl): ${unemploymentRate}% (${latestData.date})`);
+          if (change) {
+            console.log(`   📈 Change: ${change > 0 ? '+' : ''}${change.toFixed(1)}% from previous month`);
+          }
+          
+          return {
+            seriesId: 'UNRATE_FRED',
+            date: latestData.date,
+            value: unemploymentRate,
+            previousValue: previousValue,
+            change: change,
+            source: 'FRED (curl)',
+            description: 'Unemployment Rate (FRED)'
+          };
+        }
+      }
+      
+      throw new Error('Invalid response format from FRED API');
+      
     } catch (error) {
-      console.error('❌ Error in FRED Unemployment Rate fetch:', error.message);
+      console.error('❌ Error fetching Unemployment Rate from FRED:', error.message);
       await this.errorLogger.logError('fred_unemployment_rate', error.message);
       return null;
     }

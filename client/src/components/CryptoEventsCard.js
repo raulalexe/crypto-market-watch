@@ -28,7 +28,7 @@ const CryptoEventsCard = ({ cryptoEvents }) => {
           </div>
           <h4 className="text-xl font-semibold text-white mb-2">No Recent Events</h4>
           <p className="text-slate-400 max-w-md mx-auto">
-            No significant crypto news events detected and analyzed by AI in the last 2 hours.
+            No significant crypto news events detected and analyzed by AI in the last 7 days.
           </p>
         </div>
       </div>
@@ -117,7 +117,7 @@ const CryptoEventsCard = ({ cryptoEvents }) => {
           </div>
         <div className="flex items-center space-x-2 text-sm text-slate-400">
           <Clock className="w-4 h-4" />
-          <span>Last 2 hours</span>
+          <span>Last 7 days</span>
         </div>
       </div>
 

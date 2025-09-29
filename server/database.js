@@ -194,6 +194,28 @@ const initDatabase = async () => {
     `);
     
     await client.query(`
+      CREATE TABLE IF NOT EXISTS crypto_events (
+        id SERIAL PRIMARY KEY,
+        detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        title VARCHAR(500) NOT NULL,
+        description TEXT,
+        content TEXT,
+        url VARCHAR(1000),
+        published_at TIMESTAMP,
+        source VARCHAR(100),
+        category VARCHAR(50),
+        significance DECIMAL(3,2),
+        market_impact DECIMAL(3,2),
+        confidence DECIMAL(3,2),
+        price_impact VARCHAR(20),
+        affected_cryptos TEXT,
+        key_points TEXT,
+        impact_score DECIMAL(3,2),
+        UNIQUE(title, published_at)
+      )
+    `);
+    
+    await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -2630,14 +2652,14 @@ const getCryptoEvents = (limit = 50, offset = 0) => {
 
 const getLatestCryptoEvents = (limit = 20) => {
   return new Promise((resolve, reject) => {
-    // Get events from last 24 hours, sorted by impact score
+    // Get events from last 7 days, sorted by impact score (extended for better coverage)
     dbAdapter.all(
       `SELECT 
         id, title, description, content, url, published_at, source, category,
         significance, market_impact, confidence, price_impact,
         affected_cryptos, key_points, impact_score, detected_at
       FROM crypto_events 
-      WHERE detected_at > NOW() - INTERVAL '24 hours'
+      WHERE detected_at > NOW() - INTERVAL '7 days'
       ORDER BY impact_score DESC, detected_at DESC 
       LIMIT $1`,
       [limit]
