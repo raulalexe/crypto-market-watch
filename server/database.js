@@ -2022,9 +2022,21 @@ const regenerateApiKey = (userId, apiKeyId) => {
 
 // Inflation data functions
 const insertInflationData = (data) => {
-  return new Promise((resolve, reject) => {
-    // Use explicit type casting to ensure proper data handling
-    const query = `
+  return new Promise(async (resolve, reject) => {
+    const params = [
+      data.type, 
+      data.date, 
+      data.value, 
+      data.coreValue, 
+      data.yoyChange, 
+      data.coreYoYChange, 
+      data.momChange || null,
+      data.coreMomChange || null,
+      data.source
+    ];
+    
+    // Primary query with ON CONFLICT (requires unique constraint)
+    const primaryQuery = `
       INSERT INTO inflation_data (
         type, date, value, core_value, yoy_change, core_yoy_change, mom_change, core_mom_change, source, created_at
       ) VALUES ($1::VARCHAR(10), $2::DATE, $3::NUMERIC, $4::NUMERIC, $5::NUMERIC, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC, $9::VARCHAR(10), CURRENT_TIMESTAMP)
@@ -2040,24 +2052,52 @@ const insertInflationData = (data) => {
       RETURNING id
     `;
     
-    const params = [
-      data.type, 
-      data.date, 
-      data.value, 
-      data.coreValue, 
-      data.yoyChange, 
-      data.coreYoYChange, 
-      data.momChange || null,
-      data.coreMomChange || null,
-      data.source
-    ];
-    
-    db.query(query, params)
-    .then(result => {
+    try {
+      // Try the primary query first
+      const result = await db.query(primaryQuery, params);
       const id = result.rows[0]?.id;
       resolve(id);
-    })
-    .catch(reject);
+    } catch (error) {
+      // Handle the specific constraint error
+      if (error.code === '42P10' && error.message.includes('unique or exclusion constraint')) {
+        console.warn('⚠️ Unique constraint missing, falling back to manual upsert logic');
+        
+        try {
+          // Fallback: Check if record exists and update or insert accordingly
+          const existingRecord = await db.query(
+            'SELECT id FROM inflation_data WHERE type = $1 AND date = $2',
+            [data.type, data.date]
+          );
+          
+          if (existingRecord.rows.length > 0) {
+            // Update existing record
+            const updateResult = await db.query(`
+              UPDATE inflation_data SET 
+                value = $3, core_value = $4, yoy_change = $5, core_yoy_change = $6,
+                mom_change = $7, core_mom_change = $8, source = $9, created_at = CURRENT_TIMESTAMP
+              WHERE type = $1 AND date = $2
+              RETURNING id
+            `, params);
+            resolve(updateResult.rows[0]?.id);
+          } else {
+            // Insert new record
+            const insertResult = await db.query(`
+              INSERT INTO inflation_data (
+                type, date, value, core_value, yoy_change, core_yoy_change, mom_change, core_mom_change, source, created_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+              RETURNING id
+            `, params);
+            resolve(insertResult.rows[0]?.id);
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback inflation data insertion failed:', fallbackError.message);
+          reject(fallbackError);
+        }
+      } else {
+        // For other errors, reject as normal
+        reject(error);
+      }
+    }
   });
 };
 

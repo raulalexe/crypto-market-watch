@@ -14,18 +14,52 @@ class ErrorLogger {
 
   async logError(type, source, message, details = null, timestamp = new Date()) {
     try {
+      // Truncate fields to prevent database varchar limit errors
+      const truncatedType = this.truncateString(type, 100);
+      const truncatedSource = this.truncateString(source, 500);
+      const truncatedMessage = this.truncateString(message, 10000); // TEXT field, but reasonable limit
+      
       await insertErrorLog({
-        type,
-        source,
-        message,
-        details: details ? JSON.stringify(details) : null,
+        type: truncatedType,
+        source: truncatedSource,
+        message: truncatedMessage,
+        details: details ? this.truncateString(JSON.stringify(details), 50000) : null,
         timestamp
       });
       
-      console.error(`[${type.toUpperCase()}] ${source}: ${message}`, details);
+      console.error(`[${(type || 'UNKNOWN').toUpperCase()}] ${source || 'UNKNOWN'}: ${message || 'No message'}`, details);
     } catch (error) {
       console.error('Failed to log error:', error);
+      
+      // Fallback: try to log a simplified version
+      try {
+        await insertErrorLog({
+          type: 'SYSTEM',
+          source: 'ErrorLogger',
+          message: `Failed to log error: ${error.message}`,
+          details: JSON.stringify({ 
+            originalType: type?.substring(0, 50),
+            originalSource: source?.substring(0, 100),
+            originalMessage: message?.substring(0, 200),
+            logError: error.message
+          }),
+          timestamp
+        });
+      } catch (fallbackError) {
+        console.error('Failed to log fallback error:', fallbackError);
+      }
     }
+  }
+
+  // Helper method to truncate strings safely
+  truncateString(str, maxLength) {
+    if (!str) return str;
+    if (typeof str !== 'string') str = String(str);
+    
+    if (str.length <= maxLength) return str;
+    
+    // Truncate and add indicator
+    return str.substring(0, maxLength - 10) + '...[TRUNC]';
   }
 
   async logApiFailure(apiName, endpoint, error, response = null) {
@@ -35,13 +69,16 @@ class ErrorLogger {
       error: error.message,
       status: error.response?.status,
       statusText: error.response?.statusText,
-      response: response ? JSON.stringify(response) : null,
+      response: response ? this.truncateString(JSON.stringify(response), 5000) : null,
       timestamp: new Date().toISOString()
     };
 
+    // Create a concise source identifier
+    const source = `${apiName}${endpoint ? `::${endpoint}` : ''}`;
+
     await this.logError(
       this.errorTypes.API_FAILURE,
-      apiName,
+      source,
       `API call failed: ${error.message}`,
       details
     );
@@ -51,8 +88,8 @@ class ErrorLogger {
     const details = {
       source,
       error: error.message,
-      stack: error.stack,
-      data: data ? JSON.stringify(data) : null,
+      stack: this.truncateString(error.stack, 5000),
+      data: data ? this.truncateString(JSON.stringify(data), 5000) : null,
       timestamp: new Date().toISOString()
     };
 
