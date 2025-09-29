@@ -1738,7 +1738,8 @@ class DataCollector {
         this.collectInflationData(), // Collect and store inflation data
         this.collectEconomicCalendarData(), // Collect and analyze economic calendar data
         this.collectMoneySupplyData(), // Collect money supply data
-        this.collectCorrelationData() // Collect and store correlation data
+        this.collectCorrelationData(), // Collect and store correlation data
+        this.collectCryptoNews() // Collect and analyze crypto news events
       ]);
       
       // Clean up duplicate events before collecting new ones
@@ -2915,6 +2916,42 @@ class DataCollector {
 
     const correlation = numerator / Math.sqrt(denominator1 * denominator2);
     return isNaN(correlation) ? 0 : correlation;
+  }
+
+  // Collect crypto news events using the CryptoNewsDetector service
+  async collectCryptoNews() {
+    try {
+      console.log('📰 Starting crypto news collection...');
+      
+      // Check if news API keys are configured
+      if (!process.env.NEWSAPI_API_KEY && !process.env.CRYPTO_PANIC_API_KEY) {
+        console.log('⚠️ No news API keys configured (NEWSAPI_API_KEY or CRYPTO_PANIC_API_KEY). Skipping news collection.');
+        return;
+      }
+      
+      const CryptoNewsDetector = require('./cryptoNewsDetector');
+      const cryptoNewsDetector = new CryptoNewsDetector();
+      
+      // Detect and analyze crypto news events
+      const events = await cryptoNewsDetector.detectCryptoEvents();
+      
+      console.log(`📰 News collection completed. Found ${events.length} significant crypto events.`);
+      
+      if (events.length > 0) {
+        console.log('📊 Sample events:');
+        events.slice(0, 2).forEach((event, index) => {
+          console.log(`  ${index + 1}. ${event.title}`);
+          console.log(`     Impact: ${event.impact}, Confidence: ${event.confidence}%`);
+        });
+      }
+      
+      return events;
+      
+    } catch (error) {
+      console.error('❌ Error collecting crypto news:', error.message);
+      // Don't throw error to avoid breaking the entire data collection
+      return [];
+    }
   }
 
 }
