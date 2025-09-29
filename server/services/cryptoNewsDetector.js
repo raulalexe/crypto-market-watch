@@ -520,14 +520,14 @@ class CryptoNewsDetector {
       const title = event.title.toLowerCase();
       const content = (event.content || '').toLowerCase();
       
-      // Must have meaningful significance and market impact
-      if (analysis.significance < 0.3) return false;
-      if (analysis.marketImpact < 0.3) return false;
+      // Must have meaningful significance and market impact (lowered thresholds for more inclusive filtering)
+      if (analysis.significance < 0.2) return false;
+      if (analysis.marketImpact < 0.2) return false;
       
-      // Must be recent (within last 12 hours)
+      // Must be recent (within last 24 hours for better coverage)
       const eventTime = moment(event.publishedAt);
       const now = moment();
-      if (now.diff(eventTime, 'hours') > 12) return false;
+      if (now.diff(eventTime, 'hours') > 24) return false;
       
       // Must have affected cryptocurrencies specified
       if (!analysis.affectedCryptos || analysis.affectedCryptos.length === 0) return false;
