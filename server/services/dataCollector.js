@@ -2027,10 +2027,15 @@ class DataCollector {
               // Calculate dominance using global metrics
               const dominance = (data.usd_market_cap / globalMetrics.totalMarketCap) * 100;
               
-              // Get basic blockchain metrics (simplified)
-              const blockchainMetrics = await this.getBasicBlockchainMetrics(chain.symbol);
+              // Get real blockchain metrics with proper null handling
+              const blockchainMetrics = await this.getRealBlockchainMetrics(chain.symbol);
               
               const sentiment = data.usd_24h_change > 0 ? 'positive' : data.usd_24h_change < -5 ? 'negative' : 'neutral';
+              
+              // Handle null blockchain metrics gracefully
+              const tps = blockchainMetrics?.tps || 0;
+              const activeAddresses = blockchainMetrics?.activeAddresses || 0;
+              const hashRate = blockchainMetrics?.hashRate || 0;
               
               await insertLayer1Data(
                 chain.symbol.toLowerCase(),
@@ -2040,9 +2045,9 @@ class DataCollector {
                 data.usd_24h_change,
                 data.usd_market_cap,
                 data.usd_24h_vol,
-                blockchainMetrics.tps || 0,
-                blockchainMetrics.activeAddresses || 0,
-                blockchainMetrics.hashRate || 0,
+                tps,
+                activeAddresses,
+                hashRate,
                 dominance,
                 chain.narrative,
                 sentiment
@@ -2065,25 +2070,6 @@ class DataCollector {
       console.error('❌ Error collecting Layer 1 data:', error.message);
       await this.errorLogger.logApiFailure('CoinGecko', 'Layer 1 Data', error);
       return null;
-    }
-  }
-
-  // Get basic blockchain metrics (simplified version)
-  async getBasicBlockchainMetrics(symbol) {
-    try {
-      // Return basic metrics - we can enhance this later if needed
-      const basicMetrics = {
-        tps: 0,
-        activeAddresses: 0,
-        hashRate: 0
-      };
-      
-      // No hardcoded fallback values - return null if no real data available
-      console.warn(`⚠️ No real blockchain metrics available for ${symbol} - returning null`);
-      return null;
-    } catch (error) {
-      console.error(`Error getting basic metrics for ${symbol}:`, error.message);
-      return null; // No fallback - let it fail properly
     }
   }
 
