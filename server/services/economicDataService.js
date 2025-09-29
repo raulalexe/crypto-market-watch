@@ -38,7 +38,146 @@ class EconomicDataService {
     }
   }
 
-  // ===== BLS EMPLOYMENT DATA =====
+  // ===== EMPLOYMENT DATA (FRED API - Railway Compatible) =====
+  
+  // Fetch Nonfarm Payrolls from FRED (better Railway compatibility than BLS curl)
+  async fetchNonfarmPayrollsFRED() {
+    try {
+      if (!this.fredApiKey) {
+        console.log('⚠️ FRED API key not configured for employment data');
+        return null;
+      }
+
+      console.log('📊 Fetching Nonfarm Payrolls data from FRED (Railway compatible)...');
+      
+      // FRED series PAYEMS = All Employees, Total Nonfarm (same data as BLS CES0000000001)
+      const seriesId = 'PAYEMS';
+      
+      try {
+        // Use axios instead of curl for better Railway compatibility
+        const response = await axios.get('https://api.stlouisfed.org/fred/series/observations', {
+          params: {
+            series_id: seriesId,
+            api_key: this.fredApiKey,
+            file_type: 'json',
+            sort_order: 'desc',
+            limit: 2 // Get latest 2 values to calculate change
+          },
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'CryptoMarketWatch/1.0 (Economic Data Collector)',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.data && response.data.observations && response.data.observations.length > 0) {
+          const latestData = response.data.observations[0];
+          const previousData = response.data.observations[1];
+          const nfpValue = parseFloat(latestData.value);
+          const previousValue = previousData ? parseFloat(previousData.value) : null;
+          const change = previousValue ? nfpValue - previousValue : null;
+          
+          if (!isNaN(nfpValue)) {
+            console.log(`✅ Nonfarm Payrolls (FRED): ${nfpValue.toLocaleString()}K employees (${latestData.date})`);
+            if (change) {
+              console.log(`   📈 Change: ${change > 0 ? '+' : ''}${change.toLocaleString()}K from previous month`);
+            }
+            
+            return {
+              seriesId: 'NFP_FRED',
+              date: latestData.date,
+              value: nfpValue,
+              previousValue: previousValue,
+              change: change,
+              source: 'FRED',
+              description: 'Total Nonfarm Payrolls (FRED)'
+            };
+          }
+        }
+        
+        throw new Error('Invalid response format from FRED API');
+        
+      } catch (error) {
+        console.error('❌ Error fetching Nonfarm Payrolls from FRED:', error.message);
+        return null;
+      }
+      
+    } catch (error) {
+      console.error('❌ Error in FRED Nonfarm Payrolls fetch:', error.message);
+      await this.errorLogger.logError('fred_nonfarm_payrolls', error.message);
+      return null;
+    }
+  }
+
+  // Fetch Unemployment Rate from FRED (better Railway compatibility than BLS curl)
+  async fetchUnemploymentRateFRED() {
+    try {
+      if (!this.fredApiKey) {
+        console.log('⚠️ FRED API key not configured for employment data');
+        return null;
+      }
+
+      console.log('📊 Fetching Unemployment Rate data from FRED (Railway compatible)...');
+      
+      // FRED series UNRATE = Unemployment Rate (same data as BLS LNS14000000)
+      const seriesId = 'UNRATE';
+      
+      try {
+        const response = await axios.get('https://api.stlouisfed.org/fred/series/observations', {
+          params: {
+            series_id: seriesId,
+            api_key: this.fredApiKey,
+            file_type: 'json',
+            sort_order: 'desc',
+            limit: 2 // Get latest 2 values to calculate change
+          },
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'CryptoMarketWatch/1.0 (Economic Data Collector)',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.data && response.data.observations && response.data.observations.length > 0) {
+          const latestData = response.data.observations[0];
+          const previousData = response.data.observations[1];
+          const unemploymentRate = parseFloat(latestData.value);
+          const previousValue = previousData ? parseFloat(previousData.value) : null;
+          const change = previousValue ? unemploymentRate - previousValue : null;
+          
+          if (!isNaN(unemploymentRate)) {
+            console.log(`✅ Unemployment Rate (FRED): ${unemploymentRate}% (${latestData.date})`);
+            if (change) {
+              console.log(`   📈 Change: ${change > 0 ? '+' : ''}${change.toFixed(1)}% from previous month`);
+            }
+            
+            return {
+              seriesId: 'UNRATE_FRED',
+              date: latestData.date,
+              value: unemploymentRate,
+              previousValue: previousValue,
+              change: change,
+              source: 'FRED',
+              description: 'Unemployment Rate (FRED)'
+            };
+          }
+        }
+        
+        throw new Error('Invalid response format from FRED API');
+        
+      } catch (error) {
+        console.error('❌ Error fetching Unemployment Rate from FRED:', error.message);
+        return null;
+      }
+      
+    } catch (error) {
+      console.error('❌ Error in FRED Unemployment Rate fetch:', error.message);
+      await this.errorLogger.logError('fred_unemployment_rate', error.message);
+      return null;
+    }
+  }
+
+  // ===== BLS EMPLOYMENT DATA (Legacy - keeping for fallback) =====
 
   // Fetch Nonfarm Payrolls data from BLS using curl (Railway Akamai edge workaround)
   async fetchNonfarmPayrolls() {
@@ -539,9 +678,20 @@ class EconomicDataService {
         newReleases: []
       };
 
-      // Collect employment data
-      results.employment.nonfarmPayrolls = await this.fetchNonfarmPayrolls();
-      results.employment.unemploymentRate = await this.fetchUnemploymentRate();
+      // Collect employment data (try FRED first, fallback to BLS if needed)
+      console.log('📊 Collecting employment data using FRED API (Railway compatible)...');
+      results.employment.nonfarmPayrolls = await this.fetchNonfarmPayrollsFRED();
+      results.employment.unemploymentRate = await this.fetchUnemploymentRateFRED();
+      
+      // Fallback to BLS if FRED fails
+      if (!results.employment.nonfarmPayrolls) {
+        console.log('⚠️ FRED NFP failed, trying BLS fallback...');
+        results.employment.nonfarmPayrolls = await this.fetchNonfarmPayrolls();
+      }
+      if (!results.employment.unemploymentRate) {
+        console.log('⚠️ FRED Unemployment Rate failed, trying BLS fallback...');
+        results.employment.unemploymentRate = await this.fetchUnemploymentRate();
+      }
 
       // Skip inflation data collection - handled by dedicated inflation data service
       // This prevents duplicates since collectInflationData() already handles CPI and PCE
