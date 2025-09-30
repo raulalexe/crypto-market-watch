@@ -5230,6 +5230,77 @@ app.get('/api/debug/railway-env', async (req, res) => {
   }
 });
 
+// Emergency token regeneration endpoint for Railway JWT issues
+app.post('/api/auth/regenerate', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'Email and password required',
+        code: 'MISSING_CREDENTIALS'
+      });
+    }
+    
+    const { getUserByEmail } = require('./database');
+    const user = await getUserByEmail(email);
+    
+    if (!user) {
+      return res.status(401).json({ 
+        error: 'Invalid credentials',
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+    
+    // Check if email is verified
+    if (!Boolean(user.email_verified)) {
+      return res.status(401).json({ 
+        error: 'Please verify your email before signing in',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
+    }
+    
+    const bcrypt = require('bcrypt');
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ 
+        error: 'Invalid credentials',
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+    
+    // Generate new token with current JWT_SECRET
+    const jwt = require('jsonwebtoken');
+    const newToken = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    console.log(`🔄 Emergency token regeneration for user: ${user.email}`);
+    console.log(`🔐 New token length: ${newToken.length}`);
+    console.log(`🔐 JWT_SECRET length: ${process.env.JWT_SECRET.length}`);
+    
+    res.json({ 
+      token: newToken,
+      user: { 
+        id: user.id, 
+        email: user.email,
+        isAdmin: user.is_admin === 1
+      },
+      message: 'Token regenerated successfully'
+    });
+    
+  } catch (error) {
+    console.error('Emergency token regeneration error:', error);
+    res.status(500).json({ 
+      error: 'Failed to regenerate token',
+      code: 'REGENERATION_FAILED'
+    });
+  }
+});
+
 app.post('/api/auth/register', validateRequestBody(VALIDATION_RULES.userRegistration), asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   

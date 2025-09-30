@@ -62,6 +62,19 @@ const authenticateToken = async (req, res, next) => {
       });
     } else if (error.name === 'JsonWebTokenError') {
       console.log('🔐 Invalid token format or signature');
+      console.log('🔐 JWT Error details:', error.message);
+      
+      // Special handling for Railway JWT signature issues
+      if (error.message.includes('invalid signature')) {
+        console.log('🚨 Railway JWT signature mismatch detected');
+        return res.status(403).json({ 
+          error: 'Token signature invalid - please log in again',
+          code: 'INVALID_SIGNATURE',
+          reason: 'JWT signature verification failed. This may be due to a server restart or environment change.',
+          suggestion: 'Please log out and log in again to get a fresh token.'
+        });
+      }
+      
       return res.status(403).json({ 
         error: 'Invalid token',
         code: 'INVALID_TOKEN',
