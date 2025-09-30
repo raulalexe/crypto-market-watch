@@ -23,8 +23,9 @@ const isFrontendRequest = (req) => {
   const referer = req.headers.referer;
   
   // Check if request has API key headers (indicates API request)
-  const hasApiKey = req.headers['x-api-key'] || 
-                   (req.headers.authorization && req.headers.authorization.startsWith('Bearer '));
+  // Only check for X-API-Key header, not Authorization header
+  // because frontend requests also use Authorization: Bearer TOKEN
+  const hasApiKey = req.headers['x-api-key'];
   
   if (hasApiKey) {
     return false; // Has API key, so it's an API request
@@ -69,28 +70,16 @@ const apiProtection = (options = {}) => {
         // Import JWT authentication middleware
         const { authenticateToken } = require('./auth');
         
-        // Create a mock next function to handle the JWT auth result
-        const jwtNext = (error) => {
-          if (error) {
-            return res.status(401).json({ 
-              error: 'Authentication required',
-              message: 'Please log in to access this resource',
-              code: 'AUTH_REQUIRED'
-            });
-          }
-          next();
-        };
-        
-        // Call JWT authentication
-        await authenticateToken(req, res, jwtNext);
-        return;
+        // Call JWT authentication directly
+        return authenticateToken(req, res, next);
         
       } else {
         // API request - use API key authentication
         console.log('🔑 API request detected, using API key authentication');
         
         const apiKey = req.headers['x-api-key'] || 
-                      req.headers['authorization']?.replace('Bearer ', '');
+                      (req.headers['authorization']?.startsWith('Bearer ') ? 
+                       req.headers['authorization'].replace('Bearer ', '') : null);
         
         if (!apiKey) {
           return res.status(401).json({ 
@@ -176,14 +165,8 @@ const optionalApiProtection = (options = {}) => {
         
         const { optionalAuth } = require('./auth');
         
-        // Create a mock next function
-        const jwtNext = (error) => {
-          // Always continue, even if authentication fails
-          next();
-        };
-        
-        await optionalAuth(req, res, jwtNext);
-        return;
+        // Call optional JWT authentication directly
+        return optionalAuth(req, res, next);
         
       } else {
         // API request - check for API key but don't require it

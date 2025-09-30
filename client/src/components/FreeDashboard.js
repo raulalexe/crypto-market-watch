@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import { 
   Star, 
   Lock, 
@@ -38,13 +39,8 @@ const FreeDashboard = () => {
 
   const fetchPreviewData = async () => {
     try {
-      const response = await fetch('/api/dashboard');
-      if (response.ok) {
-        const data = await response.json();
-        setPreviewData(data);
-      } else {
-        console.error('FreeDashboard: API response not OK:', response.status, response.statusText);
-      }
+      const response = await axios.get('/api/dashboard');
+      setPreviewData(response.data);
     } catch (error) {
       console.error('Error fetching preview data:', error);
     } finally {

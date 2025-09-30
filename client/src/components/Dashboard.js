@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap } from 'lucide-react';
+import axios from 'axios';
 import logger from '../utils/logger';
 import websocketService from '../services/websocketService';
 import NarrativesCard from './NarrativesCard';
@@ -49,25 +50,10 @@ const Dashboard = ({ isAuthenticated, userData }) => {
 
   const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const headers = {};
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      
-      const response = await fetch('/api/dashboard', {
-        headers
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data');
-      }
-      
-      const data = await response.json();
-      setDashboardData(data);
+      const response = await axios.get('/api/dashboard');
+      setDashboardData(response.data);
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }
@@ -75,19 +61,8 @@ const Dashboard = ({ isAuthenticated, userData }) => {
 
   const fetchAlerts = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) return;
-
-      const response = await fetch('/api/alerts?limit=20', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAlerts(data.alerts || []);
-      }
+      const response = await axios.get('/api/alerts?limit=20');
+      setAlerts(response.data.alerts || []);
     } catch (error) {
       logger.error('Error fetching alerts:', error);
     }

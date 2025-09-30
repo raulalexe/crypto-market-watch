@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { 
   Newspaper, 
   TrendingUp, 
@@ -87,12 +88,8 @@ const NewsPage = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/news-events');
-      if (!response.ok) {
-        throw new Error('Failed to fetch news data');
-      }
-      
-      const events = await response.json();
+      const response = await axios.get('/api/news-events');
+      const events = response.data;
       if (Array.isArray(events)) {
         // Transform the events array to match the expected format
         const newsData = {
