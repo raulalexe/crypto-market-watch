@@ -2907,8 +2907,6 @@ module.exports = {
   insertCryptoEvent,
   getCryptoEvents,
   getLatestCryptoEvents,
-  deleteCryptoEvent,
-  clearAllCryptoEvents,
   deleteCryptoEventsBefore,
   
   // Database health check
