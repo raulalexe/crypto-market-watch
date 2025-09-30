@@ -333,6 +333,7 @@ const BrevoEmailService = require('./services/brevoEmailService');
 const PushService = require('./services/pushService');
 const TelegramService = require('./services/telegramService');
 const { authenticateToken, optionalAuth, requireSubscription, requireAdmin, rateLimit } = require('./middleware/auth');
+const { apiProtection, optionalApiProtection } = require('./middleware/apiProtection');
 const { validateRequestBody, VALIDATION_RULES } = require('./middleware/validation');
 const { globalErrorHandler, asyncHandler, createError } = require('./utils/errorHandler');
 
@@ -552,7 +553,7 @@ app.get('/api/config', async (req, res) => {
 });
 
 // Get current market data
-app.get('/api/market-data', async (req, res) => {
+app.get('/api/market-data', apiProtection(), async (req, res) => {
   try {
     const marketData = await dataCollector.getMarketDataSummary();
     res.json(marketData);
@@ -563,7 +564,7 @@ app.get('/api/market-data', async (req, res) => {
 });
 
 // Get latest AI analysis
-app.get('/api/analysis', async (req, res) => {
+app.get('/api/analysis', apiProtection(), async (req, res) => {
   try {
     const analysis = await aiAnalyzer.getAnalysisSummary();
     res.json(analysis);
@@ -616,7 +617,7 @@ app.get('/api/predictions', async (req, res) => {
 });
 
 // Get crypto prices - now using external API (CoinGecko widget handles this directly)
-app.get('/api/crypto-prices', async (req, res) => {
+app.get('/api/crypto-prices', apiProtection(), async (req, res) => {
   try {
     // Since we're using the CoinGecko widget for real-time prices,
     // this endpoint now returns a message directing users to the widget
@@ -632,7 +633,7 @@ app.get('/api/crypto-prices', async (req, res) => {
 });
 
 // Get fear & greed index
-app.get('/api/fear-greed', async (req, res) => {
+app.get('/api/fear-greed', apiProtection(), async (req, res) => {
   try {
     const { getLatestFearGreedIndex } = require('./database');
     const fearGreed = await getLatestFearGreedIndex();
@@ -656,7 +657,7 @@ app.get('/api/narratives', async (req, res) => {
 });
 
 // Get advanced metrics
-app.get('/api/advanced-metrics', async (req, res) => {
+app.get('/api/advanced-metrics', apiProtection(), async (req, res) => {
   try {
     // Get Bitcoin Dominance
     const bitcoinDominance = await getLatestBitcoinDominance();
@@ -774,7 +775,7 @@ app.get('/api/advanced-metrics', async (req, res) => {
     
     // Get Altcoin Season Indicator from database (real calculation)
     const { getMarketData } = require('./database');
-    const altcoinSeasonData = await getMarketData('ALTCOIN_SEASON', 'ALTCOIN_INDEX', 1);
+    const altcoinSeasonData = await getMarketData('ALTCOIN_SEASON', 1, 'ALTCOIN_INDEX');
     
     // Get Derivatives Data from derivatives_data table
     const { getDerivativesData } = require('./database');
@@ -1217,7 +1218,7 @@ app.delete('/api/admin/events/:id', authenticateToken, requireAdmin, async (req,
 });
 
 // Get trending narratives
-app.get('/api/trending-narratives', async (req, res) => {
+app.get('/api/trending-narratives', apiProtection(), async (req, res) => {
   try {
     const { getProcessedTrendingNarratives } = require('./database');
     const narratives = await getProcessedTrendingNarratives();
@@ -1232,7 +1233,7 @@ app.get('/api/trending-narratives', async (req, res) => {
 });
 
 // Get Layer 1 blockchain data
-app.get('/api/layer1-data', async (req, res) => {
+app.get('/api/layer1-data', apiProtection(), async (req, res) => {
   try {
     const { getLayer1Data } = require('./database');
     const layer1Data = await getLayer1Data();
@@ -3517,7 +3518,7 @@ app.post('/api/detect-crypto-news', authenticateToken, requireAdmin, async (req,
 });
 
 // API endpoint to get all crypto news events for the news page
-app.get('/api/crypto-news', optionalAuth, async (req, res) => {
+app.get('/api/crypto-news', optionalApiProtection(), async (req, res) => {
   try {
     const CryptoNewsDetector = require('./services/cryptoNewsDetector');
     const cryptoNewsDetector = new CryptoNewsDetector();
@@ -3537,7 +3538,7 @@ app.get('/api/crypto-news', optionalAuth, async (req, res) => {
 });
 
 // Get dashboard summary - CACHED to reduce egress charges
-app.get('/api/dashboard', optionalAuth, async (req, res) => {
+app.get('/api/dashboard', optionalApiProtection(), async (req, res) => {
   try {
     // Ignore cache-busting parameters to maintain server-side caching
     // Check cache first to avoid expensive database calls
@@ -6063,7 +6064,7 @@ app.delete('/api/admin/news-events/clear-all', authenticateToken, requireAdmin, 
 });
 
 // Public: Get all crypto news events for news page
-app.get('/api/news-events', async (req, res) => {
+app.get('/api/news-events', optionalApiProtection(), async (req, res) => {
   try {
     const { getCryptoEvents } = require('./database');
     const events = await getCryptoEvents(100); // Get last 100 events

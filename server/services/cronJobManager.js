@@ -40,16 +40,18 @@ class CronJobManager {
     console.log('✅ Enhanced cron job system set up successfully');
   }
 
-  // Main data collection (excludes inflation and events)
+  // Main data collection with intelligent scheduling (excludes inflation and events)
   setupMainDataCollection() {
-    const job = cron.schedule('0 * * * *', async () => {
-      console.log('🕐 Main data collection cron job triggered...');
+    // Business hours: 6 AM - 10 PM UTC (hourly)
+    // Night hours: 10 PM - 6 AM UTC (every 3 hours)
+    const businessHoursJob = cron.schedule('0 6-22 * * *', async () => {
+      console.log('🕐 Main data collection cron job triggered (business hours - hourly)...');
       try {
         // Collect core data only (no events, no emails)
         const dataCollectorInstance = new dataCollector();
         await dataCollectorInstance.collectCoreData();
         
-        console.log('✅ Main data collection completed');
+        console.log('✅ Main data collection completed (business hours)');
       } catch (error) {
         console.error('❌ Main data collection error:', error);
       }
@@ -57,9 +59,32 @@ class CronJobManager {
       scheduled: false
     });
 
-    job.start();
-    this.jobs.set('mainDataCollection', job);
-    console.log('📅 Main data collection: Every hour (core data only, no events/emails)');
+    // Night hours: every 3 hours (10 PM, 1 AM, 4 AM UTC)
+    const nightHoursJob = cron.schedule('0 22,1,4 * * *', async () => {
+      console.log('🌙 Main data collection cron job triggered (night hours - every 3 hours)...');
+      try {
+        // Collect core data only (no events, no emails)
+        const dataCollectorInstance = new dataCollector();
+        await dataCollectorInstance.collectCoreData();
+        
+        console.log('✅ Main data collection completed (night hours)');
+      } catch (error) {
+        console.error('❌ Main data collection error:', error);
+      }
+    }, {
+      scheduled: false
+    });
+
+    businessHoursJob.start();
+    nightHoursJob.start();
+    
+    this.jobs.set('mainDataCollectionBusiness', businessHoursJob);
+    this.jobs.set('mainDataCollectionNight', nightHoursJob);
+    
+    console.log('📅 Main data collection: Smart scheduling enabled');
+    console.log('   🌅 Business hours (6 AM - 10 PM UTC): Every hour');
+    console.log('   🌙 Night hours (10 PM - 6 AM UTC): Every 3 hours (10 PM, 1 AM, 4 AM)');
+    console.log('   📊 Expected egress reduction: ~40-50% during night hours');
   }
 
   // Inflation data collection with release date awareness

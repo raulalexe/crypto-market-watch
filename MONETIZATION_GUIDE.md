@@ -22,8 +22,7 @@
 
 4. **Payment Methods**
    - 💳 **Stripe**: Credit/debit cards
-   - ₿ **NOWPayments**: 200+ cryptocurrencies worldwide
-   - 🔄 **Crypto Subscriptions**: Automatic recurring payments
+   - 🔄 **Crypto Subscriptions**: USDC payments
 
 ## 🚀 **Quick Start**
 

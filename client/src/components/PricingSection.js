@@ -779,7 +779,7 @@ const PricingSection = ({
                 <Globe className="w-8 h-8 text-crypto-blue" />
                 <div>
                   <h4 className="font-semibold">Cryptocurrency</h4>
-                  <p className="text-gray-400 text-sm">Pay with 200+ cryptocurrencies</p>
+                  <p className="text-gray-400 text-sm">Pay with USDC on Base or Solana</p>
                 </div>
               </div>
             </div>

@@ -33,38 +33,41 @@ const MarketingPage = () => {
   const notificationFeatures = [
     {
       icon: Bell,
-      title: 'Real-Time Market Alerts',
-      description: 'Instant notifications for price movements, volume spikes, and market sentiment changes',
+      title: 'Smart Market Alerts',
+      description: 'AI-powered notifications for market movements, sentiment changes, and critical events',
       features: [
-        'SSR (Stablecoin Supply Ratio) alerts',
-        'Bitcoin dominance changes',
+        'Bitcoin dominance threshold alerts',
+        'Altcoin Season Index notifications',
+        'Fear & Greed Index changes',
         'Exchange flow movements',
-        'Stablecoin market cap changes',
-        'Custom alert thresholds'
+        'Stablecoin supply ratio (SSR) alerts',
+        'Custom price and volume thresholds'
       ]
     },
     {
       icon: Calendar,
-      title: 'Upcoming Impactful Events',
-      description: 'Stay ahead of market-moving events with our comprehensive calendar',
+      title: 'Market-Impacting Events',
+      description: 'Stay ahead with our comprehensive economic and crypto event calendar',
       features: [
-        'Federal Reserve meetings & speeches',
-        'Bitcoin halving events',
+        'Federal Reserve meetings & FOMC decisions',
+        'CPI, PCE, and PPI inflation releases',
+        'Bitcoin halving countdown',
         'Ethereum network upgrades',
         'SEC & CFTC regulatory updates',
-        'Major earnings reports'
+        'Major earnings and economic data'
       ]
     },
     {
       icon: Mail,
       title: 'Multi-Channel Notifications',
-      description: 'Get notified through your preferred channels',
+      description: 'Get notified through your preferred channels with customizable preferences',
       features: [
-        'Email notifications',
-        'Push notifications',
+        'Email notifications with dark theme',
+        'Push notifications for mobile',
         'Telegram bot integration',
-        'In-app alerts',
-        'Custom notification preferences'
+        'In-app alert system',
+        'Custom notification timing',
+        'Event-specific alert preferences'
       ]
     }
   ];
@@ -72,41 +75,43 @@ const MarketingPage = () => {
   const analyticsFeatures = [
     {
       icon: Brain,
-      title: 'AI-Powered Market Analysis',
-      description: 'Advanced machine learning algorithms analyze market patterns and provide predictions',
+      title: 'AI-Powered Market Intelligence',
+      description: 'Advanced machine learning algorithms provide multi-timeframe market predictions with confidence scoring',
       features: [
-        'Multi-timeframe analysis',
-        'Market sentiment scoring',
-        'Trend prediction models',
-        'Risk assessment',
-        'Automated insights'
+        'Short, medium, and long-term predictions',
+        'Confidence scoring (0-100%)',
+        'Market factor analysis',
+        'Risk assessment with VaR calculations',
+        'Historical accuracy tracking',
+        'Automated market insights'
       ]
     },
     {
       icon: BarChart3,
-      title: 'Advanced Analytics Dashboard',
-      description: 'Comprehensive market metrics and visualizations',
+      title: 'Advanced Analytics & Reports',
+      description: 'Professional-grade analytics with comprehensive market metrics and export capabilities',
       features: [
-        'Real-time price performance charts',
-        'Asset correlation matrix (crypto correlations)',
-        'Market volatility indicators',
+        'Real-time crypto correlation matrix',
+        'Asset performance comparisons',
+        'Volatility and risk analysis',
         'Bitcoin dominance tracking',
-        'Total market volume analysis',
+        'Altcoin Season Index monitoring',
         'Professional PDF reports',
-        'Risk analysis metrics',
+        'CSV, JSON, Excel exports',
         'Backtest performance tracking'
       ]
     },
     {
       icon: Layers,
-      title: 'Layer 1 Blockchain Data',
-      description: 'Deep insights into major blockchain networks',
+      title: 'Layer 1 Blockchain Analytics',
+      description: 'Deep insights into major blockchain networks with real-time metrics',
       features: [
-        'Bitcoin network metrics',
+        'Bitcoin network health (hash rate, TPS)',
         'Ethereum gas analysis',
+        'Solana performance metrics',
         'Transaction volume tracking',
-        'Network health indicators',
-        'DeFi protocol monitoring'
+        'Active address monitoring',
+        'Network congestion analysis'
       ]
     }
   ];
@@ -115,42 +120,43 @@ const MarketingPage = () => {
     {
       icon: Database,
       title: 'Comprehensive Data Collection',
-      description: 'Real-time data from multiple sources',
+      description: 'Automated 24/7 data collection from 15+ sources with smart scheduling',
       features: [
-        '200+ cryptocurrency prices',
-        'Fear & Greed Index',
-        'Treasury yields & DXY',
+        '200+ cryptocurrency prices (CoinGecko)',
+        'Fear & Greed Index (Alternative.me)',
+        'Macro indicators (DXY, Treasury yields)',
         'VIX volatility index',
         'Energy & equity markets',
-        'Inflation data (CPI & PCE)',
+        'Inflation data (CPI, PCE, PPI)',
         'Exchange flow analysis',
         'Stablecoin metrics (SSR)',
-        'Social sentiment analysis'
+        'Economic calendar events'
       ]
     },
     {
       icon: Download,
       title: 'Advanced Data Export',
-      description: 'Export your data in multiple formats',
+      description: 'Professional data export in multiple formats with API access',
       features: [
         'CSV, JSON, PDF & Excel exports',
-        'Custom date ranges',
-        'Filtered data sets',
-        'Scheduled exports',
-        'API access for developers (Pro tier required)',
-        'Advanced Analytics PDF reports'
+        'Custom date ranges and filters',
+        'RESTful API access (Pro tier)',
+        'Professional PDF reports',
+        'Historical data access',
+        'Real-time WebSocket updates'
       ]
     },
     {
       icon: History,
-      title: 'Historical Data Analysis',
-      description: 'Access and analyze historical market data',
+      title: 'Historical Analysis & Backtesting',
+      description: 'Complete historical data with AI prediction backtesting',
       features: [
-        'Price history charts',
-        'Volume analysis',
-        'Market cap trends',
-        'Performance comparisons',
-        'Backtesting capabilities'
+        'Complete price history',
+        'Volume and market cap trends',
+        'AI prediction accuracy tracking',
+        'Performance correlation analysis',
+        'Risk-adjusted returns',
+        'Sharpe ratio calculations'
       ]
     }
   ];
@@ -160,74 +166,77 @@ const MarketingPage = () => {
       icon: DollarSign,
       title: 'Bitcoin Dominance',
       value: 'Real-time tracking',
-      description: 'Monitor BTC market share vs altcoins'
-    },
-    {
-      icon: DollarSign,
-      title: 'SSR (Stablecoin Supply Ratio)',
-      value: 'Live calculation',
-      description: 'Measure buying power in the market'
-    },
-    {
-      icon: Volume2,
-      title: 'Total Market Volume',
-      value: '24/7 monitoring',
-      description: 'Track overall market activity'
+      description: 'Monitor BTC market share vs altcoins with threshold alerts'
     },
     {
       icon: TrendingUp,
-      title: 'Market Trends',
-      value: 'AI analysis',
-      description: 'Identify market direction patterns'
+      title: 'Altcoin Season Index',
+      value: 'AI-calculated',
+      description: 'Track altcoin season probability with BlockchainCenter methodology'
+    },
+    {
+      icon: Volume2,
+      title: 'Fear & Greed Index',
+      value: 'Live sentiment',
+      description: 'Market sentiment analysis with automated alerts'
+    },
+    {
+      icon: BarChart3,
+      title: 'SSR (Stablecoin Supply Ratio)',
+      value: 'Live calculation',
+      description: 'Measure buying power and market liquidity'
     },
     {
       icon: AlertTriangle,
-      title: 'Volatility Alerts',
-      value: 'Instant notifications',
-      description: 'Get alerted to market volatility'
+      title: 'Economic Events',
+      value: 'Calendar tracking',
+      description: 'Monitor Fed meetings, inflation releases, and crypto events'
     },
     {
       icon: Target,
-      title: 'Custom Thresholds',
-      value: 'Personalized alerts',
-      description: 'Set your own alert conditions'
+      title: 'Layer 1 Metrics',
+      value: 'Blockchain data',
+      description: 'Bitcoin, Ethereum, Solana network health monitoring'
     }
   ];
 
   const advancedFeatures = [
     {
       icon: Brain,
-      title: 'AI-Powered Backtesting',
-      description: 'Validate predictions with historical accuracy',
+      title: 'AI Prediction Backtesting',
+      description: 'Validate AI predictions with historical accuracy tracking',
       features: [
         'Historical prediction validation',
-        'Accuracy scoring & metrics',
-        'Performance correlation analysis',
+        'Confidence score accuracy',
+        'Multi-timeframe performance',
         'Asset-specific backtesting',
-        'Continuous model improvement'
+        'Continuous model improvement',
+        'Sharpe ratio calculations'
       ]
     },
     {
       icon: Layers,
-      title: 'Layer 1 Blockchain Analytics',
-      description: 'Deep insights into major blockchain networks',
+      title: 'Smart Data Collection',
+      description: 'Intelligent scheduling optimizes data collection and reduces costs',
       features: [
-        'Bitcoin network metrics (hash rate, TPS)',
-        'Ethereum gas analysis & pricing',
-        'Solana performance tracking',
-        'Network health indicators',
-        'DeFi protocol monitoring'
+        'Business hours: Hourly collection',
+        'Night hours: Every 3 hours',
+        '15+ data sources integration',
+        'Automatic error recovery',
+        'Rate limit optimization',
+        'Railway deployment ready'
       ]
     },
     {
       icon: BarChart3,
-      title: 'Inflation & Macro Analysis',
-      description: 'Track economic indicators that impact crypto',
+      title: 'Macro & Economic Analysis',
+      description: 'Comprehensive economic indicators that drive crypto markets',
       features: [
-        'CPI & PCE inflation data',
-        'Year-over-year calculations',
-        'Federal Reserve impact analysis',
-        'Economic calendar tracking',
+        'CPI, PCE, PPI inflation tracking',
+        'Federal Reserve meeting calendar',
+        'Treasury yield monitoring',
+        'DXY and VIX analysis',
+        'Economic event impact scoring',
         'Macro-crypto correlation insights'
       ]
     }
@@ -341,8 +350,8 @@ const MarketingPage = () => {
               Crypto Market Watch
             </h1>
             <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-              Advanced cryptocurrency analytics with real-time notifications, AI-powered predictions, and comprehensive market data. 
-              Track multiple cryptocurrencies, inflation data, market imapacting events, Layer 1 blockchain metrics, and stay ahead with automated alerts via email, push notifications and Telegram.
+              AI-powered cryptocurrency market intelligence platform with real-time data collection, smart notifications, and comprehensive analytics. 
+              Track cryptocurrencies, macro indicators, Layer 1 blockchain metrics, and market-impacting events with automated alerts via email, push notifications, and Telegram.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {/* Show different buttons based on freemium setting */}
@@ -399,19 +408,19 @@ const MarketingPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-3xl font-bold text-crypto-blue mb-2">AI-Powered</div>
-              <div className="text-gray-400">Analysis</div>
+              <div className="text-gray-400">Market Intelligence</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-crypto-blue mb-2">24/7</div>
-              <div className="text-gray-400">Market Monitoring</div>
+              <div className="text-3xl font-bold text-crypto-blue mb-2">AI-Powered</div>
+              <div className="text-gray-400">News Analysis</div>
             </div>
             <div>
               <div className="text-3xl font-bold text-crypto-blue mb-2">Multi-Channel</div>
               <div className="text-gray-400">Notifications</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-crypto-blue mb-2">Market</div>
-              <div className="text-gray-400">Impacting Events</div>
+              <div className="text-3xl font-bold text-crypto-blue mb-2">Layer 1</div>
+              <div className="text-gray-400">Blockchain Analytics</div>
             </div>
           </div>
         </div>
@@ -422,16 +431,16 @@ const MarketingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-3xl font-bold text-crypto-blue mb-2">200+</div>
+              <div className="text-3xl font-bold text-crypto-blue mb-2">Multiple</div>
               <div className="text-gray-400">Cryptocurrencies</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-crypto-blue mb-2">24/7</div>
-              <div className="text-gray-400">Data Collection</div>
             </div>
             <div>
               <div className="text-3xl font-bold text-crypto-blue mb-2">15+</div>
               <div className="text-gray-400">Data Sources</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-crypto-blue mb-2">24/7</div>
+              <div className="text-gray-400">Data Collection</div>
             </div>
             <div>
               <div className="text-3xl font-bold text-crypto-blue mb-2">99.9%</div>
@@ -622,26 +631,30 @@ const MarketingPage = () => {
       {/* CTA Section */}
       <section className="py-24 bg-gray-800">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold mb-6">Ready to Start Watching the Market
-            ?</h2>
+          <h2 className="text-4xl font-bold mb-6">Ready to Transform Your Crypto Trading?</h2>
           <p className="text-xl text-gray-400 mb-8">
-            Join thousands of traders who trust Crypto Market Watch for their market analysis and notifications.
+            Join the next generation of crypto traders using AI-powered market intelligence. 
+            Get real-time alerts, comprehensive analytics, and stay ahead of market movements with our advanced platform.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/app"
-              className="inline-flex items-center px-8 py-4 bg-crypto-blue text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
+              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-crypto-blue to-purple-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg"
             >
-              <TrendingUp className="w-5 h-5 mr-2" />
-              Launch App
+              <Brain className="w-5 h-5 mr-2" />
+              Try Free Demo
               <ArrowRight className="w-5 h-5 ml-2" />
             </Link>
             <Link
               to="/app/subscription"
-              className="inline-flex items-center px-8 py-4 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors"
+              className="inline-flex items-center px-8 py-4 border-2 border-crypto-blue text-crypto-blue font-semibold rounded-lg hover:bg-crypto-blue hover:text-white transition-colors"
             >
-              View All Plans
+              <DollarSign className="w-5 h-5 mr-2" />
+              View Pricing Plans
             </Link>
+          </div>
+          <div className="mt-8 text-sm text-gray-500">
+            <p>✓ No credit card required for demo • ✓ 7-day free trial • ✓ Cancel anytime</p>
           </div>
         </div>
       </section>

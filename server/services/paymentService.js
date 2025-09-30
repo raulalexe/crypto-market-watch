@@ -1030,7 +1030,7 @@ class PaymentService {
       nowpayments: {
         name: 'Crypto',
         icon: '₿',
-        description: 'Pay with 200+ cryptocurrencies worldwide'
+        description: 'Pay with USDC on Base or Solana worldwide'
       }
       // Remove ethereum payment method
     };
