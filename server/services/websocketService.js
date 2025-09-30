@@ -68,12 +68,35 @@ class WebSocketService {
         try {
           const { token } = data;
           if (!token) {
-            socket.emit('auth_error', { message: 'No token provided' });
+            console.log('❌ WebSocket auth: No token provided');
+            socket.emit('auth_error', { 
+              message: 'No token provided',
+              code: 'NO_TOKEN'
+            });
             return;
           }
 
+          console.log('🔐 WebSocket auth: Verifying token...');
+          console.log('🔐 WebSocket JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'NOT SET');
+          
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           const userId = decoded.userId;
+          
+          console.log('🔐 WebSocket token decoded, userId:', userId);
+          
+          // Verify user exists in database
+          const { getUserById } = require('../database');
+          const user = await getUserById(userId);
+          
+          if (!user) {
+            console.log('❌ WebSocket auth: User not found for userId:', userId);
+            socket.emit('auth_error', { 
+              message: 'User not found',
+              code: 'USER_NOT_FOUND',
+              userId: userId
+            });
+            return;
+          }
           
           // Store user mapping
           this.connectedClients.set(userId, socket.id);
@@ -82,15 +105,41 @@ class WebSocketService {
           // Join user-specific room
           socket.join(`user_${userId}`);
           
-          console.log(`✅ User ${userId} authenticated via WebSocket`);
-          socket.emit('authenticated', { userId, message: 'Successfully authenticated' });
+          console.log(`✅ User ${userId} (${user.email}) authenticated via WebSocket`);
+          socket.emit('authenticated', { 
+            userId, 
+            email: user.email,
+            message: 'Successfully authenticated' 
+          });
           
           // Send initial data
           this.sendInitialData(socket, userId);
           
         } catch (error) {
-          console.error('WebSocket authentication error:', error);
-          socket.emit('auth_error', { message: 'Invalid token' });
+          console.error('❌ WebSocket authentication error:', error.name, error.message);
+          
+          let errorResponse = {
+            message: 'Authentication failed',
+            code: 'AUTH_FAILED'
+          };
+          
+          if (error.name === 'TokenExpiredError') {
+            errorResponse = {
+              message: 'Token expired',
+              code: 'TOKEN_EXPIRED',
+              expiredAt: error.expiredAt
+            };
+          } else if (error.name === 'JsonWebTokenError') {
+            errorResponse = {
+              message: 'Invalid token',
+              code: 'INVALID_TOKEN',
+              reason: error.message
+            };
+          } else {
+            errorResponse.reason = error.message;
+          }
+          
+          socket.emit('auth_error', errorResponse);
         }
       });
 

@@ -2565,6 +2565,20 @@ const getCorrelationData = (limit = 100) => {
 // CRYPTO EVENTS FUNCTIONS
 // ==========================================
 
+// Helper function for safe JSON parsing
+const safeJsonParse = (jsonString, fallback = null) => {
+  if (!jsonString || jsonString === 'unknown' || jsonString === 'null') {
+    return fallback;
+  }
+  
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.warn(`Failed to parse JSON: "${jsonString}" - using fallback:`, fallback);
+    return fallback;
+  }
+};
+
 const insertCryptoEvent = (eventData) => {
   return new Promise((resolve, reject) => {
     const {
@@ -2639,8 +2653,8 @@ const getCryptoEvents = (limit = 50, offset = 0) => {
           marketImpact: row.market_impact,
           confidence: row.confidence,
           priceImpact: row.price_impact,
-          affectedCryptos: row.affected_cryptos ? JSON.parse(row.affected_cryptos) : [],
-          keyPoints: row.key_points ? JSON.parse(row.key_points) : []
+          affectedCryptos: safeJsonParse(row.affected_cryptos, []),
+          keyPoints: safeJsonParse(row.key_points, [])
         },
         impactScore: row.impact_score,
         detectedAt: row.detected_at
@@ -2678,8 +2692,8 @@ const getLatestCryptoEvents = (limit = 20) => {
           marketImpact: row.market_impact,
           confidence: row.confidence,
           priceImpact: row.price_impact,
-          affectedCryptos: row.affected_cryptos ? JSON.parse(row.affected_cryptos) : [],
-          keyPoints: row.key_points ? JSON.parse(row.key_points) : []
+          affectedCryptos: safeJsonParse(row.affected_cryptos, []),
+          keyPoints: safeJsonParse(row.key_points, [])
         },
         impactScore: row.impact_score,
         detectedAt: row.detected_at

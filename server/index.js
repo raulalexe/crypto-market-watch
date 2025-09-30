@@ -5077,6 +5077,157 @@ app.post('/api/auth/login', validateRequestBody(VALIDATION_RULES.userLogin), asy
   });
 }));
 
+// Token refresh endpoint
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ 
+        error: 'Refresh token required',
+        code: 'NO_TOKEN'
+      });
+    }
+    
+    try {
+      // Try to verify the token (may be expired)
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Token is still valid, return new one anyway for rotation
+      const user = await getUserById(decoded.userId);
+      if (!user) {
+        return res.status(401).json({ 
+          error: 'User not found',
+          code: 'USER_NOT_FOUND'
+        });
+      }
+      
+      const newToken = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+      
+      console.log(`🔄 Token refreshed for user: ${user.email}`);
+      res.json({ 
+        token: newToken,
+        user: { 
+          id: user.id, 
+          email: user.email,
+          isAdmin: user.is_admin === 1
+        }
+      });
+      
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        // Token is expired, but we can still decode it for the user info
+        const decoded = jwt.decode(token);
+        if (!decoded || !decoded.userId) {
+          return res.status(401).json({ 
+            error: 'Invalid expired token',
+            code: 'INVALID_EXPIRED_TOKEN'
+          });
+        }
+        
+        const user = await getUserById(decoded.userId);
+        if (!user) {
+          return res.status(401).json({ 
+            error: 'User not found',
+            code: 'USER_NOT_FOUND'
+          });
+        }
+        
+        // Generate new token for the expired user
+        const newToken = jwt.sign(
+          { userId: user.id, email: user.email },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' }
+        );
+        
+        console.log(`🔄 Expired token refreshed for user: ${user.email}`);
+        res.json({ 
+          token: newToken,
+          user: { 
+            id: user.id, 
+            email: user.email,
+            isAdmin: user.is_admin === 1
+          }
+        });
+        
+      } else {
+        console.log('❌ Token refresh failed:', error.message);
+        return res.status(403).json({ 
+          error: 'Invalid token for refresh',
+          code: 'INVALID_REFRESH_TOKEN',
+          reason: error.message
+        });
+      }
+    }
+    
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({ 
+      error: 'Failed to refresh token',
+      code: 'REFRESH_FAILED'
+    });
+  }
+});
+
+// Railway environment diagnostic endpoint (temporarily public for debugging)
+app.get('/api/debug/railway-env', async (req, res) => {
+  try {
+    const envInfo = {
+      nodeEnv: process.env.NODE_ENV,
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      jwtSecretLength: process.env.JWT_SECRET?.length,
+      jwtSecretPrefix: process.env.JWT_SECRET?.substring(0, 8),
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      databaseUrlPrefix: process.env.DATABASE_URL?.substring(0, 20),
+      railwayEnv: process.env.RAILWAY_ENVIRONMENT,
+      railwayServiceId: process.env.RAILWAY_SERVICE_ID,
+      railwayProjectId: process.env.RAILWAY_PROJECT_ID,
+      deploymentId: process.env.RAILWAY_DEPLOYMENT_ID,
+      timestamp: new Date().toISOString(),
+      serverUptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      platform: process.platform,
+      nodeVersion: process.version
+    };
+    
+    // Test JWT functionality
+    try {
+      const testToken = jwt.sign({ test: true }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const decoded = jwt.verify(testToken, process.env.JWT_SECRET);
+      envInfo.jwtTest = 'WORKING';
+    } catch (jwtError) {
+      envInfo.jwtTest = 'FAILED';
+      envInfo.jwtError = jwtError.message;
+    }
+    
+    // Test database connection
+    try {
+      const { getUserById } = require('./database');
+      const testUser = await getUserById(1);
+      envInfo.databaseTest = 'WORKING';
+      envInfo.hasUsers = !!testUser;
+    } catch (dbError) {
+      envInfo.databaseTest = 'FAILED';
+      envInfo.databaseError = dbError.message;
+    }
+    
+    console.log('🔍 Railway environment diagnostic requested');
+    res.json(envInfo);
+    
+  } catch (error) {
+    console.error('Railway diagnostic error:', error);
+    res.status(500).json({ 
+      error: 'Diagnostic failed',
+      message: error.message 
+    });
+  }
+});
+
 app.post('/api/auth/register', validateRequestBody(VALIDATION_RULES.userRegistration), asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   

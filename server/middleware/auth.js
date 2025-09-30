@@ -17,21 +17,31 @@ const authenticateToken = async (req, res, next) => {
 
   if (!token) {
     console.log('❌ No token provided');
-    return res.status(401).json({ error: 'Access token required' });
+    return res.status(401).json({ 
+      error: 'Access token required',
+      code: 'NO_TOKEN'
+    });
   }
 
   try {
     console.log('🔐 Verifying token...');
     console.log('🔐 JWT_SECRET length:', process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 'NOT SET');
     console.log('🔐 Token length:', token.length);
+    console.log('🔐 Token prefix:', token.substring(0, 20) + '...');
+    
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('🔐 Token decoded, userId:', decoded.userId);
+    console.log('🔐 Token expiry:', new Date(decoded.exp * 1000).toISOString());
     
     const user = await getUserById(decoded.userId);
     
     if (!user) {
       console.log('❌ User not found for userId:', decoded.userId);
-      return res.status(401).json({ error: 'User not found' });
+      return res.status(401).json({ 
+        error: 'User not found',
+        code: 'USER_NOT_FOUND',
+        userId: decoded.userId
+      });
     }
 
     console.log('✅ User authenticated:', user.email);
@@ -40,7 +50,37 @@ const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.log('❌ Token verification failed:', error.message);
-    return res.status(403).json({ error: 'Invalid token' });
+    console.log('🔐 Error type:', error.name);
+    
+    // Provide specific error types for better debugging
+    if (error.name === 'TokenExpiredError') {
+      console.log('⏰ Token has expired');
+      return res.status(401).json({ 
+        error: 'Token expired',
+        code: 'TOKEN_EXPIRED',
+        expiredAt: error.expiredAt
+      });
+    } else if (error.name === 'JsonWebTokenError') {
+      console.log('🔐 Invalid token format or signature');
+      return res.status(403).json({ 
+        error: 'Invalid token',
+        code: 'INVALID_TOKEN',
+        reason: error.message
+      });
+    } else if (error.name === 'NotBeforeError') {
+      console.log('⏰ Token not active yet');
+      return res.status(401).json({ 
+        error: 'Token not active',
+        code: 'TOKEN_NOT_ACTIVE'
+      });
+    } else {
+      console.log('❌ Unknown token error:', error);
+      return res.status(403).json({ 
+        error: 'Token verification failed',
+        code: 'VERIFICATION_FAILED',
+        reason: error.message
+      });
+    }
   }
 };
 
