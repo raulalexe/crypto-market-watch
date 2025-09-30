@@ -31,6 +31,15 @@ class AuthService {
       async (error) => {
         const originalRequest = error.config;
 
+        // Handle JWT signature errors (403 with invalid signature)
+        if (error.response?.status === 403 && 
+            error.response?.data?.code === 'INVALID_SIGNATURE') {
+          console.log('🚨 JWT signature mismatch detected - clearing tokens and redirecting to login');
+          this.clearTokens();
+          window.location.href = '/?auth=login&reason=token_invalid';
+          return Promise.reject(error);
+        }
+
         // Handle 401 errors (token expired)
         if (error.response?.status === 401 && !originalRequest._retry) {
           if (this.isRefreshing) {
@@ -149,6 +158,17 @@ class AuthService {
         toast.parentNode.removeChild(toast);
       }
     }, 5000);
+  }
+
+  // Method to clear tokens without redirecting
+  clearTokens() {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('lastSeenAlertId');
+    localStorage.removeItem('token'); // Clear any old token storage
+    delete axios.defaults.headers.common['Authorization'];
+    this.isRefreshing = false;
+    this.failedQueue = [];
   }
 
   // Method to manually clear auth and redirect

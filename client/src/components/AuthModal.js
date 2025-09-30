@@ -19,6 +19,12 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) =>
     setIsLogin(initialMode === 'login');
     setAgreedToTerms(false); // Reset terms agreement
     setError(''); // Clear any errors
+    
+    // Check if redirected due to JWT signature issue
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('reason') === 'token_invalid') {
+      setError('Your session token is invalid. Please log in again.');
+    }
   }, [initialMode]);
 
   const handleSubmit = async (e) => {
