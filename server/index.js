@@ -133,6 +133,8 @@ async function getDashboardData() {
               corePPI: ppiData.core_value?.toString(),
               ppiYoY: ppiData.yoy_change?.toString(),
               corePPIYoY: ppiData.core_yoy_change?.toString(),
+              ppiMoM: ppiData.mom_change?.toString(),
+              corePPIMoM: ppiData.core_mom_change?.toString(),
               date: ppiData.date
             } : null
           };
@@ -5829,6 +5831,149 @@ app.post('/api/payment-alert', async (req, res) => {
   } catch (error) {
     console.error('Payment alert error:', error);
     res.status(500).json({ error: 'Failed to send payment alert' });
+  }
+});
+
+// Admin: Collect news only (without full data collection)
+app.post('/api/admin/collect-news', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    console.log('🔧 Admin triggered news collection only');
+    
+    // Import the data collector (which has the collectCryptoNews method)
+    const DataCollector = require('./services/dataCollector');
+    const dataCollector = new DataCollector();
+    
+    // Collect news only
+    const events = await dataCollector.collectCryptoNews();
+    
+    // Clear dashboard cache to ensure new news shows up immediately
+    dashboardCache.cache = null;
+    dashboardCache.lastUpdate = null;
+    console.log('🔄 Dashboard cache cleared to show fresh news data');
+    
+    // Broadcast dashboard update to all connected users via WebSocket
+    const WebSocketService = require('./services/websocketService');
+    if (WebSocketService.io) {
+      try {
+        // Get fresh dashboard data including the new news
+        const dashboardData = await getDashboardData();
+        if (dashboardData) {
+          // Cache the new data
+          dashboardCache.set(dashboardData);
+          
+          // Broadcast complete dashboard update to all connected users
+          WebSocketService.io.emit('dashboard_update', { data: dashboardData });
+          console.log('📡 Broadcasted dashboard update with fresh news to all connected users');
+        }
+      } catch (wsError) {
+        console.warn('⚠️ Failed to broadcast news update via WebSocket:', wsError.message);
+      }
+    }
+    
+    if (events && events.length > 0) {
+      console.log(`✅ Admin news collection completed: ${events.length} events`);
+      res.json({
+        success: true,
+        message: 'News collection completed successfully',
+        eventsCount: events.length,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      console.log('⚠️ Admin news collection completed with no events found');
+      res.json({
+        success: true,
+        message: 'News collection completed - no significant events found',
+        eventsCount: 0,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Admin news collection failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'News collection failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Admin: Get all news events
+app.get('/api/admin/news-events', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { getCryptoEvents } = require('./database');
+    const events = await getCryptoEvents(100); // Get last 100 events
+    
+    console.log(`📰 Admin requested news events: ${events.length} found`);
+    res.json(events);
+  } catch (error) {
+    console.error('❌ Error fetching news events:', error.message);
+    res.status(500).json({
+      error: 'Failed to fetch news events',
+      message: error.message
+    });
+  }
+});
+
+// Admin: Delete specific news event
+app.delete('/api/admin/news-events/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deleteCryptoEvent } = require('./database');
+    
+    await deleteCryptoEvent(id);
+    
+    console.log(`🗑️ Admin deleted news event: ${id}`);
+    res.json({
+      success: true,
+      message: 'News event deleted successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error deleting news event:', error.message);
+    res.status(500).json({
+      error: 'Failed to delete news event',
+      message: error.message
+    });
+  }
+});
+
+// Admin: Clear all news events
+app.delete('/api/admin/news-events/clear-all', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { clearAllCryptoEvents } = require('./database');
+    
+    const deletedCount = await clearAllCryptoEvents();
+    
+    console.log(`🗑️ Admin cleared all news events: ${deletedCount} deleted`);
+    res.json({
+      success: true,
+      message: 'All news events cleared successfully',
+      deletedCount
+    });
+  } catch (error) {
+    console.error('❌ Error clearing all news events:', error.message);
+    res.status(500).json({
+      error: 'Failed to clear all news events',
+      message: error.message
+    });
+  }
+});
+
+// Public: Get all crypto news events for news page
+app.get('/api/news-events', async (req, res) => {
+  try {
+    const { getCryptoEvents } = require('./database');
+    const events = await getCryptoEvents(100); // Get last 100 events
+    
+    console.log(`📰 Public news events requested: ${events.length} found`);
+    res.json(events);
+  } catch (error) {
+    console.error('❌ Error fetching news events:', error.message);
+    res.status(500).json({
+      error: 'Failed to fetch news events',
+      message: error.message
+    });
   }
 });
 

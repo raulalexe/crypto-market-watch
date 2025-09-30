@@ -2565,18 +2565,53 @@ const getCorrelationData = (limit = 100) => {
 // CRYPTO EVENTS FUNCTIONS
 // ==========================================
 
-// Helper function for safe JSON parsing
+// Helper function for safe JSON parsing with normalization
 const safeJsonParse = (jsonString, fallback = null) => {
   if (!jsonString || jsonString === 'unknown' || jsonString === 'null') {
     return fallback;
   }
   
   try {
-    return JSON.parse(jsonString);
+    const parsed = JSON.parse(jsonString);
+    return parsed;
   } catch (error) {
+    // If JSON parsing fails, try to normalize the string
+    if (typeof jsonString === 'string') {
+      if (jsonString.includes(',')) {
+        // Comma-separated values: "BTC,ETH,DOGE" → ["BTC", "ETH", "DOGE"]
+        console.warn(`Failed to parse JSON: "${jsonString}" - normalizing as comma-separated values`);
+        return jsonString.split(',').map(item => item.trim()).filter(item => item.length > 0);
+      } else {
+        // Single value: "BTC" → ["BTC"]
+        console.warn(`Failed to parse JSON: "${jsonString}" - normalizing as single value array`);
+        return [jsonString.trim()];
+      }
+    }
+    
     console.warn(`Failed to parse JSON: "${jsonString}" - using fallback:`, fallback);
     return fallback;
   }
+};
+
+// Helper function to normalize AI response fields to arrays
+const normalizeToArray = (value) => {
+  if (!value) return [];
+  
+  // If it's already an array, return as-is
+  if (Array.isArray(value)) return value;
+  
+  // If it's a string, try to parse as comma-separated values
+  if (typeof value === 'string') {
+    // Handle comma-separated strings like "BTC,ETH,DOGE,XRP"
+    if (value.includes(',')) {
+      return value.split(',').map(item => item.trim()).filter(item => item.length > 0);
+    }
+    // Handle single values
+    return [value.trim()];
+  }
+  
+  // For any other type, wrap in array
+  return [value];
 };
 
 const insertCryptoEvent = (eventData) => {
@@ -2614,8 +2649,8 @@ const insertCryptoEvent = (eventData) => {
         analysis?.marketImpact || null,
         analysis?.confidence || null,
         analysis?.priceImpact || null,
-        analysis?.affectedCryptos ? JSON.stringify(analysis.affectedCryptos) : null,
-        analysis?.keyPoints ? JSON.stringify(analysis.keyPoints) : null,
+        analysis?.affectedCryptos ? JSON.stringify(normalizeToArray(analysis.affectedCryptos)) : null,
+        analysis?.keyPoints ? JSON.stringify(normalizeToArray(analysis.keyPoints)) : null,
         impactScore
       ]
     ).then(result => {
@@ -2699,6 +2734,27 @@ const getLatestCryptoEvents = (limit = 20) => {
         detectedAt: row.detected_at
       }));
       resolve(events);
+    }).catch(reject);
+  });
+};
+
+const deleteCryptoEvent = (eventId) => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.run(
+      'DELETE FROM crypto_events WHERE id = $1',
+      [eventId]
+    ).then(result => {
+      resolve(result.changes);
+    }).catch(reject);
+  });
+};
+
+const clearAllCryptoEvents = () => {
+  return new Promise((resolve, reject) => {
+    dbAdapter.run(
+      'DELETE FROM crypto_events'
+    ).then(result => {
+      resolve(result.changes);
     }).catch(reject);
   });
 };
@@ -2851,6 +2907,8 @@ module.exports = {
   insertCryptoEvent,
   getCryptoEvents,
   getLatestCryptoEvents,
+  deleteCryptoEvent,
+  clearAllCryptoEvents,
   deleteCryptoEventsBefore,
   
   // Database health check
