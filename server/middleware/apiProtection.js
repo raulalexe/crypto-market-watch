@@ -21,7 +21,6 @@ const { getApiKeyByKey, getUserById } = require('../database');
 const isFrontendRequest = (req) => {
   const origin = req.headers.origin;
   const referer = req.headers.referer;
-  const userAgent = req.headers['user-agent'];
   
   // Check if request has API key headers (indicates API request)
   const hasApiKey = req.headers['x-api-key'] || 
@@ -31,48 +30,15 @@ const isFrontendRequest = (req) => {
     return false; // Has API key, so it's an API request
   }
   
-  // Check if request is from allowed frontend domains
-  const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://127.0.0.1:3000'
-  ];
+  // Get frontend URL from environment variables
+  const frontendUrl = process.env.FRONTEND_URL || process.env.BASE_URL || 'http://localhost:3000';
   
-  // Add production domains if they exist
-  if (process.env.PRODUCTION_FRONTEND_URL) {
-    allowedOrigins.push(process.env.PRODUCTION_FRONTEND_URL);
-  }
-  
-  // Add Railway domains if deployed on Railway
-  if (process.env.RAILWAY_STATIC_URL) {
-    allowedOrigins.push(process.env.RAILWAY_STATIC_URL);
-  }
-  
-  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-    allowedOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
-    allowedOrigins.push(`http://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
-  }
-  
-  // Check if origin matches allowed frontend domains
-  if (origin && allowedOrigins.some(allowedOrigin => origin.includes(allowedOrigin))) {
+  // Check if request is from the frontend domain
+  if (origin && origin.includes(frontendUrl)) {
     return true;
   }
   
-  // Check if referer matches allowed frontend domains
-  if (referer && allowedOrigins.some(allowedOrigin => referer.includes(allowedOrigin))) {
-    return true;
-  }
-  
-  // Check if it's a browser request (has browser-like user agent)
-  if (userAgent && (
-    userAgent.includes('Mozilla') || 
-    userAgent.includes('Chrome') || 
-    userAgent.includes('Firefox') || 
-    userAgent.includes('Safari') ||
-    userAgent.includes('Edge')
-  )) {
+  if (referer && referer.includes(frontendUrl)) {
     return true;
   }
   

@@ -3518,7 +3518,7 @@ app.post('/api/detect-crypto-news', authenticateToken, requireAdmin, async (req,
 });
 
 // API endpoint to get all crypto news events for the news page
-app.get('/api/crypto-news', optionalApiProtection(), async (req, res) => {
+app.get('/api/crypto-news', optionalAuth, async (req, res) => {
   try {
     const CryptoNewsDetector = require('./services/cryptoNewsDetector');
     const cryptoNewsDetector = new CryptoNewsDetector();
@@ -3538,7 +3538,7 @@ app.get('/api/crypto-news', optionalApiProtection(), async (req, res) => {
 });
 
 // Get dashboard summary - CACHED to reduce egress charges
-app.get('/api/dashboard', optionalApiProtection(), async (req, res) => {
+app.get('/api/dashboard', optionalAuth, async (req, res) => {
   try {
     // Ignore cache-busting parameters to maintain server-side caching
     // Check cache first to avoid expensive database calls
@@ -6064,7 +6064,7 @@ app.delete('/api/admin/news-events/clear-all', authenticateToken, requireAdmin, 
 });
 
 // Public: Get all crypto news events for news page
-app.get('/api/news-events', optionalApiProtection(), async (req, res) => {
+app.get('/api/news-events', optionalAuth, async (req, res) => {
   try {
     const { getCryptoEvents } = require('./database');
     const events = await getCryptoEvents(100); // Get last 100 events
