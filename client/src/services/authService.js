@@ -35,6 +35,8 @@ class AuthService {
         if (error.response?.status === 403 && 
             error.response?.data?.code === 'INVALID_SIGNATURE') {
           console.log('🚨 JWT signature mismatch detected - clearing tokens and redirecting to login');
+          console.log('🔐 Current token length:', localStorage.getItem('authToken')?.length);
+          console.log('🔐 Error details:', error.response?.data);
           this.clearTokens();
           window.location.href = '/?auth=login&reason=token_invalid';
           return Promise.reject(error);

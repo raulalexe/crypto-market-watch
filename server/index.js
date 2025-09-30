@@ -5281,6 +5281,15 @@ app.post('/api/auth/regenerate', async (req, res) => {
     console.log(`🔄 Emergency token regeneration for user: ${user.email}`);
     console.log(`🔐 New token length: ${newToken.length}`);
     console.log(`🔐 JWT_SECRET length: ${process.env.JWT_SECRET.length}`);
+    console.log(`🔐 JWT_SECRET prefix: ${process.env.JWT_SECRET.substring(0, 8)}...`);
+    
+    // Test the token immediately
+    try {
+      const testDecoded = jwt.verify(newToken, process.env.JWT_SECRET);
+      console.log(`✅ Token verification test passed: ${testDecoded.userId}`);
+    } catch (testError) {
+      console.log(`❌ Token verification test failed: ${testError.message}`);
+    }
     
     res.json({ 
       token: newToken,
@@ -5289,7 +5298,9 @@ app.post('/api/auth/regenerate', async (req, res) => {
         email: user.email,
         isAdmin: user.is_admin === 1
       },
-      message: 'Token regenerated successfully'
+      message: 'Token regenerated successfully',
+      jwtSecretLength: process.env.JWT_SECRET.length,
+      jwtSecretPrefix: process.env.JWT_SECRET.substring(0, 8)
     });
     
   } catch (error) {
@@ -5297,6 +5308,33 @@ app.post('/api/auth/regenerate', async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to regenerate token',
       code: 'REGENERATION_FAILED'
+    });
+  }
+});
+
+// Railway JWT secret diagnostic endpoint
+app.get('/api/debug/jwt-secret', async (req, res) => {
+  try {
+    const jwt = require('jsonwebtoken');
+    
+    // Test JWT functionality
+    const testPayload = { test: true, timestamp: Date.now() };
+    const testToken = jwt.sign(testPayload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const testDecoded = jwt.verify(testToken, process.env.JWT_SECRET);
+    
+    res.json({
+      jwtSecretLength: process.env.JWT_SECRET.length,
+      jwtSecretPrefix: process.env.JWT_SECRET.substring(0, 8),
+      jwtTest: 'WORKING',
+      testTokenLength: testToken.length,
+      testDecoded: testDecoded,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'JWT secret test failed',
+      message: error.message,
+      jwtSecretLength: process.env.JWT_SECRET?.length || 0
     });
   }
 });
