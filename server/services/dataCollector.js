@@ -2848,19 +2848,13 @@ class DataCollector {
     }
   }
 
-  // Collect Altcoin Season Index using BlockchainCenter methodology (FREE)
+  // Altcoin Season Index collection moved to separate cron job
+  // This method is kept for backward compatibility but should not be called
+  // Use the dedicated AltcoinSeasonService with its own cron schedule instead
   async collectAltcoinSeasonIndex() {
-    try {
-      console.log('📊 Collecting Altcoin Season Index using BlockchainCenter methodology...');
-      
-      // Use BlockchainCenter methodology with CoinGecko free API
-      // This is the original and most widely used altcoin season calculation
-      return await this.collectAltcoinSeasonBlockchainCenter();
-      
-    } catch (error) {
-      console.error('❌ Error collecting Altcoin Season Index:', error.message);
-      return null;
-    }
+    console.log('⚠️ Altcoin Season Index collection moved to separate cron job');
+    console.log('📊 This metric is now collected 2-4 times per day independently');
+    return null;
   }
 
   // BlockchainCenter Altcoin Season Index methodology (FREE)
@@ -2869,12 +2863,15 @@ class DataCollector {
       console.log('📊 Using BlockchainCenter methodology for Altcoin Season Index...');
       
       // Get top 50 coins from CoinGecko (BlockchainCenter uses top 50)
-      const response = await this.getCachedCoinGeckoData('top_50_coins', async () => {
+      // Use the global endpoint to get 90-day price changes
+      const response = await this.getCachedCoinGeckoData('top_50_coins_90d', async () => {
         return await this.makeCoinGeckoRequest('coins/markets', {
           vs_currency: 'usd',
           order: 'market_cap_desc',
           per_page: 50,
-          page: 1
+          page: 1,
+          sparkline: false,
+          locale: 'en'
         });
       });
       
@@ -2884,12 +2881,22 @@ class DataCollector {
         const altcoins = coins.filter(coin => coin.id !== 'bitcoin');
         
         if (btc && altcoins.length > 0) {
-          // BlockchainCenter methodology: Count altcoins that outperformed Bitcoin in last 90 days
-          const btcPerformance90d = btc.price_change_percentage_90d || 0;
+          // Debug: Check what data we're getting
+          console.log(`📊 Bitcoin 90d performance: ${btc.price_change_percentage_90d || 'N/A'}%`);
+          console.log(`📊 Sample altcoin data:`, {
+            id: altcoins[0]?.id,
+            name: altcoins[0]?.name,
+            performance_90d: altcoins[0]?.price_change_percentage_90d || 'N/A'
+          });
+          
+          // If 90-day data is not available, use 7-day data as fallback
+          const btcPerformance90d = btc.price_change_percentage_90d || btc.price_change_percentage_7d || 0;
           const outperformingAltcoins = altcoins.filter(coin => {
-            const altcoinPerformance = coin.price_change_percentage_90d || 0;
+            const altcoinPerformance = coin.price_change_percentage_90d || coin.price_change_percentage_7d || 0;
             return altcoinPerformance > btcPerformance90d;
           }).length;
+          
+          console.log(`📊 Using ${btc.price_change_percentage_90d ? '90-day' : '7-day'} performance data`);
           
           // Calculate the percentage (BlockchainCenter formula)
           const seasonIndex = (outperformingAltcoins / altcoins.length) * 100;

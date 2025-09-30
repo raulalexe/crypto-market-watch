@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const { getInflationReleases } = require('../database');
 const dataCollector = require('./dataCollector');
 const emailService = require('./brevoEmailService');
+const AltcoinSeasonCron = require('./altcoinSeasonCron');
 
 class CronJobManager {
   constructor() {
@@ -9,6 +10,7 @@ class CronJobManager {
     this.lastInflationCheck = null;
     this.lastEventsCheck = null;
     this.sentNotifications = new Set(); // Track sent notifications to avoid duplicates
+    this.altcoinSeasonCron = new AltcoinSeasonCron();
   }
 
   // Setup all cron jobs
@@ -31,6 +33,9 @@ class CronJobManager {
 
     // 4. Email notifications (daily at 8 AM)
     this.setupEmailNotifications();
+
+    // 5. Altcoin Season Index collection (4 times per day)
+    this.setupAltcoinSeasonCollection();
 
     console.log('✅ Enhanced cron job system set up successfully');
   }
@@ -308,6 +313,13 @@ class CronJobManager {
     console.log(`📧 Event reminder sent to ${user.email} for ${eventsToSend.length} events`);
   }
 
+  // Setup Altcoin Season Index collection
+  setupAltcoinSeasonCollection() {
+    console.log('📊 Setting up Altcoin Season Index collection...');
+    this.altcoinSeasonCron.start();
+    console.log('📅 Altcoin Season Index: 4 times per day (6 AM, 12 PM, 6 PM, 12 AM UTC)');
+  }
+
   // Stop all cron jobs
   stopAllJobs() {
     console.log('🛑 Stopping all cron jobs...');
@@ -316,6 +328,9 @@ class CronJobManager {
       console.log(`✅ Stopped ${name} job`);
     });
     this.jobs.clear();
+    
+    // Stop Altcoin Season Index cron
+    this.altcoinSeasonCron.stop();
   }
 
   // Get job status
@@ -328,6 +343,10 @@ class CronJobManager {
         nextRun: job.nextDate
       };
     });
+    
+    // Add Altcoin Season Index status
+    status.altcoinSeasonIndex = this.altcoinSeasonCron.getStatus();
+    
     return status;
   }
 }

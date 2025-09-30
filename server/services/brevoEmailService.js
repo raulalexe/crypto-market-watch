@@ -1,5 +1,6 @@
 const SibApiV3Sdk = require('@getbrevo/brevo');
 const { alert: alertTemplate, confirmation, accountDeleted, upgrade, renewal, inflation, event: eventTemplate, contact } = require('../templates/email');
+const PasswordResetEmailTemplate = require('../templates/email/password-reset-template');
 
 class BrevoEmailService {
   constructor() {
@@ -322,11 +323,14 @@ class BrevoEmailService {
     try {
       const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
       
+      // Use the new template with Yahoo fix
+      const passwordResetTemplate = new PasswordResetEmailTemplate();
+      
       const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
       
       sendSmtpEmail.subject = 'Reset Your Password - Crypto Market Watch';
-      sendSmtpEmail.htmlContent = this.generatePasswordResetEmailHTML(resetUrl, userEmail);
-      sendSmtpEmail.textContent = this.generatePasswordResetEmailText(resetUrl, userEmail);
+      sendSmtpEmail.htmlContent = passwordResetTemplate.generateHTML(resetUrl, userEmail);
+      sendSmtpEmail.textContent = passwordResetTemplate.generateText(resetUrl, userEmail);
       sendSmtpEmail.sender = {
         name: 'Crypto Market Watch',
         email: process.env.BREVO_SENDER_EMAIL || 'noreply@crypto-market-watch.xyz'
@@ -722,7 +726,8 @@ class BrevoEmailService {
   // Keep the existing methods that are still working (Welcome, Password Reset)
   // These use the already-fixed templates
 
-  generatePasswordResetEmailHTML(resetUrl, userEmail = null) {
+  // OLD METHOD - REMOVED - Now using PasswordResetEmailTemplate
+  generatePasswordResetEmailHTML_OLD(resetUrl, userEmail = null) {
     const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     
@@ -873,7 +878,8 @@ class BrevoEmailService {
     `;
   }
 
-  generatePasswordResetEmailText(resetUrl, userEmail = null) {
+  // OLD METHOD - REMOVED - Now using PasswordResetEmailTemplate
+  generatePasswordResetEmailText_OLD(resetUrl, userEmail = null) {
     const websiteUrl = process.env.BASE_URL || 'http://localhost:3001';
     
     return `

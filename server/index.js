@@ -772,16 +772,9 @@ app.get('/api/advanced-metrics', async (req, res) => {
       ];
     }
     
-    // Get Altcoin Season Indicator (calculate from BTC dominance)
-    const altcoinSeasonData = [];
-    if (bitcoinDominance && bitcoinDominance.value) {
-      const btcDominance = parseFloat(bitcoinDominance.value);
-      const altcoinSeason = btcDominance > 60 ? 'Bitcoin Season' : btcDominance < 40 ? 'Altcoin Season' : 'Neutral';
-      altcoinSeasonData.push({
-        value: 100 - btcDominance,
-        metadata: JSON.stringify({ season: altcoinSeason, strength: 'Moderate' })
-      });
-    }
+    // Get Altcoin Season Indicator from database (real calculation)
+    const { getMarketData } = require('./database');
+    const altcoinSeasonData = await getMarketData('ALTCOIN_SEASON', 'ALTCOIN_INDEX', 1);
     
     // Get Derivatives Data from derivatives_data table
     const { getDerivativesData } = require('./database');
