@@ -20,7 +20,8 @@ import {
   Clock,
   Filter,
   CreditCard,
-  X
+  X,
+  Newspaper
 } from 'lucide-react';
 import ToastNotification from './ToastNotification';
 import TelegramManagement from './TelegramManagement';
@@ -128,12 +129,16 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
   const [changingPlan, setChangingPlan] = useState(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [newsEvents, setNewsEvents] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [deletingNews, setDeletingNews] = useState(null);
 
   const tabs = [
     { id: 'collections', name: 'Database Collections', icon: Database },
     { id: 'ai-analysis', name: 'AI Analysis', icon: Brain },
     { id: 'overview', name: 'Overview', icon: BarChart3 },
     { id: 'events', name: 'Events Management', icon: Calendar },
+    { id: 'news', name: 'News Management', icon: Newspaper },
     { id: 'users', name: 'User Management', icon: Users },
     { id: 'email', name: 'Email Interface', icon: Mail },
     { id: 'telegram', name: 'Telegram Bot', icon: MessageCircle }
@@ -196,6 +201,13 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
     fetchAlerts();
     fetchEvents();
   }, []);
+
+  // Fetch news events when news tab is active
+  useEffect(() => {
+    if (activeTab === 'news') {
+      fetchNewsEvents();
+    }
+  }, [activeTab]);
 
   const fetchAdminData = async () => {
     try {
@@ -391,7 +403,128 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
     }
   };
 
+  const collectNewsOnly = async () => {
+    try {
+      setLoading(true);
+      showAlert('Starting crypto news collection...', 'info');
+      
+      const response = await fetch('/api/admin/collect-news', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to collect news');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        showAlert(`News collection completed! Found ${result.eventsCount} significant events.`, 'success');
+        // Refresh admin data to show updated collections
+        fetchAdminData();
+        // Also refresh news events if we're on the news tab
+        if (activeTab === 'news') {
+          fetchNewsEvents();
+        }
+      } else {
+        throw new Error(result.error || 'News collection failed');
+      }
+    } catch (error) {
+      console.error('Error collecting news:', error);
+      showAlert(error.message || 'Failed to collect news', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchNewsEvents = async () => {
+    try {
+      setNewsLoading(true);
+      const response = await fetch('/api/admin/news-events', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch news events');
+      }
+
+      const data = await response.json();
+      setNewsEvents(data);
+    } catch (error) {
+      console.error('Error fetching news events:', error);
+      showAlert('Failed to fetch news events', 'error');
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
+  const deleteNewsEvent = async (eventId, eventTitle) => {
+    if (!window.confirm(`Are you sure you want to delete this news event?\n\n"${eventTitle}"\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingNews(eventId);
+      const response = await fetch(`/api/admin/news-events/${eventId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete news event');
+      }
+
+      showAlert('News event deleted successfully', 'success');
+      // Refresh the news events list
+      fetchNewsEvents();
+    } catch (error) {
+      console.error('Error deleting news event:', error);
+      showAlert(error.message || 'Failed to delete news event', 'error');
+    } finally {
+      setDeletingNews(null);
+    }
+  };
+
+  const clearAllNewsEvents = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL news events?\n\nThis action cannot be undone and will remove all crypto news data from the database.')) {
+      return;
+    }
+
+    try {
+      setNewsLoading(true);
+      const response = await fetch('/api/admin/news-events/clear-all', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to clear all news events');
+      }
+
+      const result = await response.json();
+      showAlert(`Cleared ${result.deletedCount} news events successfully`, 'success');
+      // Refresh the news events list
+      fetchNewsEvents();
+    } catch (error) {
+      console.error('Error clearing news events:', error);
+      showAlert(error.message || 'Failed to clear news events', 'error');
+    } finally {
+      setNewsLoading(false);
+    }
+  };
 
   const exportData = async (collectionName) => {
     // Debug logging removed for production
@@ -529,13 +662,23 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
             />
           </div>
         </div>
-        <button
-          onClick={() => setShowRawData(!showRawData)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-        >
-          {showRawData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          {showRawData ? 'Hide Raw' : 'Show Raw'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={collectNewsOnly}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-crypto-blue hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
+          >
+            <Newspaper className="w-4 h-4" />
+            {loading ? 'Collecting...' : 'Collect News Only'}
+          </button>
+          <button
+            onClick={() => setShowRawData(!showRawData)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          >
+            {showRawData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showRawData ? 'Hide Raw' : 'Show Raw'}
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4">
@@ -1002,6 +1145,201 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
     );
   };
 
+  const renderNewsTab = () => {
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const getImpactColor = (impact) => {
+      if (impact >= 0.8) return 'text-red-400';
+      if (impact >= 0.6) return 'text-orange-400';
+      if (impact >= 0.4) return 'text-yellow-400';
+      return 'text-green-400';
+    };
+
+    const getConfidenceColor = (confidence) => {
+      if (confidence >= 0.8) return 'text-green-400';
+      if (confidence >= 0.6) return 'text-yellow-400';
+      if (confidence >= 0.4) return 'text-orange-400';
+      return 'text-red-400';
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search news events..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchNewsEvents()}
+              disabled={newsLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${newsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            
+            <button
+              onClick={collectNewsOnly}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              <Newspaper className="w-4 h-4" />
+              {loading ? 'Collecting...' : 'Collect News'}
+            </button>
+            
+            <button
+              onClick={clearAllNewsEvents}
+              disabled={newsLoading || newsEvents.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear All
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">
+              Crypto News Events ({newsEvents.length})
+            </h3>
+            <div className="text-sm text-gray-400">
+              AI-analyzed crypto market news and events
+            </div>
+          </div>
+
+          {newsLoading ? (
+            <div className="text-center py-8 text-gray-400">
+              <RefreshCw className="w-8 h-8 mx-auto mb-4 animate-spin" />
+              <p>Loading news events...</p>
+            </div>
+          ) : newsEvents.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <Newspaper className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No news events found</p>
+              <p className="text-sm mt-2">Try collecting news using the "Collect News" button</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {newsEvents
+                .filter(event => 
+                  !searchTerm || 
+                  event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  (event.analysis?.affectedCryptos || []).some(crypto => 
+                    crypto.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                )
+                .map((event) => (
+                <div key={event.id} className="p-4 rounded-lg border border-gray-700 bg-gray-900/50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium text-white">{event.title}</h4>
+                        {event.analysis?.category && (
+                          <span className="px-2 py-1 rounded text-xs font-medium text-blue-400 bg-blue-900/20">
+                            {event.analysis.category}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm mb-3">
+                        <div>
+                          <span className="text-gray-400">Published:</span>
+                          <div className="text-white">{formatDate(event.publishedAt)}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Source:</span>
+                          <div className="text-white">{event.source || 'N/A'}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Market Impact:</span>
+                          <div className={`font-medium ${getImpactColor(event.analysis?.marketImpact || 0)}`}>
+                            {((parseFloat(event.analysis?.marketImpact) || 0) * 100).toFixed(1)}%
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Confidence:</span>
+                          <div className={`font-medium ${getConfidenceColor(event.analysis?.confidence || 0)}`}>
+                            {((parseFloat(event.analysis?.confidence) || 0) * 100).toFixed(1)}%
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {event.analysis?.affectedCryptos && event.analysis.affectedCryptos.length > 0 && (
+                        <div className="mb-2">
+                          <span className="text-gray-400 text-sm">Affected Cryptos:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {event.analysis.affectedCryptos.map((crypto, index) => (
+                              <span key={index} className="px-2 py-1 bg-blue-900/30 text-blue-300 text-xs rounded">
+                                {crypto}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {event.analysis?.keyPoints && event.analysis.keyPoints.length > 0 && (
+                        <div className="mb-2">
+                          <span className="text-gray-400 text-sm">Key Points:</span>
+                          <ul className="text-gray-300 text-sm mt-1 list-disc list-inside">
+                            {event.analysis.keyPoints.map((point, index) => (
+                              <li key={index}>{point}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {event.url && (
+                        <div className="mt-2">
+                          <a 
+                            href={event.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:text-blue-300 text-sm underline"
+                          >
+                            View Original Article →
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => deleteNewsEvent(event.id, event.title)}
+                        disabled={deletingNews === event.id}
+                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete this news event"
+                      >
+                        {deletingNews === event.id ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderUsersTab = () => {
     const filteredUsers = users.filter(user => {
       if (searchTerm && !user.email.toLowerCase().includes(searchTerm.toLowerCase())) {
@@ -1255,6 +1593,7 @@ const AdminDashboard = ({ isAuthenticated, userData }) => {
           {activeTab === 'ai-analysis' && renderAiAnalysisTab()}
           {activeTab === 'overview' && renderOverviewTab()}
           {activeTab === 'events' && renderEventsTab()}
+          {activeTab === 'news' && renderNewsTab()}
           {activeTab === 'users' && renderUsersTab()}
           {activeTab === 'email' && <AdminEmailInterface />}
           {activeTab === 'telegram' && <TelegramManagement />}

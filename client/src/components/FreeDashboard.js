@@ -68,7 +68,7 @@ const FreeDashboard = () => {
   const getRealNews = () => {
     if (previewData?.cryptoEvents?.events?.length) {
       const event = previewData.cryptoEvents.events[0];
-      return `Latest: "${event.title?.slice(0, 60)}..." - Impact: ${Math.round((event.analysis?.marketImpact || 0) * 100)}%`;
+      return `Latest: "${event.title?.slice(0, 60)}..." - Impact: ${Math.round((parseFloat(event.analysis?.marketImpact) || 0) * 100)}%`;
     }
     return "Latest crypto news loading...";
   };

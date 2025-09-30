@@ -30,11 +30,17 @@ const NewsPage = () => {
   const [showHighImpactModal, setShowHighImpactModal] = useState(false);
   const [highImpactNews, setHighImpactNews] = useState([]);
 
-  // Helper function to calculate weighted impact score
+  // Helper function to get impact score (use pre-calculated value from database)
   const getWeightedImpactScore = (event) => {
+    // Use the pre-calculated impactScore from database if available
+    if (event.impactScore !== undefined && event.impactScore !== null) {
+      return parseFloat(event.impactScore) || 0;
+    }
+    
+    // Fallback to calculation if impactScore is not available
     if (!event.analysis) return 0;
-    const impact = event.analysis.marketImpact || 0;
-    const confidence = event.analysis.confidence || 0;
+    const impact = parseFloat(event.analysis.marketImpact) || 0;
+    const confidence = parseFloat(event.analysis.confidence) || 0;
     return (impact * 2 + confidence) / 3;
   };
 
@@ -81,21 +87,26 @@ const NewsPage = () => {
       setLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('authToken');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
-      const response = await fetch('/api/dashboard', { headers });
+      const response = await fetch('/api/news-events');
       if (!response.ok) {
         throw new Error('Failed to fetch news data');
       }
       
-      const dashboardData = await response.json();
-      if (dashboardData.cryptoEvents) {
-        setNewsData(dashboardData.cryptoEvents);
+      const events = await response.json();
+      if (Array.isArray(events)) {
+        // Transform the events array to match the expected format
+        const newsData = {
+          hasEvents: events.length > 0,
+          eventCount: events.length,
+          events: events,
+          lastUpdate: new Date().toISOString()
+        };
+        
+        setNewsData(newsData);
         setLastUpdate(new Date());
         
         // Check for high-impact news modal (only if env var allows)
-        checkForHighImpactNews(dashboardData.cryptoEvents);
+        checkForHighImpactNews(newsData);
       }
     } catch (err) {
       console.error('Error fetching crypto news:', err);
@@ -112,6 +123,7 @@ const NewsPage = () => {
     // Set up WebSocket listener for real-time updates
     const handleDashboardUpdate = (data) => {
       if (data.data && data.data.cryptoEvents) {
+        // For WebSocket updates, we still get the dashboard format
         setNewsData(data.data.cryptoEvents);
         setLastUpdate(new Date());
         setLoading(false);
@@ -486,13 +498,13 @@ const NewsPage = () => {
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Market Impact</p>
                         <p className="text-sm text-white font-medium">
-                          {((event.analysis.marketImpact || 0) * 100).toFixed(0)}%
+                          {((parseFloat(event.analysis.marketImpact) || 0) * 100).toFixed(0)}%
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Confidence</p>
                         <p className="text-sm text-white font-medium">
-                          {((event.analysis.confidence || 0) * 100).toFixed(0)}%
+                          {((parseFloat(event.analysis.confidence) || 0) * 100).toFixed(0)}%
                         </p>
                       </div>
                       <div>

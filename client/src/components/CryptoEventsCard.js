@@ -168,10 +168,10 @@ const CryptoEventsCard = ({ cryptoEvents }) => {
               </div>
               <div className="flex items-center space-x-2">
                 <span className="text-xs text-slate-500">
-                  Impact: {Math.round(event.analysis.marketImpact * 100)}%
+                  Impact: {Math.round((parseFloat(event.analysis.marketImpact) || 0) * 100)}%
                 </span>
                 <span className="text-xs text-slate-500">
-                  Confidence: {Math.round(event.analysis.confidence * 100)}%
+                  Confidence: {Math.round((parseFloat(event.analysis.confidence) || 0) * 100)}%
                 </span>
               </div>
             </div>
