@@ -1409,10 +1409,18 @@ class DataCollector {
       // Get Bitcoin dominance
       const bitcoinDominance = await getLatestBitcoinDominance();
       
-      // Note: Individual crypto prices are not collected to avoid API limits
-      // The system uses external widgets for real-time crypto price display
-      // Only global crypto metrics are collected from CoinGecko
-      const cryptoPrices = {};
+      // Get BTC price data for AI analysis
+      const { getCryptoPrices } = require('../database');
+      const btcData = await getCryptoPrices('BTC', 1);
+      const cryptoPrices = btcData && btcData.length > 0 ? {
+        BTC: {
+          price: btcData[0].price,
+          change_24h: btcData[0].change_24h,
+          volume_24h: btcData[0].volume_24h,
+          market_cap: btcData[0].market_cap,
+          timestamp: btcData[0].timestamp
+        }
+      } : {};
       
       // Determine the most recent timestamp
       const timestamps = [

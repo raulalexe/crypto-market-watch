@@ -454,7 +454,10 @@ const InflationDataCard = ({ userData, inflationData: propInflationData }) => {
                 
                 // Market Impact Summary
                 if (analysis.length > 0) {
-                  analysis.push(`<br/><strong>Market Impact:</strong> ${sentiment?.marketImpact?.crypto ? `Crypto markets showing ${sentiment.marketImpact.crypto} sentiment. ` : ''}${sentiment?.marketImpact?.stocks ? `Equity markets ${sentiment.marketImpact.stocks}. ` : ''}${sentiment?.marketImpact?.bonds ? `Bond yields ${sentiment.marketImpact.bonds}.` : ''}`);
+                  const marketImpactText = sentiment?.marketImpact ? 
+                    `Crypto: ${sentiment.marketImpact.crypto || 'neutral'}, Stocks: ${sentiment.marketImpact.stocks || 'neutral'}, Bonds: ${sentiment.marketImpact.bonds || 'neutral'}, Dollar: ${sentiment.marketImpact.dollar || 'neutral'}` :
+                    'Market impact analysis not available';
+                  analysis.push(`<br/><strong>Market Impact:</strong> ${marketImpactText}`);
                 }
                 
                 return analysis.length > 0 ? analysis.join(' ') : 'Inflation data analysis not available.';

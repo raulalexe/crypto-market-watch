@@ -433,6 +433,14 @@ ${inflationDataStr}
 UPCOMING EVENTS:
 ${eventsStr}
 
+CRITICAL JSON FORMAT REQUIREMENTS:
+- ALL arrays must be properly formatted as JSON arrays with square brackets []
+- NO comma-separated strings like "BTC,ETH" - use ["BTC", "ETH"] instead
+- ALL strings must be properly quoted with double quotes
+- NO trailing commas
+- NO unescaped quotes within strings
+- Ensure all JSON is valid and parseable
+
 Please provide a structured JSON response with detailed reasoning:
 
 {
@@ -698,8 +706,8 @@ ANALYSIS REQUIREMENTS:
           const predictionTime = new Date(latestAnalysis.timestamp);
           const timeDiff = Date.now() - predictionTime.getTime();
           
-          // If prediction was made more than 1 hour ago, we can do a meaningful backtest
-          if (timeDiff > 60 * 60 * 1000) {
+          // If prediction was made more than 30 minutes ago, we can do a meaningful backtest
+          if (timeDiff > 30 * 60 * 1000) {
             // Get historical price data around prediction time
             const historicalPrices = await getCryptoPrices(symbol, 10);
             let predictionPrice = currentPrice; // fallback

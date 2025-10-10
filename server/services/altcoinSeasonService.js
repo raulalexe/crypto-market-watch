@@ -31,7 +31,7 @@ class AltcoinSeasonService {
       for (const source of sources) {
         try {
           const result = await source();
-          if (result !== null) {
+          if (result !== null && result.index !== null && result.index !== undefined) {
             console.log(`✅ Altcoin Season Index: ${result.index.toFixed(2)}% (${result.season})`);
             return result;
           }
@@ -40,7 +40,7 @@ class AltcoinSeasonService {
         }
       }
 
-      console.log('❌ All Altcoin Season Index sources failed');
+      console.log('❌ All Altcoin Season Index sources failed - no valid data available');
       return null;
 
     } catch (error) {

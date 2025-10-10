@@ -155,7 +155,7 @@ class AlertService {
       
       if (altcoinSeasonData && altcoinSeasonData.length > 0) {
         const altcoinIndex = parseFloat(altcoinSeasonData[0].value);
-        if (!isNaN(altcoinIndex)) {
+        if (!isNaN(altcoinIndex) && altcoinIndex > 0) {
           message += ` (Altcoin Season Index: ${altcoinIndex.toFixed(1)}%)`;
         }
       }
