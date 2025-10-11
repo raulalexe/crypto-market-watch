@@ -447,14 +447,14 @@ const NewsPage = () => {
         {newsData && newsData.hasEvents ? (
           <div className="space-y-6">
             {getFilteredEvents().map((event, index) => (
-              <div key={index} className={`rounded-lg p-6 border ${getCategoryColor(event.analysis?.category)}`}>
+              <div key={index} className={`rounded-lg p-6 border ${getCategoryColor(event.analysis?.category || event.category || 'general')}`}>
                 {/* Event Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-2">
-                      {getCategoryIcon(event.analysis?.category)}
+                      {getCategoryIcon(event.analysis?.category || event.category)}
                       <span className="text-xs uppercase tracking-wide text-slate-400 font-medium">
-                        {event.analysis?.category || 'General'}
+                        {event.analysis?.category || event.category || 'General'}
                       </span>
                       <span className="text-slate-500">•</span>
                       <span className="text-xs text-slate-500">{event.source}</span>
@@ -477,7 +477,7 @@ const NewsPage = () => {
                   {/* Impact Score */}
                   <div className="ml-4 text-right">
                     <div className="flex items-center space-x-1 mb-1">
-                      {getPriceImpactIcon(event.analysis?.priceImpact)}
+                      {getPriceImpactIcon(event.analysis?.priceImpact || 'neutral')}
                       <span className={`text-lg font-bold ${getSignificanceColor(getWeightedImpactScore(event))}`}>
                         {(getWeightedImpactScore(event) * 100).toFixed(0)}%
                       </span>
@@ -487,7 +487,7 @@ const NewsPage = () => {
                 </div>
 
                 {/* AI Analysis */}
-                {event.analysis && (
+                {event.analysis && (event.analysis.significance !== null || event.analysis.marketImpact !== null || event.analysis.confidence !== null) && (
                   <div className="bg-slate-700/50 rounded-lg p-4 mb-4">
                     <h4 className="text-sm font-medium text-white mb-3">AI Analysis</h4>
                     

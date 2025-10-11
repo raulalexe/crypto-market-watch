@@ -2684,14 +2684,14 @@ const getCryptoEvents = (limit = 50, offset = 0) => {
         source: row.source,
         category: row.category,
         analysis: {
-          significance: row.significance,
-          marketImpact: row.market_impact,
-          confidence: row.confidence,
+          significance: parseFloat(row.significance) || 0,
+          marketImpact: parseFloat(row.market_impact) || 0,
+          confidence: parseFloat(row.confidence) || 0,
           priceImpact: row.price_impact,
           affectedCryptos: safeJsonParse(row.affected_cryptos, []),
           keyPoints: safeJsonParse(row.key_points, [])
         },
-        impactScore: row.impact_score,
+        impactScore: parseFloat(row.impact_score) || 0,
         detectedAt: row.detected_at
       }));
       resolve(events);
@@ -2723,14 +2723,14 @@ const getLatestCryptoEvents = (limit = 20) => {
         source: row.source,
         category: row.category,
         analysis: {
-          significance: row.significance,
-          marketImpact: row.market_impact,
-          confidence: row.confidence,
+          significance: parseFloat(row.significance) || 0,
+          marketImpact: parseFloat(row.market_impact) || 0,
+          confidence: parseFloat(row.confidence) || 0,
           priceImpact: row.price_impact,
           affectedCryptos: safeJsonParse(row.affected_cryptos, []),
           keyPoints: safeJsonParse(row.key_points, [])
         },
-        impactScore: row.impact_score,
+        impactScore: parseFloat(row.impact_score) || 0,
         detectedAt: row.detected_at
       }));
       resolve(events);
