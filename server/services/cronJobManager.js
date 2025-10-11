@@ -40,14 +40,14 @@ class CronJobManager {
     console.log('✅ Enhanced cron job system set up successfully');
   }
 
-  // Main data collection with intelligent scheduling (excludes inflation and events)
+  // Main data collection with intelligent scheduling (includes news, excludes inflation and economic events)
   setupMainDataCollection() {
     // Business hours: 6 AM - 10 PM UTC (hourly)
     // Night hours: 10 PM - 6 AM UTC (every 3 hours)
     const businessHoursJob = cron.schedule('0 6-22 * * *', async () => {
       console.log('🕐 Main data collection cron job triggered (business hours - hourly)...');
       try {
-        // Collect core data only (no events, no emails)
+        // Collect core data including news (no economic events, no emails)
         const dataCollectorInstance = new dataCollector();
         await dataCollectorInstance.collectCoreData();
         
@@ -63,7 +63,7 @@ class CronJobManager {
     const nightHoursJob = cron.schedule('0 22,1,4 * * *', async () => {
       console.log('🌙 Main data collection cron job triggered (night hours - every 3 hours)...');
       try {
-        // Collect core data only (no events, no emails)
+        // Collect core data including news (no economic events, no emails)
         const dataCollectorInstance = new dataCollector();
         await dataCollectorInstance.collectCoreData();
         

@@ -1681,7 +1681,8 @@ class DataCollector {
         this.collectMoneySupplyData(), // Collect money supply data
         this.collectVIXFallback(), // Collect VIX data using fallback method
         this.collectAltcoinSeasonIndex(), // Collect Altcoin Season from external API
-        this.collectSeasonIndicator() // Collect Season Indicator from external API
+        this.collectSeasonIndicator(), // Collect Season Indicator from external API
+        this.collectCryptoNews() // Collect and analyze crypto news events
       ]);
       
       // Collect advanced data (market sentiment, derivatives, on-chain)

@@ -5,7 +5,6 @@ import authService from './services/authService';
 import websocketService from './services/websocketService';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
-import FreeDashboard from './components/FreeDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -213,55 +212,40 @@ function App() {
       window.scrollTo(0, 0);
     };
 
-    // Check if we should show freemium for unauthenticated users
-    const showFreemiumForUnauthenticated = !isAuthenticated && process.env.REACT_APP_DISABLE_FREEMIUM !== 'true';
+    // Always show full dashboard for all users (freemium removed)
 
     return (
       <>
-        {/* Show Header/Sidebar for:
-            1. Authenticated users (always)
-            2. When freemium is disabled (all users, like before) */}
-        {(isAuthenticated || process.env.REACT_APP_DISABLE_FREEMIUM === 'true') && (
-          <Header 
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-            onAuthClick={() => {
-              window.location.href = '/app?auth=login';
-            }}
-            onLogoutClick={handleLogout}
-            loading={loading}
-            isAuthenticated={isAuthenticated}
-            userData={userData}
-            setAuthModalOpen={setAuthModalOpen}
-          />
-        )}
+        {/* Always show Header/Sidebar for all users */}
+        <Header 
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          onAuthClick={() => {
+            window.location.href = '/app?auth=login';
+          }}
+          onLogoutClick={handleLogout}
+          loading={loading}
+          isAuthenticated={isAuthenticated}
+          userData={userData}
+          setAuthModalOpen={setAuthModalOpen}
+        />
         
-        <div className={`flex min-h-screen ${showFreemiumForUnauthenticated ? '' : ''}`}>
-          {/* Show Sidebar for:
-              1. Authenticated users (always)  
-              2. When freemium is disabled (all users, like before) */}
-          {(isAuthenticated || process.env.REACT_APP_DISABLE_FREEMIUM === 'true') && (
-            <Sidebar 
-              userData={userData} 
-              isOpen={sidebarOpen} 
-              onClose={() => setSidebarOpen(false)} 
-            />
-          )}
+        <div className="flex min-h-screen">
+          {/* Always show Sidebar for all users */}
+          <Sidebar 
+            userData={userData} 
+            isOpen={sidebarOpen} 
+            onClose={() => setSidebarOpen(false)} 
+          />
           
-          <main className={`flex-1 overflow-x-hidden ${showFreemiumForUnauthenticated ? 'p-0' : 'p-4 md:p-6'}`}>
+          <main className="flex-1 overflow-x-hidden p-4 md:p-6">
             <Routes>
               <Route 
                 path="/" 
                 element={
-                  // If freemium is enabled and user is not authenticated, show FreeDashboard
-                  // Otherwise, always show full Dashboard (like before)
-                  showFreemiumForUnauthenticated ? (
-                    <FreeDashboard />
-                  ) : (
-                    <Dashboard 
-                      isAuthenticated={isAuthenticated}
-                      userData={userData}
-                    />
-                  )
+                  <Dashboard 
+                    isAuthenticated={isAuthenticated}
+                    userData={userData}
+                  />
                 } 
               />
               <Route 
@@ -412,7 +396,6 @@ function App() {
                 {/* Marketing page as index - no header/sidebar */}
         <Routes>
           <Route path="/" element={<MarketingPage />} />
-          <Route path="/preview" element={<FreeDashboard />} />
 
           <Route path="/about" element={<MarketingAbout />} />
           <Route path="/unsubscribe-success" element={<UnsubscribeSuccess />} />

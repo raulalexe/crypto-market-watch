@@ -26,9 +26,7 @@ import Footer from './Footer';
 const MarketingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  // Debug: Check what React sees for the environment variable
-  console.log('REACT_APP_DISABLE_FREEMIUM:', process.env.REACT_APP_DISABLE_FREEMIUM);
-  console.log('Should show freemium:', process.env.REACT_APP_DISABLE_FREEMIUM !== 'true');
+  // Freemium removed - all users get free access to dashboard
 
   const notificationFeatures = [
     {
@@ -354,49 +352,26 @@ const MarketingPage = () => {
               Track cryptocurrencies, macro indicators, Layer 1 blockchain metrics, and market-impacting events with automated alerts via email, push notifications, and Telegram.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {/* Show different buttons based on freemium setting */}
-              {process.env.REACT_APP_DISABLE_FREEMIUM === 'true' ? (
-                <>
-                  <Link
-                    to="/app"
-                    className="inline-flex items-center px-8 py-4 bg-crypto-blue text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors shadow-lg"
-                  >
-                    <TrendingUp className="w-5 h-5 mr-2" />
-                    Launch App
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Link>
-                  <button
-                    onClick={() => {
-                      const pricingSection = document.getElementById('pricing-section');
-                      if (pricingSection) {
-                        pricingSection.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="inline-flex items-center px-8 py-4 border-2 border-crypto-blue text-crypto-blue font-semibold rounded-lg hover:bg-crypto-blue hover:text-white transition-colors shadow-lg"
-                  >
-                    <DollarSign className="w-5 h-5 mr-2" />
-                    View Plans
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to="/app"
-                    className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-crypto-blue to-purple-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg"
-                  >
-                    <Brain className="w-5 h-5 mr-2" />
-                    Try Free Demo
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Link>
-                  <Link
-                    to="/app"
-                    className="inline-flex items-center px-8 py-4 border-2 border-crypto-blue text-crypto-blue font-semibold rounded-lg hover:bg-crypto-blue hover:text-white transition-colors shadow-lg"
-                  >
-                    <TrendingUp className="w-5 h-5 mr-2" />
-                    Launch App
-                  </Link>
-                </>
-              )}
+              <Link
+                to="/app"
+                className="inline-flex items-center px-8 py-4 bg-crypto-blue text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors shadow-lg"
+              >
+                <TrendingUp className="w-5 h-5 mr-2" />
+                Access Dashboard
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Link>
+              <button
+                onClick={() => {
+                  const pricingSection = document.getElementById('pricing-section');
+                  if (pricingSection) {
+                    pricingSection.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className="inline-flex items-center px-8 py-4 border-2 border-crypto-blue text-crypto-blue font-semibold rounded-lg hover:bg-crypto-blue hover:text-white transition-colors shadow-lg"
+              >
+                <DollarSign className="w-5 h-5 mr-2" />
+                View Pro Plans
+              </button>
             </div>
           </div>
         </div>
