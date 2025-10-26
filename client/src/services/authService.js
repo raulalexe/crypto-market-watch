@@ -1,5 +1,5 @@
 import axios from 'axios';
-import logger from '../utils/logger';
+// import logger from '../utils/logger';
 
 class AuthService {
   constructor() {
@@ -34,11 +34,12 @@ class AuthService {
         // Handle JWT signature errors (403 with invalid signature)
         if (error.response?.status === 403 && 
             error.response?.data?.code === 'INVALID_SIGNATURE') {
-          console.log('🚨 JWT signature mismatch detected - clearing tokens and redirecting to login');
+          console.log('🚨 JWT signature mismatch detected - clearing tokens silently');
           console.log('🔐 Current token length:', localStorage.getItem('authToken')?.length);
           console.log('🔐 Error details:', error.response?.data);
           this.clearTokens();
-          window.location.href = '/?auth=login&reason=token_invalid';
+          // Don't redirect - just clear tokens silently
+          // window.location.href = '/?auth=login&reason=token_invalid';
           return Promise.reject(error);
         }
 
@@ -71,13 +72,13 @@ class AuthService {
               
               return axios(originalRequest);
             } else {
-              // Refresh failed, redirect to login
-              this.handleAuthFailure();
+              // Refresh failed, clear tokens silently without redirect
+              this.clearTokens();
               return Promise.reject(error);
             }
           } catch (refreshError) {
             this.processQueue(refreshError, null);
-            this.handleAuthFailure();
+            this.clearTokens();
             return Promise.reject(refreshError);
           } finally {
             this.isRefreshing = false;
@@ -89,7 +90,7 @@ class AuthService {
           // Check if it's a token expiration issue
           if (error.response?.data?.error === 'Invalid token' || 
               error.response?.data?.error === 'Token expired') {
-            this.handleAuthFailure();
+            this.clearTokens();
           }
         }
 
@@ -117,6 +118,7 @@ class AuthService {
   }
 
   handleAuthFailure() {
+    console.log('handleAuthFailure called');
     // Clear stored tokens
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
@@ -130,6 +132,7 @@ class AuthService {
     
     // Redirect to login after a short delay
     setTimeout(() => {
+      console.log('Redirecting to login page');
       // Check if we're in the app, redirect to login
       if (window.location.pathname.startsWith('/app')) {
         window.location.href = '/app?auth=login';
@@ -181,6 +184,7 @@ class AuthService {
   // Method to check if user is authenticated
   isAuthenticated() {
     const token = localStorage.getItem('authToken');
+    console.log('isAuthenticated called, token exists:', !!token);
     if (!token) return false;
     
     try {
@@ -189,15 +193,18 @@ class AuthService {
       const currentTime = Date.now() / 1000;
       
       if (payload.exp < currentTime) {
-        // Token is expired
-        this.handleAuthFailure();
+        // Token is expired, clear it silently without redirect
+        console.log('Token expired, clearing silently');
+        this.clearTokens();
         return false;
       }
       
+      console.log('Token is valid');
       return true;
     } catch (error) {
-      // Invalid token format
-      this.handleAuthFailure();
+      // Invalid token format, clear it silently without redirect
+      console.log('Invalid token format, clearing silently');
+      this.clearTokens();
       return false;
     }
   }

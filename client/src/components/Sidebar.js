@@ -22,53 +22,53 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
 
   const navItems = [
     {
-      path: '/app',
+      path: '/',
       name: 'Market Dashboard',
       icon: BarChart3
     },
     {
-      path: '/app/events',
+      path: '/events',
       name: 'Upcoming Events',
       icon: Calendar
     },
     {
-      path: '/app/news',
+      path: '/news',
       name: 'AI News Analysis',
       icon: Newspaper
     },
     {
-      path: '/app/prices',
+      path: '/prices',
       name: 'Crypto Prices',
       icon: DollarSign
     },
     {
-      path: '/app/history',
+      path: '/history',
       name: 'Historical Data',
       icon: History
     },
     {
-      path: '/app/data-export',
+      path: '/data-export',
       name: 'Data Export',
       icon: Download,
       requiresAuth: true,
       requiresPro: true
     },
     {
-      path: '/app/advanced-analytics',
+      path: '/advanced-analytics',
       name: 'Advanced Analytics',
       icon: BarChart3,
       requiresAuth: true,
       requiresPro: true
     },
     {
-      path: '/app/custom-alerts',
+      path: '/custom-alerts',
       name: 'Custom Alerts',
       icon: AlertTriangle,
       requiresAuth: true,
       requiresPro: true
     },
     {
-      path: '/app/subscription',
+      path: '/subscription',
       name: 'Subscription Plans',
       icon: CreditCard
     }
@@ -77,19 +77,19 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
   // Admin-specific menu items
   const adminItems = [
     {
-      path: '/app/admin',
+      path: '/admin',
       name: 'Admin Dashboard',
       icon: Settings,
       adminOnly: true
     },
     {
-      path: '/app/alerts',
+      path: '/alerts',
       name: 'Market Alerts',
       icon: AlertTriangle,
       adminOnly: true
     },
     {
-      path: '/app/errors',
+      path: '/errors',
       name: 'Error Logs',
       icon: AlertTriangle,
       adminOnly: true
@@ -98,20 +98,25 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
 
   // Profile and contact items
   const profileItem = {
-    path: '/app/profile',
+    path: '/profile',
     name: 'Profile',
     icon: User,
     requiresAuth: true
   };
   
   const contactItem = {
-    path: '/app/contact',
+    path: '/contact',
     name: 'Contact',
     icon: Mail
   };
 
   // Check if user is admin using shared utility
-  const isAdmin = isAdminUser(userData);
+  const isAdminUserCheck = isAdminUser(userData);
+
+  // Debug logging
+  console.log('Sidebar userData:', userData);
+  console.log('Sidebar isAuthenticated:', isAuthenticated(userData));
+  console.log('Sidebar isAdminUserCheck:', isAdminUserCheck);
 
   // Handle navigation click (close mobile menu)
   const handleNavClick = () => {
@@ -158,11 +163,11 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
             {/* Regular Navigation Items */}
             {navItems.map((item) => {
               // Show auth required link for auth-required items if user is NOT authenticated (but not for admins)
-              if (item.requiresAuth && !isAuthenticated(userData) && !isAdmin) {
+              if (item.requiresAuth && !isAuthenticated(userData) && !isAdminUserCheck) {
                 return (
                   <li key={item.path}>
                     <Link
-                      to="/app/subscription"
+                      to="/subscription"
                       onClick={handleNavClick}
                       className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                     >
@@ -181,11 +186,11 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
               }
 
               // Show upgrade link for auth-required items if user is authenticated but doesn't have pro access (but not for admins)
-              if (item.requiresAuth && isAuthenticated(userData) && !hasProAccess(userData) && !isAdmin) {
+              if (item.requiresAuth && isAuthenticated(userData) && !hasProAccess(userData) && !isAdminUserCheck) {
                 return (
                   <li key={item.path}>
                     <Link
-                      to="/app/subscription"
+                      to="/subscription"
                       onClick={handleNavClick}
                       className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                     >
@@ -204,11 +209,11 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
               }
 
               // Show upgrade link for premium items if user doesn't have premium (but not for admins)
-              if (item.requiresPremium && !hasPremiumAccess(userData) && !isAdmin) {
+              if (item.requiresPremium && !hasPremiumAccess(userData) && !isAdminUserCheck) {
                 return (
                   <li key={item.path}>
                     <Link
-                      to="/app/subscription"
+                      to="/subscription"
                       onClick={handleNavClick}
                       className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                     >
@@ -220,11 +225,11 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
               }
 
               // Show upgrade link for pro items if user doesn't have pro access (but not for admins)
-              if (item.requiresPro && !hasProAccess(userData) && !isAdmin) {
+              if (item.requiresPro && !hasProAccess(userData) && !isAdminUserCheck) {
                 return (
                   <li key={item.path}>
                     <Link
-                      to="/app/subscription"
+                      to="/subscription"
                       onClick={handleNavClick}
                       className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                     >
@@ -270,7 +275,7 @@ const Sidebar = ({ userData, isOpen, onClose }) => {
             })}
             
             {/* Admin Section */}
-            {isAdmin && adminItems.length > 0 && (
+            {isAdminUserCheck && adminItems.length > 0 && (
               <>
                 <li className="mt-8 pt-4 border-t border-gray-700">
                   <div className="px-4 py-2">

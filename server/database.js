@@ -2566,31 +2566,42 @@ const getCorrelationData = (limit = 100) => {
 // ==========================================
 
 // Helper function for safe JSON parsing with normalization
-const safeJsonParse = (jsonString, fallback = null) => {
-  if (!jsonString || jsonString === 'unknown' || jsonString === 'null') {
+const safeJsonParse = (data, fallback = null) => {
+  if (!data || data === 'unknown' || data === 'null') {
     return fallback;
   }
   
-  try {
-    const parsed = JSON.parse(jsonString);
-    return parsed;
-  } catch (error) {
-    // If JSON parsing fails, try to normalize the string
-    if (typeof jsonString === 'string') {
-      if (jsonString.includes(',')) {
+  // If it's already an array, return it
+  if (Array.isArray(data)) {
+    return data;
+  }
+  
+  // If it's already an object (but not an array), return it
+  if (typeof data === 'object' && data !== null) {
+    return data;
+  }
+  
+  // If it's a string, try to parse it as JSON
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      return parsed;
+    } catch (error) {
+      // If JSON parsing fails, try to normalize the string
+      if (data.includes(',')) {
         // Comma-separated values: "BTC,ETH,DOGE" → ["BTC", "ETH", "DOGE"]
-        console.warn(`Failed to parse JSON: "${jsonString}" - normalizing as comma-separated values`);
-        return jsonString.split(',').map(item => item.trim()).filter(item => item.length > 0);
+        console.warn(`Failed to parse JSON: "${data}" - normalizing as comma-separated values`);
+        return data.split(',').map(item => item.trim()).filter(item => item.length > 0);
       } else {
         // Single value: "BTC" → ["BTC"]
-        console.warn(`Failed to parse JSON: "${jsonString}" - normalizing as single value array`);
-        return [jsonString.trim()];
+        console.warn(`Failed to parse JSON: "${data}" - normalizing as single value array`);
+        return [data.trim()];
       }
     }
-    
-    console.warn(`Failed to parse JSON: "${jsonString}" - using fallback:`, fallback);
-    return fallback;
   }
+  
+  console.warn(`Failed to parse JSON: "${data}" - using fallback:`, fallback);
+  return fallback;
 };
 
 // Helper function to normalize AI response fields to arrays

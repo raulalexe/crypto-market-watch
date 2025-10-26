@@ -151,9 +151,9 @@ const CryptoEventsCard = ({ cryptoEvents }) => {
               {event.title}
             </h4>
 
-            {event.description && (
-              <p className="text-slate-400 text-sm mb-3 line-clamp-2">
-                {event.description}
+            {(event.description || event.content || event.summary) && (
+              <p className="text-slate-400 text-sm mb-3 line-clamp-3">
+                {event.description || event.content || event.summary}
               </p>
             )}
 

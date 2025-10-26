@@ -10,6 +10,39 @@ const WebSocketMaintenanceScreen = ({ children }) => {
   const [lastConnectedTime, setLastConnectedTime] = useState(Date.now());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Check if user is authenticated - moved outside useEffect for scope
+  const checkAuth = () => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      setIsAuthenticated(false);
+      return false;
+    }
+    
+    try {
+      // Simple token validation without calling authService.isAuthenticated()
+      // which might trigger redirects
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      
+      if (payload.exp > currentTime) {
+        setIsAuthenticated(true);
+        return true;
+      } else {
+        // Token is expired, clear it silently
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+        return false;
+      }
+    } catch (error) {
+      // Invalid token format, clear it silently
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      setIsAuthenticated(false);
+      return false;
+    }
+  };
+
   useEffect(() => {
     // Check if disconnected page is enabled via environment variable
     const isDisconnectedPageEnabled = process.env.REACT_APP_DISCONNECTED_PAGE_ENABLED === 'true';
@@ -18,12 +51,6 @@ const WebSocketMaintenanceScreen = ({ children }) => {
       return;
     }
 
-    // Check if user is authenticated
-    const checkAuth = () => {
-      const authenticated = authService.isAuthenticated();
-      setIsAuthenticated(authenticated);
-      return authenticated;
-    };
 
     // Only monitor WebSocket connection for authenticated users
     if (!checkAuth()) {
@@ -36,7 +63,7 @@ const WebSocketMaintenanceScreen = ({ children }) => {
 
     const checkConnectionStatus = () => {
       // Only check connection if user is authenticated
-      if (!authService.isAuthenticated()) {
+      if (!checkAuth()) {
         setIsMaintenanceMode(false);
         return;
       }
@@ -99,11 +126,11 @@ const WebSocketMaintenanceScreen = ({ children }) => {
         websocketService.socket.off('disconnect', handleDisconnect);
       }
     };
-  }, [disconnectedTime, process.env.REACT_APP_DISCONNECTED_PAGE_ENABLED]);
+  }, [disconnectedTime]);
 
   const handleRetryConnection = () => {
     // Only retry if user is authenticated
-    if (!authService.isAuthenticated()) {
+    if (!checkAuth()) {
       return;
     }
 

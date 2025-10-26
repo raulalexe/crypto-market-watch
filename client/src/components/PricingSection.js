@@ -191,7 +191,21 @@ const PricingSection = ({
 
   const fetchSubscriptionStatus = async () => {
     try {
-      if (!authService.isAuthenticated()) {
+      // Check authentication without triggering redirects
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        return;
+      }
+      
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        if (payload.exp <= currentTime) {
+          // Token expired
+          return;
+        }
+      } catch (error) {
+        // Invalid token
         return;
       }
       
@@ -234,7 +248,20 @@ const PricingSection = ({
     }
     
     // Check if user is authenticated
-    if (!authService.isAuthenticated()) {
+    const token = localStorage.getItem('authToken');
+    let isAuthenticated = false;
+    
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        isAuthenticated = payload.exp > currentTime;
+      } catch (error) {
+        isAuthenticated = false;
+      }
+    }
+    
+    if (!isAuthenticated) {
       if (setAuthModalOpen) {
         // Open auth modal directly
         setAuthModalOpen(true);

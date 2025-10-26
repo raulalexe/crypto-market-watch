@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import pushNotificationService from './services/pushNotificationService';
 import authService from './services/authService';
 import websocketService from './services/websocketService';
 import axios from 'axios';
 import Dashboard from './components/Dashboard';
-import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -37,7 +36,7 @@ import PasswordReset from './components/PasswordReset';
 import EmailConfirmSuccess from './components/EmailConfirmSuccess';
 import EmailConfirmError from './components/EmailConfirmError';
 import PPIReleasePopup from './components/PPIReleasePopup';
-import ppiNotificationService from './services/ppiNotificationService';
+// import ppiNotificationService from './services/ppiNotificationService';
 import RenewalReminder from './components/RenewalReminder';
 import WebSocketMaintenanceScreen from './components/WebSocketMaintenanceScreen';
 
@@ -48,10 +47,11 @@ function App() {
   const [, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const authModalOpened = useRef(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [ppiPopupOpen, setPpiPopupOpen] = useState(false);
-  const [ppiData, setPpiData] = useState(null);
-  const [ppiExpectations, setPpiExpectations] = useState(null);
+  // const [ppiData, setPpiData] = useState(null);
+  // const [ppiExpectations, setPpiExpectations] = useState(null);
 
   const fetchUserData = async () => {
     try {
@@ -86,17 +86,35 @@ function App() {
   };
 
   useEffect(() => {
-    // Check for existing auth token using auth service
-    if (authService.isAuthenticated()) {
-      setIsAuthenticated(true);
-      fetchUserData();
-      
-      // Initialize WebSocket connection for authenticated users
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        websocketService.connect(token).catch(error => {
-          console.error('WebSocket connection failed:', error);
-        });
+    // Check for existing auth token without triggering redirects
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        // Simple token validation without calling authService.isAuthenticated()
+        // which might trigger redirects
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        
+        if (payload.exp > currentTime) {
+          // Token is valid
+          setIsAuthenticated(true);
+          fetchUserData();
+          
+          // Initialize WebSocket connection for authenticated users
+          websocketService.connect(token).catch(error => {
+            console.error('WebSocket connection failed:', error);
+          });
+        } else {
+          // Token is expired, clear it silently
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        // Invalid token format, clear it silently
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
       }
     }
     
@@ -105,23 +123,8 @@ function App() {
     // Initialize push notifications
     initializePushNotifications();
     
-    // PPI notification service disabled - using WebSocket for real-time updates
-    // const unsubscribePPI = ppiNotificationService.addListener((notification) => {
-    //   if (notification.type === 'PPI_RELEASE') {
-    //     setPpiData(notification.data);
-    //     setPpiExpectations(notification.expectations);
-    //     setPpiPopupOpen(true);
-    //   }
-    // });
-    
-    // Start monitoring for PPI releases
-    // ppiNotificationService.startMonitoring();
-    
-    // WebSocket will handle real-time updates, no need for polling
-    
     return () => {
-      // unsubscribePPI();
-      // ppiNotificationService.stopMonitoring();
+      // Cleanup if needed
     };
   }, []);
 
@@ -140,7 +143,9 @@ function App() {
   };
 
   const handleAuthSuccess = async () => {
+    console.log('handleAuthSuccess called');
     setIsAuthenticated(true);
+    authModalOpened.current = false;
     await fetchUserData();
     
     // Initialize WebSocket connection after successful authentication
@@ -156,25 +161,24 @@ function App() {
     url.searchParams.delete('auth');
     window.history.replaceState({}, '', url.toString());
     
-    // Check if user is admin and refresh page to ensure all components update properly
+    // Check if user is admin and update UI state instead of reloading
     if (token) {
       try {
         const response = await axios.get('/api/subscription', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        // If user is admin, refresh the page to ensure all UI components update
+        // Update user data state instead of reloading the page
         if (response.data && response.data.role === 'admin') {
-          console.log('Admin user detected, refreshing page to update UI...');
-          window.location.reload();
-          return;
+          console.log('Admin user detected, updating UI state...');
+          setUserData(response.data);
+          // No need to reload - the state update will trigger re-renders
         }
       } catch (error) {
         console.error('Error checking user role after login:', error);
       }
     }
     
-    fetchDashboardData();
     // Scroll to top of the page after successful authentication
     window.scrollTo(0, 0);
   };
@@ -190,21 +194,30 @@ function App() {
   const AppRoutes = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const authParamProcessed = useRef(false);
 
     // Handle auth query parameters
     useEffect(() => {
       const authParam = searchParams.get('auth');
-      if (authParam === 'register' || authParam === 'signup' || authParam === 'login') {
+      console.log('Auth param effect triggered:', authParam);
+      
+      if ((authParam === 'register' || authParam === 'signup' || authParam === 'login') && !authParamProcessed.current) {
+        console.log('Opening auth modal due to URL param');
+        authParamProcessed.current = true;
         setAuthModalOpen(true);
         // Scroll to top when modal opens due to URL parameter
         window.scrollTo(0, 0);
+        // Clear the auth parameter from URL to prevent loops
+        const url = new URL(window.location);
+        url.searchParams.delete('auth');
+        window.history.replaceState({}, '', url.toString());
       }
-      // Don't automatically close modal when no auth param - let it be controlled by other components
     }, [searchParams]);
 
     // Function to close modal and clear URL parameters
     const handleCloseModal = () => {
       setAuthModalOpen(false);
+      authModalOpened.current = false;
       // Navigate to the same path without the auth parameter
       const currentPath = window.location.pathname;
       navigate(currentPath, { replace: true });
@@ -220,7 +233,10 @@ function App() {
         <Header 
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           onAuthClick={() => {
-            window.location.href = '/app?auth=login';
+            if (!authModalOpened.current) {
+              authModalOpened.current = true;
+              setAuthModalOpen(true);
+            }
           }}
           onLogoutClick={handleLogout}
           loading={loading}
@@ -395,18 +411,15 @@ function App() {
       <div className="min-h-screen bg-slate-900">
                 {/* Marketing page as index - no header/sidebar */}
         <Routes>
-          <Route path="/" element={<MarketingPage />} />
-
+          <Route path="/landing" element={<MarketingPage />} />
           <Route path="/about" element={<MarketingAbout />} />
           <Route path="/unsubscribe-success" element={<UnsubscribeSuccess />} />
           <Route path="/reset-password" element={<PasswordReset />} />
           <Route path="/auth/confirm-success" element={<EmailConfirmSuccess />} />
           <Route path="/auth/confirm-error" element={<EmailConfirmError />} />
           
-
-          
-          {/* App routes with header and sidebar */}
-          <Route path="/app/*" element={
+          {/* App routes with header and sidebar - including root path */}
+          <Route path="/*" element={
             <WebSocketMaintenanceScreen>
               <AppRoutes />
             </WebSocketMaintenanceScreen>
@@ -418,8 +431,8 @@ function App() {
       <PPIReleasePopup
         isOpen={ppiPopupOpen}
         onClose={() => setPpiPopupOpen(false)}
-        ppiData={ppiData}
-        expectations={ppiExpectations}
+        ppiData={null}
+        expectations={null}
       />
     </Router>
   );

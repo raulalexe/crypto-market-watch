@@ -194,23 +194,16 @@ class GroqService {
 
   // Create news analysis prompt
   createNewsAnalysisPrompt(article) {
-    return `Analyze this cryptocurrency news article for market impact and significance. Provide a JSON response with the following structure:
+    return `You are a cryptocurrency market analyst. Analyze this news article and respond with ONLY valid JSON.
 
 Article Title: ${article.title}
 Article Description: ${article.description}
 Source: ${article.source}
 Published: ${article.publishedAt}
 
-Please analyze this news for:
-1. Market significance (0-1 scale)
-2. Market impact (0-1 scale) 
-3. Event category (hack, regulation, market, institutional, technical, exchange, general)
-4. Affected cryptocurrencies (list of major coins that might be impacted)
-5. Short-term price impact prediction (bullish, bearish, neutral)
-6. Confidence level (0-1 scale)
-7. Key points (bullet points of main implications)
+IMPORTANT: Respond with ONLY valid JSON. Do not include any text before or after the JSON. Do not use markdown formatting.
 
-Respond with valid JSON only:
+Required JSON format:
 {
   "significance": 0.8,
   "marketImpact": 0.7,
@@ -222,31 +215,65 @@ Respond with valid JSON only:
     "Regulatory uncertainty may cause short-term volatility",
     "Long-term impact depends on final regulations"
   ]
-}`;
+}
+
+Guidelines:
+- significance: 0-1 (how important this news is)
+- marketImpact: 0-1 (how much it will affect markets)
+- category: one of: hack, regulation, market, institutional, technical, exchange, general
+- affectedCryptos: array of cryptocurrency symbols (e.g., ["BTC", "ETH", "SOL"])
+- priceImpact: bullish, bearish, or neutral
+- confidence: 0-1 (how confident you are in this analysis)
+- keyPoints: array of strings describing main implications
+
+Respond with valid JSON only:`;
   }
 
   // Parse news analysis response
   parseNewsAnalysisResponse(response) {
     try {
-      // Extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      // Clean the response - remove any markdown formatting or extra text
+      let cleanResponse = response.trim();
+      
+      // Remove markdown code blocks if present
+      cleanResponse = cleanResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      
+      // Extract JSON from response - try multiple patterns
+      let jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        // Try to find JSON-like structure
+        const lines = cleanResponse.split('\n');
+        const jsonStart = lines.findIndex(line => line.trim().startsWith('{'));
+        const jsonEnd = lines.findIndex(line => line.trim().endsWith('}'));
+        
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd >= jsonStart) {
+          jsonMatch = [lines.slice(jsonStart, jsonEnd + 1).join('\n')];
+        }
+      }
+      
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
       
       const analysis = JSON.parse(jsonMatch[0]);
       
-      // Validate required fields
-      if (typeof analysis.significance !== 'number' || 
-          typeof analysis.marketImpact !== 'number' ||
-          !analysis.category ||
-          !analysis.priceImpact) {
-        throw new Error('Invalid analysis structure');
-      }
+      // Validate and normalize the response
+      const normalizedAnalysis = {
+        significance: typeof analysis.significance === 'number' ? analysis.significance : 0.5,
+        marketImpact: typeof analysis.marketImpact === 'number' ? analysis.marketImpact : 0.5,
+        category: analysis.category || 'general',
+        affectedCryptos: Array.isArray(analysis.affectedCryptos) ? analysis.affectedCryptos : [],
+        priceImpact: analysis.priceImpact || 'neutral',
+        confidence: typeof analysis.confidence === 'number' ? analysis.confidence : 0.5,
+        keyPoints: Array.isArray(analysis.keyPoints) ? analysis.keyPoints : ['Analysis completed']
+      };
       
-      return analysis;
+      return normalizedAnalysis;
     } catch (error) {
       console.error('Error parsing news analysis response:', error.message);
+      console.error('Raw response:', response);
+      
       // Return default analysis if parsing fails
       return {
         significance: 0.5,
@@ -609,27 +636,36 @@ Content: ${article.description || article.content || 'No content available'}
 Source: ${article.source}`;
     }).join('\n\n');
 
-    return `Analyze these ${articles.length} cryptocurrency news articles for market impact and significance. Provide a JSON array response with one analysis object for each article in the same order.
+    return `You are a cryptocurrency market analyst. Analyze these ${articles.length} news articles and respond with ONLY a valid JSON array.
 
 ${articlesText}
 
-Respond with a JSON array containing ${articles.length} analysis objects, each with this structure:
-{
-  "significance": 0.8,
-  "marketImpact": 0.7,
-  "category": "regulation",
-  "affectedCryptos": ["BTC", "ETH"],
-  "priceImpact": "bearish",
-  "confidence": 0.75,
-  "keyPoints": [
-    "Regulatory uncertainty may cause short-term volatility",
-    "Long-term impact depends on final regulations"
-  ]
-}
+IMPORTANT: Respond with ONLY a valid JSON array. Do not include any text before or after the JSON. Do not use markdown formatting.
 
-Categories: "hack", "regulation", "exchange", "institutional", "technical", "market", "general"
-Price Impact: "bullish", "bearish", "neutral"
-Significance/Impact/Confidence: 0.0 to 1.0
+Required JSON array format (one object per article):
+[
+  {
+    "significance": 0.8,
+    "marketImpact": 0.7,
+    "category": "regulation",
+    "affectedCryptos": ["BTC", "ETH"],
+    "priceImpact": "bearish",
+    "confidence": 0.75,
+    "keyPoints": [
+      "Regulatory uncertainty may cause short-term volatility",
+      "Long-term impact depends on final regulations"
+    ]
+  }
+]
+
+Guidelines for each analysis:
+- significance: 0-1 (how important this news is)
+- marketImpact: 0-1 (how much it will affect markets)
+- category: one of: hack, regulation, market, institutional, technical, exchange, general
+- affectedCryptos: array of cryptocurrency symbols (e.g., ["BTC", "ETH", "SOL"])
+- priceImpact: bullish, bearish, or neutral
+- confidence: 0-1 (how confident you are in this analysis)
+- keyPoints: array of strings describing main implications
 
 Respond with valid JSON array only:`;
   }
@@ -637,8 +673,26 @@ Respond with valid JSON array only:`;
   // Parse batch news analysis response
   parseBatchNewsAnalysisResponse(response, expectedCount) {
     try {
-      // Extract JSON array from response
-      const jsonMatch = response.match(/\[[\s\S]*\]/);
+      // Clean the response - remove any markdown formatting or extra text
+      let cleanResponse = response.trim();
+      
+      // Remove markdown code blocks if present
+      cleanResponse = cleanResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      
+      // Extract JSON array from response - try multiple patterns
+      let jsonMatch = cleanResponse.match(/\[[\s\S]*\]/);
+      
+      if (!jsonMatch) {
+        // Try to find JSON-like structure
+        const lines = cleanResponse.split('\n');
+        const jsonStart = lines.findIndex(line => line.trim().startsWith('['));
+        const jsonEnd = lines.findIndex(line => line.trim().endsWith(']'));
+        
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd >= jsonStart) {
+          jsonMatch = [lines.slice(jsonStart, jsonEnd + 1).join('\n')];
+        }
+      }
+      
       if (!jsonMatch) {
         throw new Error('No JSON array found in response');
       }
@@ -649,44 +703,46 @@ Respond with valid JSON array only:`;
         throw new Error('Response is not an array');
       }
       
-      // Validate and clean up analyses
+      // Validate and normalize analyses
       const validAnalyses = analyses.slice(0, expectedCount).map((analysis, index) => {
         try {
-          // Validate required fields
-          if (typeof analysis.significance !== 'number' || 
-              typeof analysis.marketImpact !== 'number' ||
-              typeof analysis.confidence !== 'number') {
-            throw new Error(`Invalid analysis format for article ${index + 1}`);
-          }
-          
-          return analysis;
-        } catch (error) {
-          console.error(`Error validating analysis ${index + 1}:`, error.message);
-          // Return default analysis as fallback
           return {
-            significance: 0.1,
-            marketImpact: 0.1,
+            significance: typeof analysis.significance === 'number' ? analysis.significance : 0.5,
+            marketImpact: typeof analysis.marketImpact === 'number' ? analysis.marketImpact : 0.5,
+            category: analysis.category || 'general',
+            affectedCryptos: Array.isArray(analysis.affectedCryptos) ? analysis.affectedCryptos : [],
+            priceImpact: analysis.priceImpact || 'neutral',
+            confidence: typeof analysis.confidence === 'number' ? analysis.confidence : 0.5,
+            keyPoints: Array.isArray(analysis.keyPoints) ? analysis.keyPoints : ['Analysis completed']
+          };
+        } catch (error) {
+          console.warn(`Error normalizing analysis ${index + 1}:`, error.message);
+          return {
+            significance: 0.5,
+            marketImpact: 0.5,
             category: 'general',
             affectedCryptos: [],
             priceImpact: 'neutral',
-            confidence: 0.1,
-            keyPoints: [`Analysis failed for article ${index + 1} - using default values`]
+            confidence: 0.3,
+            keyPoints: ['Analysis failed - manual review required']
           };
         }
       });
       
       return validAnalyses;
     } catch (error) {
-      console.error('Error parsing Groq batch news analysis response:', error.message);
-      // Return array of default analyses
-      return Array(expectedCount).fill(null).map((_, index) => ({
-        significance: 0.1,
-        marketImpact: 0.1,
+      console.error('Error parsing batch news analysis response:', error.message);
+      console.error('Raw response:', response);
+      
+      // Return default analyses if parsing fails
+      return Array(expectedCount).fill(null).map(() => ({
+        significance: 0.5,
+        marketImpact: 0.5,
         category: 'general',
         affectedCryptos: [],
         priceImpact: 'neutral',
-        confidence: 0.1,
-        keyPoints: [`Batch analysis failed for article ${index + 1} - using default values`]
+        confidence: 0.3,
+        keyPoints: ['Analysis failed - manual review required']
       }));
     }
   }

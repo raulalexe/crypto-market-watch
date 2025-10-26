@@ -165,6 +165,8 @@ const NewsPage = () => {
         return 'bg-green-900/20 border-green-500/30';
       case 'exchange':
         return 'bg-orange-900/20 border-orange-500/30';
+      case 'crypto':
+        return 'bg-slate-800 border-slate-600';
       case 'general':
         return 'bg-slate-700 border-slate-600';
       default:
@@ -467,9 +469,9 @@ const NewsPage = () => {
                     <h3 className="text-lg font-semibold text-white mb-2">
                       {event.title}
                     </h3>
-                    {event.description && (
+                    {(event.description || event.content || event.summary) && (
                       <p className="text-slate-300 text-sm leading-relaxed">
-                        {event.description}
+                        {event.description || event.content || event.summary}
                       </p>
                     )}
                   </div>
@@ -523,6 +525,7 @@ const NewsPage = () => {
 
                     {event.analysis.affectedCryptos && event.analysis.affectedCryptos.length > 0 && (
                       <div className="mb-3">
+                        <div className="border-t border-slate-600 mb-3"></div>
                         <p className="text-xs text-slate-400 mb-2">Affected Cryptocurrencies</p>
                         <div className="flex flex-wrap gap-1">
                           {event.analysis.affectedCryptos.map((crypto, idx) => (
@@ -536,6 +539,7 @@ const NewsPage = () => {
 
                     {event.analysis.keyPoints && event.analysis.keyPoints.length > 0 && (
                       <div>
+                        <div className="border-t border-slate-600 mb-3"></div>
                         <p className="text-xs text-slate-400 mb-2">Key Points</p>
                         <ul className="space-y-1">
                           {event.analysis.keyPoints.map((point, idx) => (
